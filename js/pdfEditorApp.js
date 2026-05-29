@@ -557,7 +557,7 @@ export class PDFEditorApp {
 
   async downloadPDF() {
     if (!this.renderer.pdfDoc) return;
-    const { PDFDocument, rgb } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
+    const { PDFDocument, rgb, StandardFonts } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
     const pdfDoc = await PDFDocument.create();
     const s = this.renderer.scale;
 
@@ -582,10 +582,15 @@ export class PDFEditorApp {
         for (const element of pageElements) {
           if (element.type === 'text' && element.text) {
             const { r, g, b } = this.hexToRgbValues(element.color);
+            const fontName = this._getStandardFont(
+              element.fontFamily, element.bold, element.italic
+            );
+            const font = await pdfDoc.embedFont(StandardFonts[fontName]);
             page.drawText(element.text, {
               x: element.x / s,
               y: origVp.height - element.y / s - element.fontSize / s,
               size: element.fontSize / s,
+              font,
               color: rgb(r, g, b)
             });
           } else if (element.type === 'signature') {
@@ -614,6 +619,27 @@ export class PDFEditorApp {
       await this.renderer.renderPage(this.renderer.currentPage);
       this.renderElements();
     }
+  }
+
+  _getStandardFont(fontFamily, bold, italic) {
+    const f = (fontFamily || 'Arial').toLowerCase();
+    if (f.includes('times')) {
+      if (bold && italic) return 'TimesRomanBoldItalic';
+      if (bold)           return 'TimesRomanBold';
+      if (italic)         return 'TimesRomanItalic';
+      return 'TimesRoman';
+    }
+    if (f.includes('courier')) {
+      if (bold && italic) return 'CourierBoldOblique';
+      if (bold)           return 'CourierBold';
+      if (italic)         return 'CourierOblique';
+      return 'Courier';
+    }
+    // Arial / Helvetica (default)
+    if (bold && italic) return 'HelveticaBoldOblique';
+    if (bold)           return 'HelveticaBold';
+    if (italic)         return 'HelveticaOblique';
+    return 'Helvetica';
   }
 
   hexToRgbValues(hex) {
