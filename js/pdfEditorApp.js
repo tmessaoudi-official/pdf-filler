@@ -407,7 +407,15 @@ export class PDFEditorApp {
     this.ui.freehandBtn.disabled = false;
   }
 
+  _cancelDrawing() {
+    if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
+    this._drawing    = false;
+    this._drawStart  = null;
+    this._drawPoints = [];
+  }
+
   setMode(mode) {
+    this._cancelDrawing();
     this.mode = mode;
     this.ui.addTextBtn.classList.toggle('active', mode === 'addText');
     this.ui.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
@@ -442,6 +450,7 @@ export class PDFEditorApp {
   }
 
   _handleDrawMouseDown(e) {
+    if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
     if (!this._isShapeMode() || !this.renderer.pdfDoc) return;
     const rect = this.ui.canvas.getBoundingClientRect();
     if (e.clientX < rect.left || e.clientX > rect.right ||
@@ -899,11 +908,15 @@ export class PDFEditorApp {
               case 'freehand': {
                 if (element.points.length < 2) break;
                 const pts = element.points;
-                let d = `M ${pts[0].x} ${origVp.height - pts[0].y}`;
+                // Pass screen-y coords (y from top); set y:origVp.height so pdf-lib's
+                // internal flip converts correctly to PDF space (y from bottom)
+                let d = `M ${pts[0].x} ${pts[0].y}`;
                 for (let i = 1; i < pts.length; i++) {
-                  d += ` L ${pts[i].x} ${origVp.height - pts[i].y}`;
+                  d += ` L ${pts[i].x} ${pts[i].y}`;
                 }
                 page.drawSvgPath(d, {
+                  x: 0,
+                  y: origVp.height,
                   borderColor: shapeColor,
                   borderWidth: lw,
                   scale: 1

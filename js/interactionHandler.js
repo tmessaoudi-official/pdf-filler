@@ -64,8 +64,24 @@ export class InteractionHandler {
     const newY = (e.clientY - canvasRect.top - this.offsetY) / scale;
     const maxX = (canvas.width / scale) - this.currentElement.width;
     const maxY = (canvas.height / scale) - this.currentElement.height;
-    this.currentElement.x = Math.max(0, Math.min(maxX, newX));
-    this.currentElement.y = Math.max(0, Math.min(maxY, newY));
+    const clampedX = Math.max(0, Math.min(maxX, newX));
+    const clampedY = Math.max(0, Math.min(maxY, newY));
+    const dx = clampedX - this.currentElement.x;
+    const dy = clampedY - this.currentElement.y;
+    this.currentElement.x = clampedX;
+    this.currentElement.y = clampedY;
+    if (this.currentElement.type === 'shape') {
+      if (this.currentElement.shapeType === 'arrow') {
+        this.currentElement.x1 += dx;
+        this.currentElement.y1 += dy;
+        this.currentElement.x2 += dx;
+        this.currentElement.y2 += dy;
+      } else if (this.currentElement.shapeType === 'freehand') {
+        this.currentElement.points = this.currentElement.points.map(p => ({
+          x: p.x + dx, y: p.y + dy
+        }));
+      }
+    }
     this.app.renderElements();
   }
 
