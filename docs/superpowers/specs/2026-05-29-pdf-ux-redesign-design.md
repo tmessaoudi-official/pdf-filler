@@ -95,11 +95,21 @@ Shift+Arrow nudges 10px instead of 1px for faster movement.
 ### 4. Visible Element Selection
 
 - `app.selectedElement` — reference to the currently selected `PDFElement` (null = none)
-- Clicking a placed element → calls `app.selectElement(el)`:
+**Two click zones on a text element:**
+- **Click inside the text input** → enters text-edit mode (cursor appears, you type). Element is also selected, but keyboard shortcuts are suppressed while focus is on the input.
+- **Click the element's border/padding area** (not directly on the input) → selects the element without entering text-edit mode. Formatting toolbar is fully active. All keyboard shortcuts work.
+
+Clicking a placed element → calls `app.selectElement(el)`:
   - Adds `selected` CSS class (red solid border, no background tint)
-  - Activates formatting toolbar if element is `TextElement`
-- Clicking canvas background → `app.selectElement(null)`
+  - Activates formatting toolbar if element is `TextElement`, populating controls with the element's current `fontFamily`, `bold`, `italic`, `fontSize`, `color`
+- Clicking canvas background → `app.selectElement(null)`, formatting toolbar grays out
 - Switching pages → deselects
+
+**Re-editing an existing element:**
+1. Click the element border → selected, formatting controls active
+2. Change font/size/bold/italic/color → updates element live, no recreate needed
+3. Click inside the text to position cursor and retype content
+4. Click elsewhere or press Escape to deselect
 
 ### 5. Text Formatting
 
