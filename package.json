@@ -1,0 +1,9 @@
+{
+  "name": "pdf-fill-sign",
+  "version": "1.0.0",
+  "description": "PDF fill and sign tool — add text and signatures to any PDF",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . --listen 8080"
+  }
+}
