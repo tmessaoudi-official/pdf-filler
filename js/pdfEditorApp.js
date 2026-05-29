@@ -18,6 +18,7 @@ export class PDFEditorApp {
     this.redoStack = [];
     this._textChangeTimer = null;
     this.currentFilename = null;
+    this._toastTimer = null;
     this.currentSignature = null;
     this.initUI();
     this.setupEventListeners();
@@ -312,8 +313,13 @@ export class PDFEditorApp {
     this.showToast('Saved session cleared');
   }
 
-  showToast(msg) {
-    console.log('[toast]', msg);
+  showToast(msg, duration = 3000) {
+    this.ui.toast.textContent = msg;
+    this.ui.toast.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      this.ui.toast.classList.remove('show');
+    }, duration);
   }
 
   async handleFileUpload(e) {
@@ -357,6 +363,17 @@ export class PDFEditorApp {
     this.mode = mode;
     this.ui.addTextBtn.classList.toggle('active', mode === 'addText');
     this.ui.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
+
+    const badges = {
+      select: '● SELECT',
+      addText: '✚ ADD TEXT',
+      addSignature: '✍ SIGNING'
+    };
+    this.ui.modeBadge.textContent = badges[mode] || '● SELECT';
+    this.ui.modeBadge.classList.toggle('active', mode !== 'select');
+
+    this.ui.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
+
     if (mode === 'addSignature') {
       this.openSignatureModal();
     }
@@ -590,6 +607,7 @@ export class PDFEditorApp {
       link.href = url;
       link.download = 'filled-signed-' + Date.now() + '.pdf';
       link.click();
+      this.showToast('PDF downloaded!');
       URL.revokeObjectURL(url);
     } finally {
       this.ui.container.style.opacity = '1';
