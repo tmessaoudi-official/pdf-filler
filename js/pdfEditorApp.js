@@ -4,6 +4,7 @@ import { TextElement } from './textElement.js?v=3';
 import { SignatureElement } from './signatureElement.js?v=3';
 import { SignaturePad } from './signaturePad.js?v=3';
 import { InteractionHandler } from './interactionHandler.js?v=3';
+import { ShapeElement } from './shapeElement.js?v=4';
 
 export class PDFEditorApp {
   constructor() {
@@ -20,6 +21,10 @@ export class PDFEditorApp {
     this.currentFilename = null;
     this._toastTimer = null;
     this.currentSignature = null;
+    this._drawing     = false;
+    this._drawStart   = null;
+    this._drawPoints  = [];
+    this._previewSvg  = null;
     this.initUI();
     this.setupEventListeners();
   }
@@ -56,7 +61,13 @@ export class PDFEditorApp {
       lastPage: document.getElementById('lastPage'),
       pageInput: document.getElementById('pageInput'),
       pageTotal: document.getElementById('pageTotal'),
-      toast: document.getElementById('toast')
+      toast: document.getElementById('toast'),
+      arrowBtn:    document.getElementById('arrowBtn'),
+      rectBtn:     document.getElementById('rectBtn'),
+      circleBtn:   document.getElementById('circleBtn'),
+      freehandBtn: document.getElementById('freehandBtn'),
+      shapeColor:  document.getElementById('shapeColor'),
+      shapeWidth:  document.getElementById('shapeWidth')
     };
     this.signaturePad = new SignaturePad(this.ui.signatureCanvas);
   }
@@ -97,6 +108,13 @@ export class PDFEditorApp {
     this.ui.fitBtn.addEventListener('click', () => this.fitToWidth());
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
+
+    this.ui.arrowBtn.addEventListener('click',    () => this.setMode('drawArrow'));
+    this.ui.rectBtn.addEventListener('click',     () => this.setMode('drawRect'));
+    this.ui.circleBtn.addEventListener('click',   () => this.setMode('drawEllipse'));
+    this.ui.freehandBtn.addEventListener('click', () => this.setMode('drawFreehand'));
+
+    this.ui.canvas.addEventListener('mousedown', (e) => this._handleDrawMouseDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
@@ -210,6 +228,22 @@ export class PDFEditorApp {
         case 'S':
           if (this.renderer.pdfDoc) this.setMode('addSignature');
           break;
+        case 'a':
+        case 'A':
+          if (this.renderer.pdfDoc) this.setMode('drawArrow');
+          break;
+        case 'r':
+        case 'R':
+          if (this.renderer.pdfDoc) this.setMode('drawRect');
+          break;
+        case 'c':
+        case 'C':
+          if (this.renderer.pdfDoc) this.setMode('drawEllipse');
+          break;
+        case 'd':
+        case 'D':
+          if (this.renderer.pdfDoc) this.setMode('drawFreehand');
+          break;
         case 'ArrowUp':
         case 'ArrowDown':
         case 'ArrowLeft':
@@ -272,6 +306,14 @@ export class PDFEditorApp {
           data.x, data.y, data.page, data.data,
           { width: data.width, height: data.height }
         );
+      } else if (data.type === 'shape') {
+        return new ShapeElement(data.shapeType, data.x, data.y, data.width, data.height, data.page, {
+          strokeColor: data.strokeColor,
+          strokeWidth: data.strokeWidth,
+          x1: data.x1, y1: data.y1,
+          x2: data.x2, y2: data.y2,
+          points: data.points || []
+        });
       }
     }).filter(Boolean);
     this.selectedElement = null;
@@ -357,27 +399,49 @@ export class PDFEditorApp {
     this.ui.firstPage.disabled = false;
     this.ui.lastPage.disabled = false;
     this.ui.pageInput.disabled = false;
+    this.ui.arrowBtn.disabled    = false;
+    this.ui.rectBtn.disabled     = false;
+    this.ui.circleBtn.disabled   = false;
+    this.ui.freehandBtn.disabled = false;
   }
 
   setMode(mode) {
     this.mode = mode;
     this.ui.addTextBtn.classList.toggle('active', mode === 'addText');
     this.ui.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
+    this.ui.arrowBtn.classList.toggle('active',    mode === 'drawArrow');
+    this.ui.rectBtn.classList.toggle('active',     mode === 'drawRect');
+    this.ui.circleBtn.classList.toggle('active',   mode === 'drawEllipse');
+    this.ui.freehandBtn.classList.toggle('active', mode === 'drawFreehand');
 
     const badges = {
-      select: '● SELECT',
-      addText: '✚ ADD TEXT',
-      addSignature: '✍ SIGNING'
+      select:       '● SELECT',
+      addText:      '✚ ADD TEXT',
+      addSignature: '✍ SIGNING',
+      drawArrow:    '→ ARROW',
+      drawRect:     '□ RECT',
+      drawEllipse:  '○ CIRCLE',
+      drawFreehand: '✏ DRAWING'
     };
     this.ui.modeBadge.textContent = badges[mode] || '● SELECT';
     this.ui.modeBadge.classList.toggle('active', mode !== 'select');
 
     this.ui.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
 
-    if (mode === 'addSignature') {
-      this.openSignatureModal();
-    }
+    const isShapeMode = mode.startsWith('draw');
+    this.ui.shapeColor.disabled = !isShapeMode;
+    this.ui.shapeWidth.disabled = !isShapeMode;
+
+    if (mode === 'addSignature') this.openSignatureModal();
   }
+
+  _isShapeMode() {
+    return this.mode.startsWith('draw');
+  }
+
+  _handleDrawMouseDown(e) {}
+  _handleDrawMouseMove(e) {}
+  _handleDrawMouseUp(e) {}
 
   openSignatureModal() {
     this.signaturePad.clear();
@@ -428,6 +492,7 @@ export class PDFEditorApp {
   }
 
   handleCanvasClick(e) {
+    if (this._isShapeMode()) return;
     if (this.mode === 'addText') {
       this.addTextAtPosition(e);
       this.setMode('select');
@@ -686,6 +751,14 @@ export class PDFEditorApp {
           data.x, data.y, data.page, data.data,
           { width: data.width, height: data.height }
         );
+      } else if (data.type === 'shape') {
+        return new ShapeElement(data.shapeType, data.x, data.y, data.width, data.height, data.page, {
+          strokeColor: data.strokeColor,
+          strokeWidth: data.strokeWidth,
+          x1: data.x1, y1: data.y1,
+          x2: data.x2, y2: data.y2,
+          points: data.points || []
+        });
       }
     }).filter(Boolean);
     this.renderElements();
