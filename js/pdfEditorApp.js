@@ -13,6 +13,7 @@ export class PDFEditorApp {
     this.signaturePad = null;
     this.mode = 'select';
     this.zoomScale = 1.0;
+    this.selectedElement = null;
     this.currentSignature = null;
     this.initUI();
     this.setupEventListeners();
@@ -158,6 +159,32 @@ export class PDFEditorApp {
     this.ui.addSignatureBtn.classList.add('active');
   }
 
+  selectElement(element) {
+    this.selectedElement = element;
+    this.renderElements();
+    this._updateFormattingToolbar();
+  }
+
+  _updateFormattingToolbar() {
+    const el = this.selectedElement;
+    const isText = el && el.type === 'text';
+    this.ui.fontFamily.disabled = !isText;
+    this.ui.boldBtn.disabled = !isText;
+    this.ui.italicBtn.disabled = !isText;
+    this.ui.fontSizeInput.disabled = !isText;
+    this.ui.textColorInput.disabled = !isText;
+    if (isText) {
+      this.ui.fontFamily.value = el.fontFamily || 'Arial';
+      this.ui.boldBtn.classList.toggle('btn-active-fmt', !!el.bold);
+      this.ui.italicBtn.classList.toggle('btn-active-fmt', !!el.italic);
+      this.ui.fontSizeInput.value = el.fontSize;
+      this.ui.textColorInput.value = el.color;
+    } else {
+      this.ui.boldBtn.classList.remove('btn-active-fmt');
+      this.ui.italicBtn.classList.remove('btn-active-fmt');
+    }
+  }
+
   handleCanvasClick(e) {
     if (this.mode === 'addText') {
       this.addTextAtPosition(e);
@@ -167,6 +194,8 @@ export class PDFEditorApp {
       this.mode = 'select';
       this.ui.addSignatureBtn.classList.remove('active');
       this.currentSignature = null;
+    } else {
+      this.selectElement(null);
     }
   }
 
@@ -212,6 +241,13 @@ export class PDFEditorApp {
     );
     currentPageElements.forEach(element => {
       const div = element.render(this.ui.container, canvasOffset);
+      if (this.selectedElement && this.selectedElement.id === element.id) {
+        div.classList.add('selected');
+      }
+      div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectElement(element);
+      });
       div.addEventListener('mousedown', (e) => {
         this.interactionHandler.handleMouseDown(e, element, div);
       });
@@ -220,6 +256,7 @@ export class PDFEditorApp {
   }
 
   async prevPage() {
+    this.selectElement(null);
     const changed = await this.renderer.prevPage();
     if (changed) {
       this.updatePageInfo();
@@ -228,6 +265,7 @@ export class PDFEditorApp {
   }
 
   async nextPage() {
+    this.selectElement(null);
     const changed = await this.renderer.nextPage();
     if (changed) {
       this.updatePageInfo();
