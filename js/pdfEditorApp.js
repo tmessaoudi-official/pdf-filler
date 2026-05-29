@@ -14,6 +14,8 @@ export class PDFEditorApp {
     this.mode = 'select';
     this.zoomScale = 1.0;
     this.selectedElement = null;
+    this.historyStack = [];
+    this.redoStack = [];
     this.currentSignature = null;
     this.initUI();
     this.setupEventListeners();
@@ -90,6 +92,8 @@ export class PDFEditorApp {
     this.ui.zoomOutBtn.addEventListener('click', () =>
       this.applyZoom(this.zoomScale - 0.1));
     this.ui.fitBtn.addEventListener('click', () => this.fitToWidth());
+    this.ui.undoBtn.addEventListener('click', () => this.undo());
+    this.ui.redoBtn.addEventListener('click', () => this.redo());
 
     this.ui.container.addEventListener('wheel', (e) => {
       if (!e.ctrlKey) return;
@@ -136,6 +140,63 @@ export class PDFEditorApp {
         this._autosave();
       }
     });
+  }
+
+  _snapshotElements() {
+    return this.elements.map(el => el.toJSON());
+  }
+
+  pushHistory() {
+    this.historyStack.push(this._snapshotElements());
+    if (this.historyStack.length > 50) this.historyStack.shift();
+    this.redoStack = [];
+    this._updateUndoRedoBtns();
+  }
+
+  undo() {
+    if (!this.historyStack.length) return;
+    this.redoStack.push(this._snapshotElements());
+    const snapshot = this.historyStack.pop();
+    this._restoreSnapshot(snapshot);
+    this._updateUndoRedoBtns();
+  }
+
+  redo() {
+    if (!this.redoStack.length) return;
+    this.historyStack.push(this._snapshotElements());
+    const snapshot = this.redoStack.pop();
+    this._restoreSnapshot(snapshot);
+    this._updateUndoRedoBtns();
+  }
+
+  _restoreSnapshot(snapshot) {
+    this.elements = snapshot.map(data => {
+      if (data.type === 'text') {
+        const el = new TextElement(data.x, data.y, data.page, {
+          width: data.width, height: data.height,
+          fontSize: data.fontSize, color: data.color,
+          fontFamily: data.fontFamily || 'Arial',
+          bold: data.bold || false, italic: data.italic || false,
+          multiline: data.multiline
+        });
+        el.text = data.text;
+        return el;
+      } else if (data.type === 'signature') {
+        return new SignatureElement(
+          data.x, data.y, data.page, data.data,
+          { width: data.width, height: data.height }
+        );
+      }
+    }).filter(Boolean);
+    this.selectedElement = null;
+    this.renderElements();
+    this._updateFormattingToolbar();
+    this._autosave();
+  }
+
+  _updateUndoRedoBtns() {
+    this.ui.undoBtn.disabled = this.historyStack.length === 0;
+    this.ui.redoBtn.disabled = this.redoStack.length === 0;
   }
 
   _autosave() {}
@@ -250,6 +311,7 @@ export class PDFEditorApp {
       color: this.ui.textColorInput.value
     };
     const textElement = new TextElement(x, y, this.renderer.currentPage, options);
+    this.pushHistory();
     this.elements.push(textElement);
     this.renderElements();
   }
@@ -263,13 +325,20 @@ export class PDFEditorApp {
       this.renderer.currentPage,
       this.currentSignature
     );
+    this.pushHistory();
     this.elements.push(signatureElement);
     this.renderElements();
   }
 
   removeElement(id) {
+    this.pushHistory();
     this.elements = this.elements.filter(el => el.id !== id);
+    if (this.selectedElement && this.selectedElement.id === id) {
+      this.selectedElement = null;
+      this._updateFormattingToolbar();
+    }
     this.renderElements();
+    this._autosave();
   }
 
   renderElements() {
