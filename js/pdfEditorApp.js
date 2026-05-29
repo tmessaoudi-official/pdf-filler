@@ -96,6 +96,20 @@ export class PDFEditorApp {
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
 
+    this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
+    this.ui.lastPage.addEventListener('click', () =>
+      this._goToPage(this.renderer.pdfDoc?.numPages || 1));
+
+    this.ui.pageInput.addEventListener('change', (e) => {
+      this._goToPage(parseInt(e.target.value) || 1);
+    });
+    this.ui.pageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.target.blur();
+        this._goToPage(parseInt(e.target.value) || 1);
+      }
+    });
+
     this.ui.container.addEventListener('wheel', (e) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
@@ -447,22 +461,24 @@ export class PDFEditorApp {
     });
   }
 
-  async prevPage() {
-    this.selectElement(null);
-    const changed = await this.renderer.prevPage();
+  async _goToPage(n) {
+    if (!this.renderer.pdfDoc) return;
+    const changed = await this.renderer.goToPage(n);
     if (changed) {
+      this.selectElement(null);
       this.updatePageInfo();
       this.renderElements();
+    } else {
+      this.updatePageInfo(); // reset input if out of range
     }
   }
 
+  async prevPage() {
+    await this._goToPage(this.renderer.currentPage - 1);
+  }
+
   async nextPage() {
-    this.selectElement(null);
-    const changed = await this.renderer.nextPage();
-    if (changed) {
-      this.updatePageInfo();
-      this.renderElements();
-    }
+    await this._goToPage(this.renderer.currentPage + 1);
   }
 
   updatePageInfo() {
