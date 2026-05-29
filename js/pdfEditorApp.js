@@ -16,6 +16,7 @@ export class PDFEditorApp {
     this.selectedElement = null;
     this.historyStack = [];
     this.redoStack = [];
+    this._textChangeTimer = null;
     this.currentSignature = null;
     this.initUI();
     this.setupEventListeners();
@@ -138,6 +139,74 @@ export class PDFEditorApp {
         this.selectedElement.color = e.target.value;
         this.renderElements();
         this._autosave();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      // Escape always works — cancel mode and deselect
+      if (e.key === 'Escape') {
+        this.setMode('select');
+        this.selectElement(null);
+        return;
+      }
+
+      // All other shortcuts blocked when typing in an input/textarea/select
+      if (e.target.matches('input, textarea, select')) return;
+
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) this.redo(); else this.undo();
+            break;
+          case 'y':
+            e.preventDefault();
+            this.redo();
+            break;
+          case 'arrowright':
+            e.preventDefault();
+            this.nextPage();
+            break;
+          case 'arrowleft':
+            e.preventDefault();
+            this.prevPage();
+            break;
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'Delete':
+        case 'Backspace':
+          if (this.selectedElement) {
+            e.preventDefault();
+            this.removeElement(this.selectedElement.id);
+            this.selectedElement = null;
+            this._updateFormattingToolbar();
+          }
+          break;
+        case 't':
+        case 'T':
+          if (this.renderer.pdfDoc) this.setMode('addText');
+          break;
+        case 's':
+        case 'S':
+          if (this.renderer.pdfDoc) this.setMode('addSignature');
+          break;
+        case 'ArrowUp':
+        case 'ArrowDown':
+        case 'ArrowLeft':
+        case 'ArrowRight':
+          if (this.selectedElement) {
+            e.preventDefault();
+            const step = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowUp') this.selectedElement.y -= step;
+            if (e.key === 'ArrowDown') this.selectedElement.y += step;
+            if (e.key === 'ArrowLeft') this.selectedElement.x -= step;
+            if (e.key === 'ArrowRight') this.selectedElement.x += step;
+            this.renderElements();
+          }
+          break;
       }
     });
   }
@@ -362,6 +431,18 @@ export class PDFEditorApp {
       div.addEventListener('mousedown', (e) => {
         this.interactionHandler.handleMouseDown(e, element, div);
       });
+      if (element.type === 'text') {
+        const input = div.querySelector('input, textarea');
+        if (input) {
+          input.addEventListener('input', () => {
+            clearTimeout(this._textChangeTimer);
+            this._textChangeTimer = setTimeout(() => {
+              this.pushHistory();
+              this._autosave();
+            }, 500);
+          });
+        }
+      }
       this.ui.container.appendChild(div);
     });
   }
