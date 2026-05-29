@@ -27,7 +27,7 @@ export class TextElement extends PDFElement {
       : document.createElement('input');
     if (!this.multiline) input.type = 'text';
     input.value = this.text;
-    this._applyInputFormatting(input);
+    this._applyInputFormatting(input, scale);
     input.addEventListener('input', (e) => { this.text = e.target.value; });
 
     const controls = this.createControls();
@@ -38,8 +38,8 @@ export class TextElement extends PDFElement {
     return div;
   }
 
-  _applyInputFormatting(input) {
-    input.style.fontSize = this.fontSize + 'px';
+  _applyInputFormatting(input, scale = 1) {
+    input.style.fontSize = (this.fontSize * scale) + 'px';
     input.style.color = this.color;
     input.style.fontFamily = this.fontFamily;
     input.style.fontWeight = this.bold ? 'bold' : 'normal';

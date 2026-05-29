@@ -454,6 +454,10 @@ export class PDFEditorApp {
     this.elements.push(textElement);
     this._autosave();
     this.renderElements();
+    const inputEl = this.ui.container.querySelector(
+      `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
+    );
+    if (inputEl) inputEl.focus();
   }
 
   addSignatureAtPosition(e) {
@@ -563,8 +567,6 @@ export class PDFEditorApp {
     if (!this.renderer.pdfDoc) return;
     const { PDFDocument, rgb, StandardFonts } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
     const pdfDoc = await PDFDocument.create();
-    const s = this.renderer.scale;
-
     this.ui.container.style.opacity = '0.4';
     try {
       for (let pageNum = 1; pageNum <= this.renderer.pdfDoc.numPages; pageNum++) {
