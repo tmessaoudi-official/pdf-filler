@@ -13,6 +13,7 @@ export class InteractionHandler {
     this.startHeight = 0;
     this._startElementX = 0;
     this._startElementY = 0;
+    this._preActionSnapshot = null;
   }
 
   handleMouseDown(e, element, div) {
@@ -31,6 +32,7 @@ export class InteractionHandler {
   startDrag(e, element, div) {
     this.isDragging = true;
     this.currentElement = element;
+    this._preActionSnapshot = this.app._snapshotElements();
     const divRect = div.getBoundingClientRect();
     this.offsetX = e.clientX - divRect.left;
     this.offsetY = e.clientY - divRect.top;
@@ -40,6 +42,7 @@ export class InteractionHandler {
   startResize(e, element) {
     this.isResizing = true;
     this.currentElement = element;
+    this._preActionSnapshot = this.app._snapshotElements();
     this.startX = e.clientX;
     this.startY = e.clientY;
     this.startWidth = element.width;
@@ -56,21 +59,27 @@ export class InteractionHandler {
   drag(e) {
     const canvas = this.app.renderer.canvas;
     const canvasRect = canvas.getBoundingClientRect();
-    const newX = e.clientX - canvasRect.left - this.offsetX;
-    const newY = e.clientY - canvasRect.top - this.offsetY;
-    this.currentElement.x = Math.max(0, Math.min(canvas.width - this.currentElement.width, newX));
-    this.currentElement.y = Math.max(0, Math.min(canvas.height - this.currentElement.height, newY));
+    const scale = this.app.zoomScale;
+    const newX = (e.clientX - canvasRect.left - this.offsetX) / scale;
+    const newY = (e.clientY - canvasRect.top - this.offsetY) / scale;
+    const maxX = (canvas.width / scale) - this.currentElement.width;
+    const maxY = (canvas.height / scale) - this.currentElement.height;
+    this.currentElement.x = Math.max(0, Math.min(maxX, newX));
+    this.currentElement.y = Math.max(0, Math.min(maxY, newY));
     this.app.renderElements();
   }
 
   resize(e) {
-    const deltaX = e.clientX - this.startX;
-    const deltaY = e.clientY - this.startY;
+    const canvas = this.app.renderer.canvas;
+    const scale = this.app.zoomScale;
+    const deltaX = (e.clientX - this.startX) / scale;
+    const deltaY = (e.clientY - this.startY) / scale;
     const newWidth = Math.max(50, this.startWidth + deltaX);
     const newHeight = Math.max(20, this.startHeight + deltaY);
-    const canvas = this.app.renderer.canvas;
-    this.currentElement.width = Math.min(newWidth, canvas.width - this.currentElement.x);
-    this.currentElement.height = Math.min(newHeight, canvas.height - this.currentElement.y);
+    const maxW = (canvas.width / scale) - this.currentElement.x;
+    const maxH = (canvas.height / scale) - this.currentElement.y;
+    this.currentElement.width = Math.min(newWidth, maxW);
+    this.currentElement.height = Math.min(newHeight, maxH);
     this.app.renderElements();
   }
 
@@ -87,10 +96,14 @@ export class InteractionHandler {
       const movedX = movedEl.x !== this._startElementX;
       const movedY = movedEl.y !== this._startElementY;
       const resized = wasResizing && (movedEl.width !== this.startWidth || movedEl.height !== this.startHeight);
-      if (movedX || movedY || resized) {
-        this.app.pushHistory();
+      if ((movedX || movedY || resized) && this._preActionSnapshot) {
+        this.app.historyStack.push(this._preActionSnapshot);
+        if (this.app.historyStack.length > 50) this.app.historyStack.shift();
+        this.app.redoStack = [];
+        this.app._updateUndoRedoBtns();
         this.app._autosave();
       }
     }
+    this._preActionSnapshot = null;
   }
 }
