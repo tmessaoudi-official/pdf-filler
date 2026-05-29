@@ -398,6 +398,10 @@ export class PDFEditorApp {
   }
 
   selectElement(element) {
+    if (this.selectedElement === element) {
+      this._updateFormattingToolbar();
+      return;
+    }
     this.selectedElement = element;
     this.renderElements();
     this._updateFormattingToolbar();
@@ -439,8 +443,8 @@ export class PDFEditorApp {
 
   addTextAtPosition(e) {
     const rect = this.ui.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top) / this.zoomScale;
     const options = {
       fontSize: parseInt(this.ui.fontSizeInput.value),
       color: this.ui.textColorInput.value
@@ -454,8 +458,8 @@ export class PDFEditorApp {
 
   addSignatureAtPosition(e) {
     const rect = this.ui.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top) / this.zoomScale;
     const signatureElement = new SignatureElement(
       x, y,
       this.renderer.currentPage,
@@ -488,7 +492,7 @@ export class PDFEditorApp {
       el => el.page === this.renderer.currentPage
     );
     currentPageElements.forEach(element => {
-      const div = element.render(this.ui.container, canvasOffset);
+      const div = element.render(this.ui.container, canvasOffset, this.zoomScale);
       if (this.selectedElement && this.selectedElement.id === element.id) {
         div.classList.add('selected');
       }
@@ -587,19 +591,19 @@ export class PDFEditorApp {
             );
             const font = await pdfDoc.embedFont(StandardFonts[fontName]);
             page.drawText(element.text, {
-              x: element.x / s,
-              y: origVp.height - element.y / s - element.fontSize / s,
-              size: element.fontSize / s,
+              x: element.x,
+              y: origVp.height - element.y - element.fontSize,
+              size: element.fontSize,
               font,
               color: rgb(r, g, b)
             });
           } else if (element.type === 'signature') {
             const sigImage = await pdfDoc.embedPng(element.data);
             page.drawImage(sigImage, {
-              x: element.x / s,
-              y: origVp.height - element.y / s - element.height / s,
-              width: element.width / s,
-              height: element.height / s
+              x: element.x,
+              y: origVp.height - element.y - element.height,
+              width: element.width,
+              height: element.height
             });
           }
         }

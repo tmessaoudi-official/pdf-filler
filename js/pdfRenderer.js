@@ -11,6 +11,7 @@ export class PDFRenderer {
     this.scale = 1.0;
     this.isRendering = false;
     this.pendingPage = null;
+    this._pendingResolve = null;
   }
 
   setScale(scale) {
@@ -35,8 +36,10 @@ export class PDFRenderer {
 
   async renderPage(pageNum) {
     if (this.isRendering) {
-      this.pendingPage = pageNum;
-      return;
+      return new Promise((resolve) => {
+        this.pendingPage = pageNum;
+        this._pendingResolve = resolve;
+      });
     }
     this.isRendering = true;
     const page = await this.pdfDoc.getPage(pageNum);
@@ -47,8 +50,11 @@ export class PDFRenderer {
     this.isRendering = false;
     if (this.pendingPage !== null) {
       const pending = this.pendingPage;
+      const pendingResolve = this._pendingResolve;
       this.pendingPage = null;
+      this._pendingResolve = null;
       await this.renderPage(pending);
+      if (pendingResolve) pendingResolve();
     }
   }
 
