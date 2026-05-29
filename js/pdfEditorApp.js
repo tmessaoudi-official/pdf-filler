@@ -97,9 +97,11 @@ export class PDFEditorApp {
     });
     document.addEventListener('mousemove', (e) => {
       this.interactionHandler.handleMouseMove(e);
+      this._handleDrawMouseMove(e);
     });
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', (e) => {
       this.interactionHandler.handleMouseUp();
+      this._handleDrawMouseUp(e);
     });
     this.ui.zoomInBtn.addEventListener('click', () =>
       this.applyZoom(this.zoomScale + 0.1));
@@ -439,9 +441,172 @@ export class PDFEditorApp {
     return this.mode.startsWith('draw');
   }
 
-  _handleDrawMouseDown(e) {}
-  _handleDrawMouseMove(e) {}
-  _handleDrawMouseUp(e) {}
+  _handleDrawMouseDown(e) {
+    if (!this._isShapeMode() || !this.renderer.pdfDoc) return;
+    const rect = this.ui.canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right ||
+        e.clientY < rect.top  || e.clientY > rect.bottom) return;
+
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top)  / this.zoomScale;
+    this._drawing   = true;
+    this._drawStart = { x, y };
+    this._drawPoints = [{ x, y }];
+
+    this._previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this._previewSvg.id = 'drawPreview';
+    Object.assign(this._previewSvg.style, {
+      position: 'absolute', top: '0', left: '0',
+      width: '100%', height: '100%',
+      pointerEvents: 'none', overflow: 'visible', zIndex: '10'
+    });
+    this.ui.container.appendChild(this._previewSvg);
+    e.preventDefault();
+  }
+
+  _handleDrawMouseMove(e) {
+    if (!this._drawing || !this._drawStart) return;
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top)  / this.zoomScale;
+
+    if (this.mode === 'drawFreehand') {
+      const last = this._drawPoints[this._drawPoints.length - 1];
+      const dist = Math.hypot((x - last.x) * this.zoomScale, (y - last.y) * this.zoomScale);
+      if (dist > 3) this._drawPoints.push({ x, y });
+    }
+    this._updateDrawPreview(x, y);
+  }
+
+  _updateDrawPreview(curX, curY) {
+    if (!this._previewSvg) return;
+    while (this._previewSvg.firstChild) this._previewSvg.firstChild.remove();
+
+    const s   = this.zoomScale;
+    const ox  = this.ui.canvas.offsetLeft;
+    const oy  = this.ui.canvas.offsetTop;
+    const col = this.ui.shapeColor.value;
+    const sw  = (parseInt(this.ui.shapeWidth.value) || 2) * s;
+
+    const sx0  = this._drawStart.x * s + ox;
+    const sy0  = this._drawStart.y * s + oy;
+    const sxC  = curX * s + ox;
+    const syC  = curY * s + oy;
+
+    const ns = 'http://www.w3.org/2000/svg';
+
+    if (this.mode === 'drawRect') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', Math.min(sx0, sxC));
+      el.setAttribute('y', Math.min(sy0, syC));
+      el.setAttribute('width',  Math.abs(sxC - sx0));
+      el.setAttribute('height', Math.abs(syC - sy0));
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', col);
+      el.setAttribute('stroke-width', sw);
+      this._previewSvg.appendChild(el);
+
+    } else if (this.mode === 'drawEllipse') {
+      const el = document.createElementNS(ns, 'ellipse');
+      el.setAttribute('cx', (sx0 + sxC) / 2);
+      el.setAttribute('cy', (sy0 + syC) / 2);
+      el.setAttribute('rx', Math.abs(sxC - sx0) / 2);
+      el.setAttribute('ry', Math.abs(syC - sy0) / 2);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', col);
+      el.setAttribute('stroke-width', sw);
+      this._previewSvg.appendChild(el);
+
+    } else if (this.mode === 'drawArrow') {
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', sx0); line.setAttribute('y1', sy0);
+      line.setAttribute('x2', sxC); line.setAttribute('y2', syC);
+      line.setAttribute('stroke', col);
+      line.setAttribute('stroke-width', sw);
+      line.setAttribute('stroke-linecap', 'round');
+      this._previewSvg.appendChild(line);
+
+      const headLen = Math.max(8, sw * 4);
+      const angle = Math.atan2(syC - sy0, sxC - sx0);
+      const a1 = angle + Math.PI * 0.8;
+      const a2 = angle - Math.PI * 0.8;
+      const head = document.createElementNS(ns, 'polygon');
+      head.setAttribute('points', [
+        `${sxC},${syC}`,
+        `${sxC + headLen * Math.cos(a1)},${syC + headLen * Math.sin(a1)}`,
+        `${sxC + headLen * Math.cos(a2)},${syC + headLen * Math.sin(a2)}`
+      ].join(' '));
+      head.setAttribute('fill', col);
+      this._previewSvg.appendChild(head);
+
+    } else if (this.mode === 'drawFreehand' && this._drawPoints.length >= 2) {
+      const pts = this._drawPoints.map(p => `${p.x * s + ox},${p.y * s + oy}`).join(' ');
+      const pl = document.createElementNS(ns, 'polyline');
+      pl.setAttribute('points', pts);
+      pl.setAttribute('fill', 'none');
+      pl.setAttribute('stroke', col);
+      pl.setAttribute('stroke-width', sw);
+      pl.setAttribute('stroke-linecap', 'round');
+      pl.setAttribute('stroke-linejoin', 'round');
+      this._previewSvg.appendChild(pl);
+    }
+  }
+
+  _handleDrawMouseUp(e) {
+    if (!this._drawing) return;
+    this._drawing = false;
+
+    if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
+
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const endX = (e.clientX - rect.left) / this.zoomScale;
+    const endY = (e.clientY - rect.top)  / this.zoomScale;
+    const col  = this.ui.shapeColor.value;
+    const sw   = parseInt(this.ui.shapeWidth.value) || 2;
+    const opts = { strokeColor: col, strokeWidth: sw };
+    let shape  = null;
+
+    if (this.mode === 'drawArrow') {
+      const x = Math.min(this._drawStart.x, endX);
+      const y = Math.min(this._drawStart.y, endY);
+      const w = Math.abs(endX - this._drawStart.x);
+      const h = Math.abs(endY - this._drawStart.y);
+      if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      shape = new ShapeElement('arrow', x, y, w, h, this.renderer.currentPage, {
+        ...opts, x1: this._drawStart.x, y1: this._drawStart.y, x2: endX, y2: endY
+      });
+
+    } else if (this.mode === 'drawRect' || this.mode === 'drawEllipse') {
+      const st = this.mode === 'drawRect' ? 'rect' : 'ellipse';
+      const x = Math.min(this._drawStart.x, endX);
+      const y = Math.min(this._drawStart.y, endY);
+      const w = Math.abs(endX - this._drawStart.x);
+      const h = Math.abs(endY - this._drawStart.y);
+      if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      shape = new ShapeElement(st, x, y, w, h, this.renderer.currentPage, opts);
+
+    } else if (this.mode === 'drawFreehand') {
+      this._drawPoints.push({ x: endX, y: endY });
+      if (this._drawPoints.length < 2) { this._drawStart = null; this._drawPoints = []; return; }
+      const xs = this._drawPoints.map(p => p.x);
+      const ys = this._drawPoints.map(p => p.y);
+      const x = Math.min(...xs), y = Math.min(...ys);
+      const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+      if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      shape = new ShapeElement('freehand', x, y, w, h, this.renderer.currentPage,
+        { ...opts, points: [...this._drawPoints] });
+    }
+
+    this._drawStart  = null;
+    this._drawPoints = [];
+
+    if (shape) {
+      this.pushHistory();
+      this.elements.push(shape);
+      this._autosave();
+      this.renderElements();
+    }
+  }
 
   openSignatureModal() {
     this.signaturePad.clear();
