@@ -837,6 +837,80 @@ export class PDFEditorApp {
               width: element.width,
               height: element.height
             });
+          } else if (element.type === 'shape') {
+            const { r, g, b } = this.hexToRgbValues(element.strokeColor);
+            const shapeColor = rgb(r, g, b);
+            const lw = element.strokeWidth;
+
+            switch (element.shapeType) {
+              case 'rect':
+                // Omitting `color` gives stroke-only (no fill) in pdf-lib
+                page.drawRectangle({
+                  x: element.x,
+                  y: origVp.height - element.y - element.height,
+                  width: element.width,
+                  height: element.height,
+                  borderColor: shapeColor,
+                  borderWidth: lw
+                });
+                break;
+
+              case 'ellipse':
+                page.drawEllipse({
+                  x: element.x + element.width / 2,
+                  y: origVp.height - element.y - element.height / 2,
+                  xScale: element.width / 2,
+                  yScale: element.height / 2,
+                  borderColor: shapeColor,
+                  borderWidth: lw
+                });
+                break;
+
+              case 'arrow': {
+                page.drawLine({
+                  start: { x: element.x1, y: origVp.height - element.y1 },
+                  end:   { x: element.x2, y: origVp.height - element.y2 },
+                  thickness: lw,
+                  color: shapeColor
+                });
+                // Two-line arrowhead (V-shape) at endpoint
+                const headLen = Math.max(8, lw * 4);
+                const pdfAngle = Math.atan2(
+                  -(element.y2 - element.y1),
+                   (element.x2 - element.x1)
+                );
+                const ex = element.x2;
+                const ey = origVp.height - element.y2;
+                page.drawLine({
+                  start: { x: ex, y: ey },
+                  end:   { x: ex + headLen * Math.cos(pdfAngle + Math.PI * 0.75),
+                           y: ey + headLen * Math.sin(pdfAngle + Math.PI * 0.75) },
+                  thickness: lw, color: shapeColor
+                });
+                page.drawLine({
+                  start: { x: ex, y: ey },
+                  end:   { x: ex + headLen * Math.cos(pdfAngle - Math.PI * 0.75),
+                           y: ey + headLen * Math.sin(pdfAngle - Math.PI * 0.75) },
+                  thickness: lw, color: shapeColor
+                });
+                break;
+              }
+
+              case 'freehand': {
+                if (element.points.length < 2) break;
+                const pts = element.points;
+                let d = `M ${pts[0].x} ${origVp.height - pts[0].y}`;
+                for (let i = 1; i < pts.length; i++) {
+                  d += ` L ${pts[i].x} ${origVp.height - pts[i].y}`;
+                }
+                page.drawSvgPath(d, {
+                  borderColor: shapeColor,
+                  borderWidth: lw,
+                  scale: 1
+                });
+                break;
+              }
+            }
           }
         }
       }
