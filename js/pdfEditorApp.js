@@ -96,7 +96,49 @@ export class PDFEditorApp {
       e.preventDefault();
       this.applyZoom(this.zoomScale + (e.deltaY < 0 ? 0.05 : -0.05));
     }, { passive: false });
+
+    this.ui.fontFamily.addEventListener('change', (e) => {
+      if (!this.selectedElement || this.selectedElement.type !== 'text') return;
+      this.selectedElement.fontFamily = e.target.value;
+      this.renderElements();
+      this._autosave();
+    });
+
+    this.ui.boldBtn.addEventListener('click', () => {
+      if (!this.selectedElement || this.selectedElement.type !== 'text') return;
+      this.selectedElement.bold = !this.selectedElement.bold;
+      this.ui.boldBtn.classList.toggle('btn-active-fmt', this.selectedElement.bold);
+      this.renderElements();
+      this._autosave();
+    });
+
+    this.ui.italicBtn.addEventListener('click', () => {
+      if (!this.selectedElement || this.selectedElement.type !== 'text') return;
+      this.selectedElement.italic = !this.selectedElement.italic;
+      this.ui.italicBtn.classList.toggle('btn-active-fmt', this.selectedElement.italic);
+      this.renderElements();
+      this._autosave();
+    });
+
+    this.ui.fontSizeInput.addEventListener('change', (e) => {
+      const size = Math.max(8, Math.min(72, parseInt(e.target.value) || 14));
+      if (this.selectedElement && this.selectedElement.type === 'text') {
+        this.selectedElement.fontSize = size;
+        this.renderElements();
+        this._autosave();
+      }
+    });
+
+    this.ui.textColorInput.addEventListener('change', (e) => {
+      if (this.selectedElement && this.selectedElement.type === 'text') {
+        this.selectedElement.color = e.target.value;
+        this.renderElements();
+        this._autosave();
+      }
+    });
   }
+
+  _autosave() {}
 
   async handleFileUpload(e) {
     const file = e.target.files[0];
@@ -379,6 +421,9 @@ export class PDFEditorApp {
           height: data.height,
           fontSize: data.fontSize,
           color: data.color,
+          fontFamily: data.fontFamily || 'Arial',
+          bold: data.bold || false,
+          italic: data.italic || false,
           multiline: data.multiline
         });
         el.text = data.text;
@@ -389,7 +434,7 @@ export class PDFEditorApp {
           { width: data.width, height: data.height }
         );
       }
-    });
+    }).filter(Boolean);
     this.renderElements();
   }
 }
