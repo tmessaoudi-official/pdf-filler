@@ -17,6 +17,7 @@ export class PDFEditorApp {
     this.historyStack = [];
     this.redoStack = [];
     this._textChangeTimer = null;
+    this.currentFilename = null;
     this.currentSignature = null;
     this.initUI();
     this.setupEventListeners();
@@ -96,6 +97,7 @@ export class PDFEditorApp {
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
 
+    this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
     this.ui.lastPage.addEventListener('click', () =>
       this._goToPage(this.renderer.pdfDoc?.numPages || 1));
@@ -282,7 +284,37 @@ export class PDFEditorApp {
     this.ui.redoBtn.disabled = this.redoStack.length === 0;
   }
 
-  _autosave() {}
+  _autosave() {
+    if (!this.currentFilename) return;
+    const key = `pdf-fill-sign:${this.currentFilename}`;
+    const data = this.elements.map(el => el.toJSON());
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (_) {}
+  }
+
+  _loadSaved() {
+    if (!this.currentFilename) return;
+    const key = `pdf-fill-sign:${this.currentFilename}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (!data.length) return;
+      this.importState(JSON.stringify({ elements: data }));
+      this.showToast(`Restored ${data.length} element${data.length > 1 ? 's' : ''} from last session`);
+    } catch (_) {}
+  }
+
+  _clearSave() {
+    if (!this.currentFilename) return;
+    localStorage.removeItem(`pdf-fill-sign:${this.currentFilename}`);
+    this.showToast('Saved session cleared');
+  }
+
+  showToast(msg) {
+    console.log('[toast]', msg);
+  }
 
   async handleFileUpload(e) {
     const file = e.target.files[0];
@@ -298,6 +330,9 @@ export class PDFEditorApp {
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       await this.applyZoom(fitScale);
       this.enableUI();
+      this.currentFilename = file.name;
+      this.ui.clearSaveBtn.disabled = false;
+      this._loadSaved();
       this.updatePageInfo();
       this.renderElements();
     };
@@ -396,6 +431,7 @@ export class PDFEditorApp {
     const textElement = new TextElement(x, y, this.renderer.currentPage, options);
     this.pushHistory();
     this.elements.push(textElement);
+    this._autosave();
     this.renderElements();
   }
 
@@ -410,6 +446,7 @@ export class PDFEditorApp {
     );
     this.pushHistory();
     this.elements.push(signatureElement);
+    this._autosave();
     this.renderElements();
   }
 
