@@ -325,6 +325,13 @@
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
+      <button id="arrowBtn" class="btn btn-icon" disabled title="Arrow (A)">→</button>
+      <button id="rectBtn" class="btn btn-icon" disabled title="Rectangle (R)">□</button>
+      <button id="circleBtn" class="btn btn-icon" disabled title="Circle (C)">○</button>
+      <button id="freehandBtn" class="btn btn-icon" disabled title="Freehand (D)">✏</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
       <button id="downloadBtn" class="btn btn-success" disabled>⬇ Download</button>
       <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
     </div>
@@ -342,6 +349,12 @@
       <button id="italicBtn" class="btn btn-icon btn-italic" disabled title="Italic"><em>I</em></button>
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
       <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <span style="font-size:12px;color:#555;flex-shrink:0;">Shape:</span>
+      <input type="color" id="shapeColor" value="#ef4444" class="toolbar-color" disabled>
+      <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
