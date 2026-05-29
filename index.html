@@ -31,19 +31,119 @@
       text-align: center;
     }
     .toolbar {
-      padding: 15px;
+      padding: 7px 12px;
       background: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 8px;
       align-items: center;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .toolbar-row1 {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .toolbar-row2 {
+      border-bottom: 1px solid #dee2e6;
+      background: #f0f4f8;
     }
     .toolbar-group {
       display: flex;
-      gap: 10px;
+      gap: 6px;
       align-items: center;
+      flex-shrink: 0;
     }
+    .toolbar-sep {
+      width: 1px;
+      height: 22px;
+      background: #dee2e6;
+      flex-shrink: 0;
+    }
+    .toolbar-select {
+      padding: 4px 6px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 12px;
+      background: white;
+      cursor: pointer;
+    }
+    .toolbar-number {
+      width: 50px;
+      padding: 4px 5px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .page-input { width: 42px; }
+    .page-total { font-size: 12px; color: #555; white-space: nowrap; }
+    .toolbar-color {
+      width: 30px;
+      height: 26px;
+      padding: 1px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .zoom-display {
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 38px;
+      text-align: center;
+    }
+    .btn-icon {
+      padding: 4px 8px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      color: #333;
+      cursor: pointer;
+      font-size: 13px;
+      min-width: 28px;
+      transition: background 0.15s;
+    }
+    .btn-icon:hover:not(:disabled) { background: #e9ecef; }
+    .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-italic { font-style: italic; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-active-fmt {
+      background: #2563eb !important;
+      color: white !important;
+      border-color: #2563eb !important;
+    }
+    .mode-badge {
+      margin-left: auto;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #475569;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: 0.03em;
+    }
+    .mode-badge.active {
+      background: #2563eb;
+      color: white;
+    }
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #pdfCanvas.cursor-default { cursor: default; }
+    #pdfCanvas.cursor-crosshair { cursor: crosshair; }
     .btn {
       padding: 8px 16px;
       border: none;
@@ -83,29 +183,10 @@
     input[type="file"] {
       display: none;
     }
-    .settings {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      margin-left: auto;
-    }
-    .settings label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 13px;
-    }
-    .settings input[type="number"],
-    .settings input[type="color"] {
-      width: 60px;
-      padding: 4px;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-    }
     .canvas-container {
       position: relative;
       overflow: auto;
-      max-height: calc(100vh - 250px);
+      max-height: calc(100vh - 300px);
       padding: 20px;
       background: #e9ecef;
     }
@@ -221,11 +302,6 @@
       justify-content: flex-end;
       margin-top: 10px;
     }
-    .page-nav {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
   </style>
 </head>
 <body>
@@ -233,33 +309,61 @@
   <div class="header">
     <h1>PDF Fill & Sign Tool</h1>
   </div>
-  <div class="toolbar">
+  <div class="toolbar toolbar-row1">
     <div class="toolbar-group">
-      <label for="fileInput" class="btn btn-primary">Upload PDF</label>
+      <label for="fileInput" class="btn btn-primary">📁 Upload PDF</label>
       <input type="file" id="fileInput" accept="application/pdf">
     </div>
     <div class="toolbar-group">
-      <button id="addTextBtn" class="btn btn-secondary" disabled>Add Text</button>
-      <button id="addSignatureBtn" class="btn btn-secondary" disabled>Add Signature</button>
+      <button id="undoBtn" class="btn btn-icon" disabled title="Undo (Ctrl+Z)">↩</button>
+      <button id="redoBtn" class="btn btn-icon" disabled title="Redo (Ctrl+Y)">↪</button>
     </div>
+    <div class="toolbar-sep"></div>
     <div class="toolbar-group">
-      <button id="downloadBtn" class="btn btn-success" disabled>Download PDF</button>
+      <button id="addTextBtn" class="btn btn-secondary" disabled title="Add Text (T)">T Text</button>
+      <button id="addSignatureBtn" class="btn btn-secondary" disabled title="Sign (S)">✍ Sign</button>
     </div>
-    <div class="settings">
-      <label>
-        Font Size: <input type="number" id="fontSize" value="14" min="8" max="72">
-      </label>
-      <label>
-        Color: <input type="color" id="textColor" value="#000000">
-      </label>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button id="downloadBtn" class="btn btn-success" disabled>⬇ Download</button>
+      <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
     </div>
-    <div class="page-nav">
-      <button id="prevPage" class="btn btn-secondary" disabled>◀</button>
-      <span id="pageInfo">Page: 0 / 0</span>
-      <button id="nextPage" class="btn btn-secondary" disabled>▶</button>
+    <div id="modeBadge" class="mode-badge">● SELECT</div>
+  </div>
+  <div class="toolbar toolbar-row2">
+    <div class="toolbar-group" id="formattingGroup">
+      <select id="fontFamily" class="toolbar-select" disabled>
+        <option value="Arial">Arial</option>
+        <option value="Helvetica">Helvetica</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Courier New">Courier New</option>
+      </select>
+      <button id="boldBtn" class="btn btn-icon" disabled title="Bold"><strong>B</strong></button>
+      <button id="italicBtn" class="btn btn-icon btn-italic" disabled title="Italic"><em>I</em></button>
+      <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
+      <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button id="zoomOutBtn" class="btn btn-icon" disabled title="Zoom out">−</button>
+      <span id="zoomDisplay" class="zoom-display">—</span>
+      <button id="zoomInBtn" class="btn btn-icon" disabled title="Zoom in">+</button>
+      <button id="fitBtn" class="btn btn-secondary btn-sm" disabled title="Fit to width">⊡ Fit</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button id="firstPage" class="btn btn-icon" disabled title="First page">◀◀</button>
+      <button id="prevPage" class="btn btn-icon" disabled title="Previous page (Ctrl+←)">◀</button>
+      <input type="number" id="pageInput" value="1" min="1" class="toolbar-number page-input" disabled>
+      <span id="pageTotal" class="page-total">/ 0</span>
+      <button id="nextPage" class="btn btn-icon" disabled title="Next page (Ctrl+→)">▶</button>
+      <button id="lastPage" class="btn btn-icon" disabled title="Last page">▶▶</button>
     </div>
   </div>
   <div class="canvas-container" id="canvasContainer">
+    <div id="emptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:18px;pointer-events:none;z-index:1;">
+      Upload a PDF to get started
+    </div>
     <canvas id="pdfCanvas"></canvas>
   </div>
 </div>
@@ -284,777 +388,7 @@
   </div>
 </div>
 
-<script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  // Configuration
-  const CONFIG = {
-    defaultScale: 1.5,
-    minElementWidth: 50,
-    minElementHeight: 20,
-    defaultTextWidth: 200,
-    defaultTextHeight: 30,
-    defaultSignatureWidth: 200,
-    defaultSignatureHeight: 80,
-    defaultFontSize: 14,
-    defaultTextColor: '#000000',
-    defaultLineWidth: 2,
-    defaultSignatureColor: '#000000'
-  };
-
-  // Base Element Class
-  class PDFElement {
-    constructor(type, x, y, width, height, page) {
-      this.id = Date.now() + Math.random();
-      this.type = type;
-      this.x = x;
-      this.y = y;
-      this.width = width;
-      this.height = height;
-      this.page = page;
-    }
-
-    toJSON() {
-      return {
-        id: this.id,
-        type: this.type,
-        x: this.x,
-        y: this.y,
-        width: this.width,
-        height: this.height,
-        page: this.page
-      };
-    }
-  }
-
-  // Text Element
-  class TextElement extends PDFElement {
-    constructor(x, y, page, options = {}) {
-      super('text', x, y,
-              options.width || CONFIG.defaultTextWidth,
-              options.height || CONFIG.defaultTextHeight,
-              page);
-      this.text = '';
-      this.fontSize = options.fontSize || CONFIG.defaultFontSize;
-      this.color = options.color || CONFIG.defaultTextColor;
-      this.multiline = options.multiline || false;
-    }
-
-    render(container, canvasOffset) {
-      const div = document.createElement('div');
-      div.className = 'pdf-element text-element';
-      div.dataset.id = this.id;
-      this.applyStyles(div, canvasOffset);
-
-      const input = this.multiline
-              ? document.createElement('textarea')
-              : document.createElement('input');
-
-      if (!this.multiline) input.type = 'text';
-      input.value = this.text;
-      input.style.fontSize = this.fontSize + 'px';
-      input.style.color = this.color;
-
-      input.addEventListener('input', (e) => {
-        this.text = e.target.value;
-      });
-
-      const controls = this.createControls();
-      const resizeHandle = this.createResizeHandle();
-
-      div.appendChild(input);
-      div.appendChild(controls);
-      div.appendChild(resizeHandle);
-
-      return div;
-    }
-
-    applyStyles(div, canvasOffset) {
-      div.style.left = (canvasOffset.left + this.x) + 'px';
-      div.style.top = (canvasOffset.top + this.y) + 'px';
-      div.style.width = this.width + 'px';
-      div.style.height = this.height + 'px';
-    }
-
-    createControls() {
-      const controls = document.createElement('div');
-      controls.className = 'element-controls';
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'control-btn delete-btn';
-      deleteBtn.textContent = '×';
-      deleteBtn.title = 'Delete';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        app.removeElement(this.id);
-      });
-
-      controls.appendChild(deleteBtn);
-      return controls;
-    }
-
-    createResizeHandle() {
-      const handle = document.createElement('div');
-      handle.className = 'resize-handle';
-      return handle;
-    }
-
-    toJSON() {
-      return {
-        ...super.toJSON(),
-        text: this.text,
-        fontSize: this.fontSize,
-        color: this.color,
-        multiline: this.multiline
-      };
-    }
-  }
-
-  // Signature Element
-  class SignatureElement extends PDFElement {
-    constructor(x, y, page, signatureData, options = {}) {
-      super('signature', x, y,
-              options.width || CONFIG.defaultSignatureWidth,
-              options.height || CONFIG.defaultSignatureHeight,
-              page);
-      this.data = signatureData;
-    }
-
-    render(container, canvasOffset) {
-      const div = document.createElement('div');
-      div.className = 'pdf-element signature-element';
-      div.dataset.id = this.id;
-      this.applyStyles(div, canvasOffset);
-
-      div.style.backgroundImage = `url(${this.data})`;
-      div.style.backgroundSize = 'contain';
-      div.style.backgroundRepeat = 'no-repeat';
-      div.style.backgroundPosition = 'center';
-
-      const controls = this.createControls();
-      const resizeHandle = this.createResizeHandle();
-
-      div.appendChild(controls);
-      div.appendChild(resizeHandle);
-
-      return div;
-    }
-
-    applyStyles(div, canvasOffset) {
-      div.style.left = (canvasOffset.left + this.x) + 'px';
-      div.style.top = (canvasOffset.top + this.y) + 'px';
-      div.style.width = this.width + 'px';
-      div.style.height = this.height + 'px';
-    }
-
-    createControls() {
-      const controls = document.createElement('div');
-      controls.className = 'element-controls';
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'control-btn delete-btn';
-      deleteBtn.textContent = '×';
-      deleteBtn.title = 'Delete';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        app.removeElement(this.id);
-      });
-
-      controls.appendChild(deleteBtn);
-      return controls;
-    }
-
-    createResizeHandle() {
-      const handle = document.createElement('div');
-      handle.className = 'resize-handle';
-      return handle;
-    }
-
-    toJSON() {
-      return {
-        ...super.toJSON(),
-        data: this.data
-      };
-    }
-  }
-
-  // Interaction Handler
-  class InteractionHandler {
-    constructor(app) {
-      this.app = app;
-      this.isDragging = false;
-      this.isResizing = false;
-      this.currentElement = null;
-      this.offsetX = 0;
-      this.offsetY = 0;
-      this.startX = 0;
-      this.startY = 0;
-      this.startWidth = 0;
-      this.startHeight = 0;
-    }
-
-    handleMouseDown(e, element, div) {
-      if (e.target.classList.contains('control-btn')) return;
-
-      if (e.target.classList.contains('resize-handle')) {
-        this.startResize(e, element);
-      } else if (!e.target.matches('input, textarea')) {
-        this.startDrag(e, element, div);
-      }
-    }
-
-    startDrag(e, element, div) {
-      this.isDragging = true;
-      this.currentElement = element;
-      const divRect = div.getBoundingClientRect();
-      this.offsetX = e.clientX - divRect.left;
-      this.offsetY = e.clientY - divRect.top;
-      e.preventDefault();
-    }
-
-    startResize(e, element) {
-      this.isResizing = true;
-      this.currentElement = element;
-      this.startX = e.clientX;
-      this.startY = e.clientY;
-      this.startWidth = element.width;
-      this.startHeight = element.height;
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    handleMouseMove(e) {
-      if (this.isDragging && this.currentElement) {
-        this.drag(e);
-      } else if (this.isResizing && this.currentElement) {
-        this.resize(e);
-      }
-    }
-
-    drag(e) {
-      const canvas = this.app.renderer.canvas;
-      const canvasRect = canvas.getBoundingClientRect();
-
-      const newX = e.clientX - canvasRect.left - this.offsetX;
-      const newY = e.clientY - canvasRect.top - this.offsetY;
-
-      this.currentElement.x = Math.max(0, Math.min(canvas.width - this.currentElement.width, newX));
-      this.currentElement.y = Math.max(0, Math.min(canvas.height - this.currentElement.height, newY));
-
-      this.app.renderElements();
-    }
-
-    resize(e) {
-      const deltaX = e.clientX - this.startX;
-      const deltaY = e.clientY - this.startY;
-
-      const newWidth = Math.max(CONFIG.minElementWidth, this.startWidth + deltaX);
-      const newHeight = Math.max(CONFIG.minElementHeight, this.startHeight + deltaY);
-
-      const canvas = this.app.renderer.canvas;
-      this.currentElement.width = Math.min(newWidth, canvas.width - this.currentElement.x);
-      this.currentElement.height = Math.min(newHeight, canvas.height - this.currentElement.y);
-
-      this.app.renderElements();
-    }
-
-    handleMouseUp() {
-      this.isDragging = false;
-      this.isResizing = false;
-      this.currentElement = null;
-    }
-  }
-
-  // PDF Renderer
-  class PDFRenderer {
-    constructor(canvas) {
-      this.canvas = canvas;
-      this.ctx = canvas.getContext('2d');
-      this.pdfDoc = null;
-      this.currentPage = 1;
-      this.scale = CONFIG.defaultScale;
-      this.isRendering = false;
-      this.pendingPage = null;
-    }
-
-    async loadPDF(fileData) {
-      const typedArray = new Uint8Array(fileData);
-      this.pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
-      this.currentPage = 1;
-      await this.renderPage(this.currentPage);
-    }
-
-    async renderPage(pageNum) {
-      if (this.isRendering) {
-        this.pendingPage = pageNum;
-        return;
-      }
-
-      this.isRendering = true;
-      const page = await this.pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: this.scale });
-
-      this.canvas.height = viewport.height;
-      this.canvas.width = viewport.width;
-
-      await page.render({
-        canvasContext: this.ctx,
-        viewport: viewport
-      }).promise;
-
-      this.isRendering = false;
-
-      if (this.pendingPage !== null) {
-        const pending = this.pendingPage;
-        this.pendingPage = null;
-        await this.renderPage(pending);
-      }
-    }
-
-    async nextPage() {
-      if (this.currentPage < this.pdfDoc.numPages) {
-        this.currentPage++;
-        await this.renderPage(this.currentPage);
-        return true;
-      }
-      return false;
-    }
-
-    async prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-        await this.renderPage(this.currentPage);
-        return true;
-      }
-      return false;
-    }
-
-    getPageInfo() {
-      return {
-        current: this.currentPage,
-        total: this.pdfDoc ? this.pdfDoc.numPages : 0
-      };
-    }
-  }
-
-  // Signature Pad
-  class SignaturePad {
-    constructor(canvas, options = {}) {
-      this.canvas = canvas;
-      this.ctx = canvas.getContext('2d');
-      this.isDrawing = false;
-      this.lineWidth = options.lineWidth || CONFIG.defaultLineWidth;
-      this.color = options.color || CONFIG.defaultSignatureColor;
-      this.setupEvents();
-    }
-
-    setupEvents() {
-      this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
-      this.canvas.addEventListener('mousemove', (e) => this.draw(e));
-      this.canvas.addEventListener('mouseup', () => this.stopDrawing());
-      this.canvas.addEventListener('mouseout', () => this.stopDrawing());
-
-      // Touch support
-      this.canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        this.canvas.dispatchEvent(mouseEvent);
-      });
-
-      this.canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        this.canvas.dispatchEvent(mouseEvent);
-      });
-
-      this.canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        this.canvas.dispatchEvent(new MouseEvent('mouseup'));
-      });
-    }
-
-    startDrawing(e) {
-      this.isDrawing = true;
-      const rect = this.canvas.getBoundingClientRect();
-      this.ctx.beginPath();
-      this.ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    }
-
-    draw(e) {
-      if (!this.isDrawing) return;
-      const rect = this.canvas.getBoundingClientRect();
-      this.ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-      this.ctx.strokeStyle = this.color;
-      this.ctx.lineWidth = this.lineWidth;
-      this.ctx.lineCap = 'round';
-      this.ctx.lineJoin = 'round';
-      this.ctx.stroke();
-    }
-
-    stopDrawing() {
-      this.isDrawing = false;
-    }
-
-    clear() {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    getDataURL() {
-      return this.canvas.toDataURL();
-    }
-
-    setLineWidth(width) {
-      this.lineWidth = width;
-    }
-
-    setColor(color) {
-      this.color = color;
-    }
-  }
-
-  // Main Application
-  class PDFEditorApp {
-    constructor() {
-      this.renderer = new PDFRenderer(document.getElementById('pdfCanvas'));
-      this.elements = [];
-      this.interactionHandler = new InteractionHandler(this);
-      this.signaturePad = null;
-      this.mode = 'select'; // 'select', 'addText', 'addSignature'
-      this.currentSignature = null;
-
-      this.initUI();
-      this.setupEventListeners();
-    }
-
-    initUI() {
-      this.ui = {
-        fileInput: document.getElementById('fileInput'),
-        addTextBtn: document.getElementById('addTextBtn'),
-        addSignatureBtn: document.getElementById('addSignatureBtn'),
-        downloadBtn: document.getElementById('downloadBtn'),
-        prevPageBtn: document.getElementById('prevPage'),
-        nextPageBtn: document.getElementById('nextPage'),
-        pageInfo: document.getElementById('pageInfo'),
-        canvas: document.getElementById('pdfCanvas'),
-        container: document.getElementById('canvasContainer'),
-        signatureModal: document.getElementById('signatureModal'),
-        signatureCanvas: document.getElementById('signatureCanvas'),
-        fontSizeInput: document.getElementById('fontSize'),
-        textColorInput: document.getElementById('textColor'),
-        sigLineWidthInput: document.getElementById('sigLineWidth'),
-        sigColorInput: document.getElementById('sigColor')
-      };
-
-      this.signaturePad = new SignaturePad(this.ui.signatureCanvas);
-    }
-
-    setupEventListeners() {
-      // File upload
-      this.ui.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
-
-      // Toolbar buttons
-      this.ui.addTextBtn.addEventListener('click', () => this.setMode('addText'));
-      this.ui.addSignatureBtn.addEventListener('click', () => this.setMode('addSignature'));
-      this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());
-
-      // Page navigation
-      this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
-      this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
-
-      // Canvas interaction
-      this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
-
-      // Signature modal
-      document.getElementById('clearSignature').addEventListener('click', () => {
-        this.signaturePad.clear();
-      });
-      document.getElementById('cancelSignature').addEventListener('click', () => {
-        this.closeSignatureModal();
-      });
-      document.getElementById('saveSignature').addEventListener('click', () => {
-        this.saveSignature();
-      });
-
-      // Signature settings
-      this.ui.sigLineWidthInput.addEventListener('change', (e) => {
-        this.signaturePad.setLineWidth(parseInt(e.target.value));
-      });
-      this.ui.sigColorInput.addEventListener('change', (e) => {
-        this.signaturePad.setColor(e.target.value);
-      });
-
-      // Global mouse events for drag/resize
-      document.addEventListener('mousemove', (e) => {
-        this.interactionHandler.handleMouseMove(e);
-      });
-      document.addEventListener('mouseup', () => {
-        this.interactionHandler.handleMouseUp();
-      });
-    }
-
-    async handleFileUpload(e) {
-      const file = e.target.files[0];
-      if (!file || file.type !== 'application/pdf') {
-        alert('Please select a valid PDF file');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        await this.renderer.loadPDF(event.target.result);
-        this.elements = [];
-        this.enableUI();
-        this.updatePageInfo();
-        this.renderElements();
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    enableUI() {
-      this.ui.addTextBtn.disabled = false;
-      this.ui.addSignatureBtn.disabled = false;
-      this.ui.downloadBtn.disabled = false;
-      this.ui.prevPageBtn.disabled = false;
-      this.ui.nextPageBtn.disabled = false;
-    }
-
-    setMode(mode) {
-      this.mode = mode;
-
-      this.ui.addTextBtn.classList.toggle('active', mode === 'addText');
-      this.ui.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
-
-      if (mode === 'addSignature') {
-        this.openSignatureModal();
-      }
-    }
-
-    openSignatureModal() {
-      this.signaturePad.clear();
-      this.ui.signatureModal.classList.add('active');
-    }
-
-    closeSignatureModal() {
-      this.ui.signatureModal.classList.remove('active');
-      this.mode = 'select';
-      this.ui.addSignatureBtn.classList.remove('active');
-    }
-
-    saveSignature() {
-      this.currentSignature = this.signaturePad.getDataURL();
-      this.ui.signatureModal.classList.remove('active');
-      this.mode = 'addSignature';
-      this.ui.addSignatureBtn.classList.add('active');
-    }
-
-    handleCanvasClick(e) {
-      if (this.mode === 'addText') {
-        this.addTextAtPosition(e);
-        this.setMode('select');
-      } else if (this.mode === 'addSignature' && this.currentSignature) {
-        this.addSignatureAtPosition(e);
-        this.mode = 'select';
-        this.ui.addSignatureBtn.classList.remove('active');
-        this.currentSignature = null;
-      }
-    }
-
-    addTextAtPosition(e) {
-      const rect = this.ui.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      const options = {
-        fontSize: parseInt(this.ui.fontSizeInput.value),
-        color: this.ui.textColorInput.value
-      };
-
-      const textElement = new TextElement(x, y, this.renderer.currentPage, options);
-      this.elements.push(textElement);
-      this.renderElements();
-    }
-
-    addSignatureAtPosition(e) {
-      const rect = this.ui.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      const signatureElement = new SignatureElement(
-              x, y,
-              this.renderer.currentPage,
-              this.currentSignature
-      );
-      this.elements.push(signatureElement);
-      this.renderElements();
-    }
-
-    removeElement(id) {
-      this.elements = this.elements.filter(el => el.id !== id);
-      this.renderElements();
-    }
-
-    renderElements() {
-      // Clear existing elements
-      this.ui.container.querySelectorAll('.pdf-element').forEach(el => el.remove());
-
-      // Get canvas offset
-      const canvasOffset = {
-        left: this.ui.canvas.offsetLeft,
-        top: this.ui.canvas.offsetTop
-      };
-
-      // Render elements for current page
-      const currentPageElements = this.elements.filter(
-              el => el.page === this.renderer.currentPage
-      );
-
-      currentPageElements.forEach(element => {
-        const div = element.render(this.ui.container, canvasOffset);
-
-        div.addEventListener('mousedown', (e) => {
-          this.interactionHandler.handleMouseDown(e, element, div);
-        });
-
-        this.ui.container.appendChild(div);
-      });
-    }
-
-    async prevPage() {
-      const changed = await this.renderer.prevPage();
-      if (changed) {
-        this.updatePageInfo();
-        this.renderElements();
-      }
-    }
-
-    async nextPage() {
-      const changed = await this.renderer.nextPage();
-      if (changed) {
-        this.updatePageInfo();
-        this.renderElements();
-      }
-    }
-
-    updatePageInfo() {
-      const info = this.renderer.getPageInfo();
-      this.ui.pageInfo.textContent = `Page: ${info.current} / ${info.total}`;
-    }
-
-    async downloadPDF() {
-      if (!this.renderer.pdfDoc) return;
-
-      const { PDFDocument } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
-      const pdfDoc = await PDFDocument.create();
-
-      // Render all pages with elements
-      for (let pageNum = 1; pageNum <= this.renderer.pdfDoc.numPages; pageNum++) {
-        await this.renderer.renderPage(pageNum);
-
-        // Get page image
-        const pageImage = await pdfDoc.embedPng(this.ui.canvas.toDataURL());
-        const page = pdfDoc.addPage([this.ui.canvas.width, this.ui.canvas.height]);
-
-        page.drawImage(pageImage, {
-          x: 0,
-          y: 0,
-          width: this.ui.canvas.width,
-          height: this.ui.canvas.height
-        });
-
-        // Add elements for this page
-        const pageElements = this.elements.filter(el => el.page === pageNum);
-
-        for (const element of pageElements) {
-          if (element.type === 'text' && element.text) {
-            const rgb = this.hexToRgb(element.color);
-            // Calculate proper vertical position
-            const yPosition = this.ui.canvas.height - element.y - (element.fontSize * 0.8);
-            page.drawText(element.text, {
-              x: element.x,
-              y: yPosition,
-              size: element.fontSize,
-              color: rgb
-            });
-          } else if (element.type === 'signature') {
-            const sigImage = await pdfDoc.embedPng(element.data);
-            page.drawImage(sigImage, {
-              x: element.x,
-              y: this.ui.canvas.height - element.y - element.height,
-              width: element.width,
-              height: element.height
-            });
-          }
-        }
-      }
-
-      // Save PDF
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'filled-signed-' + Date.now() + '.pdf';
-      link.click();
-      URL.revokeObjectURL(url);
-
-      // Restore current page
-      await this.renderer.renderPage(this.renderer.currentPage);
-      this.renderElements();
-    }
-
-    hexToRgb(hex) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      if (!result) return { type: 'RGB', red: 0, green: 0, blue: 0 };
-      return {
-        type: 'RGB',
-        red: parseInt(result[1], 16) / 255,
-        green: parseInt(result[2], 16) / 255,
-        blue: parseInt(result[3], 16) / 255
-      };
-    }
-
-    // Export/Import state
-    exportState() {
-      return JSON.stringify({
-        elements: this.elements.map(el => el.toJSON()),
-        currentPage: this.renderer.currentPage
-      });
-    }
-
-    importState(stateJSON) {
-      const state = JSON.parse(stateJSON);
-      this.elements = state.elements.map(data => {
-        if (data.type === 'text') {
-          const el = new TextElement(data.x, data.y, data.page, {
-            width: data.width,
-            height: data.height,
-            fontSize: data.fontSize,
-            color: data.color,
-            multiline: data.multiline
-          });
-          el.text = data.text;
-          return el;
-        } else if (data.type === 'signature') {
-          return new SignatureElement(
-                  data.x, data.y, data.page, data.data,
-                  { width: data.width, height: data.height }
-          );
-        }
-      });
-      this.renderElements();
-    }
-  }
-
-  // Initialize app
-  const app = new PDFEditorApp();
-</script>
+<div id="toast"></div>
+<script type="module" src="./js/main.js?v=2"></script>
 </body>
 </html>
