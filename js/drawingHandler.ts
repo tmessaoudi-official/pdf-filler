@@ -95,9 +95,9 @@ export class DrawingHandler {
   handlePointerUp(e: PointerEvent): void {
     this._pinchPointers.delete(e.pointerId);
 
-    if (this._pinchStartDist !== null && this._pinchPointers.size < 2) {
+    if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._pinchPointers.size < 2) {
       const finalDist = this._lastPinchDist || this._pinchStartDist;
-      const newScale = this._pinchStartZoom! * finalDist / this._pinchStartDist;
+      const newScale = this._pinchStartZoom * finalDist / this._pinchStartDist;
       this.app.ui.canvas.style.transform = '';
       this._pinchStartDist = null;
       this._pinchStartZoom = null;
@@ -119,24 +119,27 @@ export class DrawingHandler {
     const col  = this.app.ui.shapeColor.value;
     const sw   = parseInt(this.app.ui.shapeWidth.value) || 2;
     const opts = { strokeColor: col, strokeWidth: sw };
+    const start = this._drawStart;
     let shape: ShapeElement | null = null;
 
+    if (!start) { this._drawPoints = []; return; }
+
     if (this.app.mode === 'drawArrow') {
-      const x = Math.min(this._drawStart!.x, endX);
-      const y = Math.min(this._drawStart!.y, endY);
-      const w = Math.abs(endX - this._drawStart!.x);
-      const h = Math.abs(endY - this._drawStart!.y);
+      const x = Math.min(start.x, endX);
+      const y = Math.min(start.y, endY);
+      const w = Math.abs(endX - start.x);
+      const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement('arrow', x, y, w, h, this.app.renderer.currentPage, {
-        ...opts, x1: this._drawStart!.x, y1: this._drawStart!.y, x2: endX, y2: endY
+        ...opts, x1: start.x, y1: start.y, x2: endX, y2: endY
       });
 
     } else if (this.app.mode === 'drawRect' || this.app.mode === 'drawEllipse') {
       const st = this.app.mode === 'drawRect' ? 'rect' : 'ellipse';
-      const x = Math.min(this._drawStart!.x, endX);
-      const y = Math.min(this._drawStart!.y, endY);
-      const w = Math.abs(endX - this._drawStart!.x);
-      const h = Math.abs(endY - this._drawStart!.y);
+      const x = Math.min(start.x, endX);
+      const y = Math.min(start.y, endY);
+      const w = Math.abs(endX - start.x);
+      const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, this.app.renderer.currentPage, opts);
 
@@ -174,7 +177,7 @@ export class DrawingHandler {
   }
 
   private _updatePreview(curX: number, curY: number): void {
-    if (!this._previewSvg) return;
+    if (!this._previewSvg || !this._drawStart) return;
     while (this._previewSvg.firstChild) this._previewSvg.firstChild.remove();
 
     const s   = this.app.zoomScale;
@@ -183,8 +186,8 @@ export class DrawingHandler {
     const col = this.app.ui.shapeColor.value;
     const sw  = (parseInt(this.app.ui.shapeWidth.value) || 2) * s;
 
-    const sx0 = this._drawStart!.x * s + ox;
-    const sy0 = this._drawStart!.y * s + oy;
+    const sx0 = this._drawStart.x * s + ox;
+    const sy0 = this._drawStart.y * s + oy;
     const sxC = curX * s + ox;
     const syC = curY * s + oy;
 
