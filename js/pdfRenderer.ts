@@ -19,7 +19,7 @@ export class PDFRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d')!;
+    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   }
 
   get pageCount(): number {
@@ -53,8 +53,9 @@ export class PDFRenderer {
         this._pendingResolve = resolve;
       });
     }
+    if (!this.pdfDoc) return;
     this.isRendering = true;
-    const page = await this.pdfDoc!.getPage(pageNum);
+    const page = await this.pdfDoc.getPage(pageNum);
     const viewport = page.getViewport({ scale: this.scale });
     this.canvas.height = viewport.height;
     this.canvas.width = viewport.width;
@@ -89,7 +90,8 @@ export class PDFRenderer {
   }
 
   async goToPage(pageNum: number): Promise<boolean> {
-    const n = Math.max(1, Math.min(this.pdfDoc!.numPages, pageNum));
+    if (!this.pdfDoc) return false;
+    const n = Math.max(1, Math.min(this.pdfDoc.numPages, pageNum));
     if (n !== this.currentPage) {
       this.currentPage = n;
       await this.renderPage(this.currentPage);

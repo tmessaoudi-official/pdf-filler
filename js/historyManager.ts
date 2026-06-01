@@ -100,7 +100,8 @@ export class HistoryManager {
 
   undo(): boolean {
     if (!this.undoStack.length) return false;
-    const cmd = this.undoStack.pop()!;
+    const cmd = this.undoStack.pop();
+    if (!cmd) return false;
     cmd.undo();
     this.redoStack.push(cmd);
     this.onChange(this.undoStack.length > 0, true);
@@ -109,7 +110,8 @@ export class HistoryManager {
 
   redo(): boolean {
     if (!this.redoStack.length) return false;
-    const cmd = this.redoStack.pop()!;
+    const cmd = this.redoStack.pop();
+    if (!cmd) return false;
     cmd.execute();
     this.undoStack.push(cmd);
     this.onChange(true, this.redoStack.length > 0);

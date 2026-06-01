@@ -12,7 +12,7 @@ export class SignaturePad {
 
   constructor(canvas: HTMLCanvasElement, options: SignaturePadOptions = {}) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d')!;
+    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
     this.lineWidth = options.lineWidth ?? 2;
     this.color = options.color ?? '#000000';
     this.setupEvents();

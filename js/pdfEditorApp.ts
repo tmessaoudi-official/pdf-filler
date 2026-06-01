@@ -17,7 +17,7 @@ export class PDFEditorApp {
   renderer!: PDFRenderer;
   elements: PDFElement[] = [];
   interactionHandler!: InteractionHandler;
-  signaturePad: SignaturePad | null = null;
+  signaturePad!: SignaturePad;
   mode: ToolMode = 'select';
   zoomScale = 1.0;
   selectedElement: PDFElement | null = null;
@@ -59,8 +59,9 @@ export class PDFEditorApp {
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
     document.getElementById('clearSignature')!.addEventListener('click', () => {
-      this.signaturePad!.clear();
+      this.signaturePad.clear();
     });
     document.getElementById('cancelSignature')!.addEventListener('click', () => {
       this.closeSignatureModal();
@@ -68,11 +69,12 @@ export class PDFEditorApp {
     document.getElementById('saveSignature')!.addEventListener('click', () => {
       this.saveSignature();
     });
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
     this.ui.sigLineWidthInput.addEventListener('change', (e) => {
-      this.signaturePad!.setLineWidth(parseInt((e.target as HTMLInputElement).value));
+      this.signaturePad.setLineWidth(parseInt((e.target as HTMLInputElement).value));
     });
     this.ui.sigColorInput.addEventListener('change', (e) => {
-      this.signaturePad!.setColor((e.target as HTMLInputElement).value);
+      this.signaturePad.setColor((e.target as HTMLInputElement).value);
     });
     document.addEventListener('pointermove', (e) => {
       this.interactionHandler.handlePointerMove(e);
@@ -104,6 +106,7 @@ export class PDFEditorApp {
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.clearAllBtn.addEventListener('click', () => this.clearAll());
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
     this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
@@ -315,7 +318,7 @@ export class PDFEditorApp {
     const data = this.elements.map(el => el.toJSON());
     try {
       localStorage.setItem(key, JSON.stringify(data));
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
 
   _loadSaved() {
@@ -328,7 +331,7 @@ export class PDFEditorApp {
       if (!data.length) return;
       this.importState(JSON.stringify({ elements: data }));
       this.showToast(`Restored ${data.length} element${data.length > 1 ? 's' : ''} from last session`);
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
 
   _clearSave() {
@@ -361,6 +364,7 @@ export class PDFEditorApp {
     reader.onload = async (event) => {
       await this.renderer.loadPDF(((event.target as FileReader).result as ArrayBuffer));
       this.elements = [];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       document.getElementById("emptyState")!.style.display = 'none';
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       const isMobile = window.innerWidth <= 640;
@@ -409,7 +413,7 @@ export class PDFEditorApp {
     const w = this.ui.signatureCanvas.offsetWidth || 500;
     this.ui.signatureCanvas.width = w;
     this.ui.signatureCanvas.height = Math.round(w * 0.4);
-    this.signaturePad!.clear();
+    this.signaturePad.clear();
   }
 
   closeSignatureModal() {
@@ -419,7 +423,7 @@ export class PDFEditorApp {
   }
 
   saveSignature() {
-    this.currentSignature = this.signaturePad!.getDataURL();
+    this.currentSignature = this.signaturePad.getDataURL();
     this.ui.signatureModal.classList.remove('active');
     this.mode = 'addSignature';
     this.ui.addSignatureBtn.classList.add('active');
@@ -482,7 +486,7 @@ export class PDFEditorApp {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const sigElement = new SignatureElement(x, y, this.renderer.currentPage, this.currentSignature!);
+    const sigElement = new SignatureElement(x, y, this.renderer.currentPage, this.currentSignature ?? '');
     sigElement.x -= sigElement.width / 2;
     sigElement.y -= sigElement.height / 2;
     this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
@@ -534,10 +538,13 @@ export class PDFEditorApp {
             }
             clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
-              this._pendingTextCmd!.captureAfter();
-              this.historyManager.record(this._pendingTextCmd!);
-              this._pendingTextCmd = null;
-              this._autosave();
+              const cmd = this._pendingTextCmd;
+              if (cmd) {
+                cmd.captureAfter();
+                this.historyManager.record(cmd);
+                this._pendingTextCmd = null;
+                this._autosave();
+              }
             }, 500);
           });
         }
@@ -755,9 +762,9 @@ export class PDFEditorApp {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   importState(stateJSON: string) {
     const state = JSON.parse(stateJSON);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const restored = (state.elements as Array<Record<string, any>>)
       .map((data) => ElementFactory.fromJSON(data))
       .filter(Boolean) as PDFElement[];
