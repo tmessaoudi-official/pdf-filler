@@ -33,7 +33,7 @@
     .header {
       background: #2563eb;
       color: white;
-      padding: 20px;
+      padding: 10px 20px;
       text-align: center;
     }
     .toolbar {
@@ -194,6 +194,20 @@
         padding: 8px;
         max-height: none;
       }
+      /* ── Mobile toolbar reorganization ──────────────────────── */
+      /* Wrap row 1 into 2 lines so all tools are always visible   */
+      .toolbar-row1 { flex-wrap: wrap; gap: 4px 5px; overflow-x: visible; }
+      #tbg-file    { order: 1; }
+      #tbg-history { order: 2; }
+      #tbg-actions { order: 3; }
+      #modeBadge   { order: 4; }
+      /* Line-break separator forces tools to a second line */
+      #tbsep-break { order: 9; flex-basis: 100%; height: 1px; margin: 1px 0; }
+      /* Hide internal separators on mobile */
+      #tbsep-1, #tbsep-2, #tbsep-3 { display: none; }
+      /* Tools row: text/sign + all shape buttons */
+      #tbg-edit   { order: 10; }
+      #tbg-shapes { order: 11; flex: 1; justify-content: space-between; }
       /* Larger resize handle for fat-finger accuracy */
       .resize-handle { width: 22px; height: 22px; bottom: -8px; right: -8px; }
       /* Larger delete button */
@@ -258,7 +272,7 @@
     .canvas-container {
       position: relative;
       overflow: auto;
-      max-height: calc(100vh - 300px);
+      max-height: calc(100vh - 175px);
       padding: 20px;
       background: #e9ecef;
     }
@@ -382,32 +396,34 @@
     <h1>PDF Fill & Sign Tool</h1>
   </div>
   <div class="toolbar toolbar-row1">
-    <div class="toolbar-group">
+    <div class="toolbar-group" id="tbg-file">
       <label for="fileInput" class="btn btn-primary">📁 Upload PDF</label>
       <input type="file" id="fileInput" accept="application/pdf">
     </div>
-    <div class="toolbar-group">
+    <div class="toolbar-group" id="tbg-history">
       <button id="undoBtn" class="btn btn-icon" disabled title="Undo (Ctrl+Z)">↩</button>
       <button id="redoBtn" class="btn btn-icon" disabled title="Redo (Ctrl+Y)">↪</button>
     </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
+    <!-- Mobile line-break: forces tools to second line on small screens -->
+    <div id="tbsep-break" class="toolbar-sep"></div>
+    <div class="toolbar-sep" id="tbsep-1"></div>
+    <div class="toolbar-group" id="tbg-edit">
       <button id="addTextBtn" class="btn btn-secondary" disabled title="Add Text (T)">T Text</button>
       <button id="addSignatureBtn" class="btn btn-secondary" disabled title="Sign (S)">✍ Sign</button>
     </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
+    <div class="toolbar-sep" id="tbsep-2"></div>
+    <div class="toolbar-group" id="tbg-shapes">
       <button id="arrowBtn" class="btn btn-icon" disabled title="Arrow (A)">→</button>
       <button id="rectBtn" class="btn btn-icon" disabled title="Rectangle (R)">□</button>
       <button id="circleBtn" class="btn btn-icon" disabled title="Circle (C)">○</button>
       <button id="freehandBtn" class="btn btn-icon" disabled title="Freehand (D)">✏</button>
     </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
-      <button id="downloadBtn" class="btn btn-success" disabled>⬇ Download</button>
+    <div class="toolbar-sep" id="tbsep-3"></div>
+    <div class="toolbar-group" id="tbg-actions">
+      <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ Download</button>
       <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
     </div>
-    <div id="modeBadge" class="mode-badge">● SELECT</div>
+    <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
   <div class="toolbar toolbar-row2">
     <div class="toolbar-group" id="formattingGroup">
@@ -419,7 +435,9 @@
       </select>
       <button id="boldBtn" class="btn btn-icon" disabled title="Bold"><strong>B</strong></button>
       <button id="italicBtn" class="btn btn-icon btn-italic" disabled title="Italic"><em>I</em></button>
+      <button id="fontSizeDownBtn" class="btn btn-icon" disabled title="Decrease font size (A-)">A−</button>
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
+      <button id="fontSizeUpBtn" class="btn btn-icon" disabled title="Increase font size (A+)">A+</button>
       <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
     </div>
     <div class="toolbar-sep"></div>
@@ -440,7 +458,7 @@
       <button id="firstPage" class="btn btn-icon" disabled title="First page">◀◀</button>
       <button id="prevPage" class="btn btn-icon" disabled title="Previous page (Ctrl+←)">◀</button>
       <input type="number" id="pageInput" value="1" min="1" class="toolbar-number page-input" disabled>
-      <span id="pageTotal" class="page-total">/ 0</span>
+      <span id="pageTotal" class="page-total">/ —</span>
       <button id="nextPage" class="btn btn-icon" disabled title="Next page (Ctrl+→)">▶</button>
       <button id="lastPage" class="btn btn-icon" disabled title="Last page">▶▶</button>
     </div>
@@ -475,7 +493,7 @@
 
 <span id="pageInfo" style="display:none"></span>
 <div id="toast"></div>
-<script type="module" src="./js/main.js?v=5"></script>
+<script type="module" src="./js/main.js?v=7"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
