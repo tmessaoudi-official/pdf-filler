@@ -1,3 +1,5 @@
 /.idea
 /.playwright-mcp
 /.superpowers
+/node_modules
+/dist

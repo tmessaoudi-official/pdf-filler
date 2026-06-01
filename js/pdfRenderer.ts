@@ -1,48 +1,60 @@
-// PDFRenderer module
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+import * as pdfjsLib from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+
+// Use Vite's ?url import to copy the worker to dist/ and get its hashed URL
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).href;
 
 export class PDFRenderer {
-  constructor(canvas) {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  pdfDoc: PDFDocumentProxy | null = null;
+  currentPage = 1;
+  scale = 1.0;
+  private isRendering = false;
+  private pendingPage: number | null = null;
+  private _pendingResolve: (() => void) | null = null;
+
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.pdfDoc = null;
-    this.currentPage = 1;
-    this.scale = 1.0;
-    this.isRendering = false;
-    this.pendingPage = null;
-    this._pendingResolve = null;
+    this.ctx = canvas.getContext('2d')!;
   }
 
-  setScale(scale) {
+  get pageCount(): number {
+    return this.pdfDoc ? this.pdfDoc.numPages : 0;
+  }
+
+  setScale(scale: number): void {
     this.scale = Math.max(0.25, Math.min(3.0, scale));
   }
 
-  computeFitScale(containerWidth) {
+  computeFitScale(containerWidth: number): Promise<number> {
     if (!this.pdfDoc) return Promise.resolve(1.0);
-    return this.pdfDoc.getPage(this.currentPage).then(page => {
+    return this.pdfDoc.getPage(this.currentPage).then((page: PDFPageProxy) => {
       const vp = page.getViewport({ scale: 1 });
-      const availableWidth = containerWidth - 40; // 20px padding each side
+      const availableWidth = containerWidth - 40;
       return Math.max(0.25, availableWidth / vp.width);
     });
   }
 
-  async loadPDF(fileData) {
+  async loadPDF(fileData: ArrayBuffer): Promise<void> {
     const typedArray = new Uint8Array(fileData);
     this.pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
     this.currentPage = 1;
     await this.renderPage(this.currentPage);
   }
 
-  async renderPage(pageNum) {
+  async renderPage(pageNum: number): Promise<void> {
     if (this.isRendering) {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         this.pendingPage = pageNum;
         this._pendingResolve = resolve;
       });
     }
     this.isRendering = true;
-    const page = await this.pdfDoc.getPage(pageNum);
+    const page = await this.pdfDoc!.getPage(pageNum);
     const viewport = page.getViewport({ scale: this.scale });
     this.canvas.height = viewport.height;
     this.canvas.width = viewport.width;
@@ -58,8 +70,8 @@ export class PDFRenderer {
     }
   }
 
-  async nextPage() {
-    if (this.currentPage < this.pdfDoc.numPages) {
+  async nextPage(): Promise<boolean> {
+    if (this.pdfDoc && this.currentPage < this.pdfDoc.numPages) {
       this.currentPage++;
       await this.renderPage(this.currentPage);
       return true;
@@ -67,7 +79,7 @@ export class PDFRenderer {
     return false;
   }
 
-  async prevPage() {
+  async prevPage(): Promise<boolean> {
     if (this.currentPage > 1) {
       this.currentPage--;
       await this.renderPage(this.currentPage);
@@ -76,8 +88,8 @@ export class PDFRenderer {
     return false;
   }
 
-  async goToPage(pageNum) {
-    const n = Math.max(1, Math.min(this.pdfDoc.numPages, pageNum));
+  async goToPage(pageNum: number): Promise<boolean> {
+    const n = Math.max(1, Math.min(this.pdfDoc!.numPages, pageNum));
     if (n !== this.currentPage) {
       this.currentPage = n;
       await this.renderPage(this.currentPage);
@@ -86,10 +98,10 @@ export class PDFRenderer {
     return false;
   }
 
-  getPageInfo() {
+  getPageInfo(): { current: number; total: number } {
     return {
       current: this.currentPage,
-      total: this.pdfDoc ? this.pdfDoc.numPages : 0
+      total: this.pdfDoc ? this.pdfDoc.numPages : 0,
     };
   }
 }
