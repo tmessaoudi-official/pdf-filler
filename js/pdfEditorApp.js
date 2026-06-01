@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=8';
-import { TextElement } from './textElement.js?v=8';
-import { SignatureElement } from './signatureElement.js?v=8';
-import { SignaturePad } from './signaturePad.js?v=8';
-import { InteractionHandler } from './interactionHandler.js?v=8';
-import { ShapeElement } from './shapeElement.js?v=8';
+import { PDFRenderer } from './pdfRenderer.js?v=9';
+import { TextElement } from './textElement.js?v=9';
+import { SignatureElement } from './signatureElement.js?v=9';
+import { SignaturePad } from './signaturePad.js?v=9';
+import { InteractionHandler } from './interactionHandler.js?v=9';
+import { ShapeElement } from './shapeElement.js?v=9';
 
 export class PDFEditorApp {
   constructor() {
@@ -851,6 +851,8 @@ export class PDFEditorApp {
       color: this.ui.textColorInput.value
     };
     const textElement = new TextElement(x, y, this.renderer.currentPage, options);
+    textElement.x -= textElement.width / 2;
+    textElement.y -= textElement.height / 2;
     this.pushHistory();
     this.elements.push(textElement);
     this._autosave();
@@ -870,6 +872,8 @@ export class PDFEditorApp {
       this.renderer.currentPage,
       this.currentSignature
     );
+    signatureElement.x -= signatureElement.width / 2;
+    signatureElement.y -= signatureElement.height / 2;
     this.pushHistory();
     this.elements.push(signatureElement);
     this._autosave();

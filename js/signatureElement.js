@@ -1,5 +1,5 @@
 // SignatureElement module
-import { PDFElement } from './pdfElement.js?v=8';
+import { PDFElement } from './pdfElement.js?v=9';
 export class SignatureElement extends PDFElement {
   constructor(x, y, page, signatureData, options = {}) {
     super('signature', x, y,
