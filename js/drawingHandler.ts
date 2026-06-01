@@ -1,5 +1,6 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import { ShapeElement } from './shapeElement';
+import { AddElementCmd } from './historyManager';
 
 export class DrawingHandler {
   private _drawing = false;
@@ -155,8 +156,7 @@ export class DrawingHandler {
     this._drawPoints = [];
 
     if (shape) {
-      this.app.pushHistory();
-      this.app.elements.push(shape);
+      this.app.historyManager.execute(new AddElementCmd(this.app.elements, shape));
       this.app._autosave();
       this.app.renderElements();
     }
