@@ -1,14 +1,87 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=11';
-import { TextElement } from './textElement.js?v=11';
-import { SignatureElement } from './signatureElement.js?v=11';
-import { SignaturePad } from './signaturePad.js?v=11';
-import { InteractionHandler } from './interactionHandler.js?v=11';
-import { ShapeElement } from './shapeElement.js?v=11';
+import { PDFRenderer } from './pdfRenderer';
+import { TextElement } from './textElement';
+import { SignatureElement } from './signatureElement';
+import { SignaturePad } from './signaturePad';
+import { InteractionHandler } from './interactionHandler';
+import { ShapeElement } from './shapeElement';
+import type { PDFElement, ElementJSON } from './pdfElement';
+
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand';
+
+interface UIRefs {
+  fileInput: HTMLInputElement;
+  addTextBtn: HTMLButtonElement;
+  addSignatureBtn: HTMLButtonElement;
+  downloadBtn: HTMLButtonElement;
+  prevPageBtn: HTMLButtonElement;
+  nextPageBtn: HTMLButtonElement;
+  pageInfo: HTMLElement;
+  canvas: HTMLCanvasElement;
+  container: HTMLElement;
+  signatureModal: HTMLElement;
+  signatureCanvas: HTMLCanvasElement;
+  fontSizeInput: HTMLInputElement;
+  textColorInput: HTMLInputElement;
+  sigLineWidthInput: HTMLInputElement;
+  sigColorInput: HTMLInputElement;
+  zoomOutBtn: HTMLButtonElement;
+  zoomInBtn: HTMLButtonElement;
+  zoomDisplay: HTMLElement;
+  fitBtn: HTMLButtonElement;
+  undoBtn: HTMLButtonElement;
+  redoBtn: HTMLButtonElement;
+  fontFamily: HTMLSelectElement;
+  boldBtn: HTMLButtonElement;
+  italicBtn: HTMLButtonElement;
+  modeBadge: HTMLElement;
+  clearSaveBtn: HTMLButtonElement;
+  firstPage: HTMLButtonElement;
+  lastPage: HTMLButtonElement;
+  pageInput: HTMLInputElement;
+  pageTotal: HTMLElement;
+  toast: HTMLElement;
+  arrowBtn: HTMLButtonElement;
+  rectBtn: HTMLButtonElement;
+  circleBtn: HTMLButtonElement;
+  freehandBtn: HTMLButtonElement;
+  shapeColor: HTMLInputElement;
+  shapeWidth: HTMLInputElement;
+  fontSizeDownBtn: HTMLButtonElement;
+  fontSizeUpBtn: HTMLButtonElement;
+  clearAllBtn: HTMLButtonElement;
+  helpBtn: HTMLButtonElement;
+  helpModal: HTMLElement;
+  colorSwatches: HTMLElement;
+}
 
 export class PDFEditorApp {
+  renderer!: PDFRenderer;
+  elements: PDFElement[] = [];
+  interactionHandler!: InteractionHandler;
+  signaturePad: SignaturePad | null = null;
+  mode: ToolMode = 'select';
+  zoomScale = 1.0;
+  selectedElement: PDFElement | null = null;
+  historyStack: ElementJSON[][] = [];
+  redoStack: ElementJSON[][] = [];
+  _textChangeTimer: ReturnType<typeof setTimeout> | null = null;
+  currentFilename: string | null = null;
+  _toastTimer: ReturnType<typeof setTimeout> | null = null;
+  currentSignature: string | null = null;
+  _drawing = false;
+  _drawStart: { x: number; y: number } | null = null;
+  _drawPoints: Array<{ x: number; y: number }> = [];
+  _previewSvg: SVGSVGElement | null = null;
+  _activeDrawPointerId: number | null = null;
+  _pinchPointers: Map<number, { x: number; y: number }> = new Map();
+  _pinchStartDist: number | null = null;
+  _pinchStartZoom: number | null = null;
+  _lastPinchDist: number | null = null;
+  ui!: UIRefs;
+
   constructor() {
-    this.renderer = new PDFRenderer(document.getElementById('pdfCanvas'));
+    this.renderer = new PDFRenderer(document.getElementById('pdfCanvas') as HTMLCanvasElement);
     this.elements = [];
     this.interactionHandler = new InteractionHandler(this);
     this.signaturePad = null;
@@ -79,7 +152,7 @@ export class PDFEditorApp {
       helpBtn:      document.getElementById('helpBtn'),
       helpModal:    document.getElementById('helpModal'),
       colorSwatches: document.getElementById('colorSwatches')
-    };
+    } as UIRefs;
     this.signaturePad = new SignaturePad(this.ui.signatureCanvas);
   }
 
@@ -91,20 +164,20 @@ export class PDFEditorApp {
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
-    document.getElementById('clearSignature').addEventListener('click', () => {
-      this.signaturePad.clear();
+    document.getElementById('clearSignature')!.addEventListener('click', () => {
+      this.signaturePad!.clear();
     });
-    document.getElementById('cancelSignature').addEventListener('click', () => {
+    document.getElementById('cancelSignature')!.addEventListener('click', () => {
       this.closeSignatureModal();
     });
-    document.getElementById('saveSignature').addEventListener('click', () => {
+    document.getElementById('saveSignature')!.addEventListener('click', () => {
       this.saveSignature();
     });
     this.ui.sigLineWidthInput.addEventListener('change', (e) => {
-      this.signaturePad.setLineWidth(parseInt(e.target.value));
+      this.signaturePad!.setLineWidth(parseInt((e.target as HTMLInputElement).value));
     });
     this.ui.sigColorInput.addEventListener('change', (e) => {
-      this.signaturePad.setColor(e.target.value);
+      this.signaturePad!.setColor((e.target as HTMLInputElement).value);
     });
     document.addEventListener('pointermove', (e) => {
       this.interactionHandler.handlePointerMove(e);
@@ -136,12 +209,12 @@ export class PDFEditorApp {
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.clearAllBtn.addEventListener('click', () => this.clearAll());
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
-    document.getElementById('closeHelp').addEventListener('click', () => this._toggleHelp(false));
+    document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
     this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
       swatch.addEventListener('click', () => {
         if (this.ui.textColorInput.disabled) return;
-        this.ui.textColorInput.value = swatch.dataset.color;
+        this.ui.textColorInput.value = (swatch as HTMLElement).dataset["color"] ?? '#000000';
         this.ui.textColorInput.dispatchEvent(new Event('change'));
       });
     });
@@ -150,12 +223,12 @@ export class PDFEditorApp {
       this._goToPage(this.renderer.pdfDoc?.numPages || 1));
 
     this.ui.pageInput.addEventListener('change', (e) => {
-      this._goToPage(parseInt(e.target.value) || 1);
+      this._goToPage(parseInt((e.target as HTMLInputElement).value) || 1);
     });
     this.ui.pageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        e.target.blur();
-        this._goToPage(parseInt(e.target.value) || 1);
+        (e.target as HTMLInputElement).blur();
+        this._goToPage(parseInt((e.target as HTMLInputElement).value) || 1);
       }
     });
 
@@ -167,31 +240,31 @@ export class PDFEditorApp {
 
     this.ui.fontFamily.addEventListener('change', (e) => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      this.selectedElement.fontFamily = e.target.value;
+      (this.selectedElement as TextElement).fontFamily = (e.target as HTMLInputElement).value;
       this.renderElements();
       this._autosave();
     });
 
     this.ui.boldBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      this.selectedElement.bold = !this.selectedElement.bold;
-      this.ui.boldBtn.classList.toggle('btn-active-fmt', this.selectedElement.bold);
+      (this.selectedElement as TextElement).bold = !(this.selectedElement as TextElement).bold;
+      this.ui.boldBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).bold);
       this.renderElements();
       this._autosave();
     });
 
     this.ui.italicBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      this.selectedElement.italic = !this.selectedElement.italic;
-      this.ui.italicBtn.classList.toggle('btn-active-fmt', this.selectedElement.italic);
+      (this.selectedElement as TextElement).italic = !(this.selectedElement as TextElement).italic;
+      this.ui.italicBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).italic);
       this.renderElements();
       this._autosave();
     });
 
     this.ui.fontSizeInput.addEventListener('change', (e) => {
-      const size = Math.max(8, Math.min(72, parseInt(e.target.value) || 14));
+      const size = Math.max(8, Math.min(72, parseInt((e.target as HTMLInputElement).value) || 14));
       if (this.selectedElement && this.selectedElement.type === 'text') {
-        this.selectedElement.fontSize = size;
+        (this.selectedElement as TextElement).fontSize = size;
         this.renderElements();
         this._autosave();
       }
@@ -199,7 +272,7 @@ export class PDFEditorApp {
 
     this.ui.textColorInput.addEventListener('change', (e) => {
       if (this.selectedElement && this.selectedElement.type === 'text') {
-        this.selectedElement.color = e.target.value;
+        (this.selectedElement as TextElement).color = (e.target as HTMLInputElement).value;
         this.renderElements();
         this._autosave();
       }
@@ -207,18 +280,18 @@ export class PDFEditorApp {
 
     this.ui.fontSizeDownBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      const newSize = Math.max(8, this.selectedElement.fontSize - 2);
-      this.selectedElement.fontSize = newSize;
-      this.ui.fontSizeInput.value = newSize;
+      const newSize = Math.max(8, (this.selectedElement as TextElement).fontSize - 2);
+      (this.selectedElement as TextElement).fontSize = newSize;
+      this.ui.fontSizeInput.value = String(newSize);
       this.renderElements();
       this._autosave();
     });
 
     this.ui.fontSizeUpBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      const newSize = Math.min(72, this.selectedElement.fontSize + 2);
-      this.selectedElement.fontSize = newSize;
-      this.ui.fontSizeInput.value = newSize;
+      const newSize = Math.min(72, (this.selectedElement as TextElement).fontSize + 2);
+      (this.selectedElement as TextElement).fontSize = newSize;
+      this.ui.fontSizeInput.value = String(newSize);
       this.renderElements();
       this._autosave();
     });
@@ -226,7 +299,7 @@ export class PDFEditorApp {
     // Shape property editing — update selected shape when color/width changes
     this.ui.shapeColor.addEventListener('input', (e) => {
       if (this.selectedElement?.type === 'shape') {
-        this.selectedElement.strokeColor = e.target.value;
+        (this.selectedElement as ShapeElement).strokeColor = (e.target as HTMLInputElement).value;
         this.renderElements();
         this._autosave();
       }
@@ -234,7 +307,7 @@ export class PDFEditorApp {
 
     this.ui.shapeWidth.addEventListener('change', (e) => {
       if (this.selectedElement?.type === 'shape') {
-        this.selectedElement.strokeWidth = parseInt(e.target.value) || 2;
+        (this.selectedElement as ShapeElement).strokeWidth = parseInt((e.target as HTMLInputElement).value) || 2;
         this.renderElements();
         this._autosave();
       }
@@ -333,7 +406,7 @@ export class PDFEditorApp {
     this.ui.canvas.style.touchAction = 'pan-x pan-y';
   }
 
-  _snapshotElements() {
+  _snapshotElements(): ElementJSON[] {
     return this.elements.map(el => el.toJSON());
   }
 
@@ -348,7 +421,7 @@ export class PDFEditorApp {
     if (!this.historyStack.length) return;
     this.redoStack.push(this._snapshotElements());
     const snapshot = this.historyStack.pop();
-    this._restoreSnapshot(snapshot);
+    this._restoreSnapshot(snapshot!);
     this._updateUndoRedoBtns();
   }
 
@@ -356,37 +429,35 @@ export class PDFEditorApp {
     if (!this.redoStack.length) return;
     this.historyStack.push(this._snapshotElements());
     const snapshot = this.redoStack.pop();
-    this._restoreSnapshot(snapshot);
+    this._restoreSnapshot(snapshot!);
     this._updateUndoRedoBtns();
   }
 
-  _restoreSnapshot(snapshot) {
-    this.elements = snapshot.map(data => {
-      if (data.type === 'text') {
-        const el = new TextElement(data.x, data.y, data.page, {
-          width: data.width, height: data.height,
-          fontSize: data.fontSize, color: data.color,
-          fontFamily: data.fontFamily || 'Arial',
-          bold: data.bold || false, italic: data.italic || false,
-          multiline: data.multiline
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _restoreSnapshot(snapshot: Array<Record<string, any>>) {
+    this.elements = snapshot.map((data) => {
+      if (data['type'] === 'text') {
+        const el = new TextElement(data['x'], data['y'], data['page'], {
+          width: data['width'], height: data['height'],
+          fontSize: data['fontSize'], color: data['color'],
+          fontFamily: data['fontFamily'] || 'Arial',
+          bold: data['bold'] || false, italic: data['italic'] || false,
+          multiline: data['multiline']
         });
-        el.text = data.text;
+        el.text = data['text'];
         return el;
-      } else if (data.type === 'signature') {
-        return new SignatureElement(
-          data.x, data.y, data.page, data.data,
-          { width: data.width, height: data.height }
-        );
-      } else if (data.type === 'shape') {
-        return new ShapeElement(data.shapeType, data.x, data.y, data.width, data.height, data.page, {
-          strokeColor: data.strokeColor,
-          strokeWidth: data.strokeWidth,
-          x1: data.x1, y1: data.y1,
-          x2: data.x2, y2: data.y2,
-          points: data.points || []
+      } else if (data['type'] === 'signature') {
+        return new SignatureElement(data['x'], data['y'], data['page'], data['data'],
+          { width: data['width'], height: data['height'] });
+      } else if (data['type'] === 'shape') {
+        return new ShapeElement(data['shapeType'], data['x'], data['y'], data['width'], data['height'], data['page'], {
+          strokeColor: data['strokeColor'], strokeWidth: data['strokeWidth'],
+          x1: data['x1'], y1: data['y1'], x2: data['x2'], y2: data['y2'],
+          points: data['points'] || []
         });
       }
-    }).filter(Boolean);
+      return null;
+    }).filter((el): el is TextElement | SignatureElement | ShapeElement => el !== null);
     this.selectedElement = null;
     this.renderElements();
     this._updateFormattingToolbar();
@@ -437,31 +508,31 @@ export class PDFEditorApp {
     this.showToast('All annotations cleared — Ctrl+Z to undo');
   }
 
-  _toggleHelp(show) {
+  _toggleHelp(show?: boolean) {
     const shouldShow = show !== undefined ? show : !this.ui.helpModal.classList.contains('active');
     this.ui.helpModal.classList.toggle('active', shouldShow);
   }
 
-  showToast(msg, duration = 3000) {
+  showToast(msg: string, duration = 3000) {
     this.ui.toast.textContent = msg;
     this.ui.toast.classList.add('show');
-    clearTimeout(this._toastTimer);
+    clearTimeout(this._toastTimer ?? undefined);
     this._toastTimer = setTimeout(() => {
       this.ui.toast.classList.remove('show');
     }, duration);
   }
 
-  async handleFileUpload(e) {
-    const file = e.target.files[0];
+  async handleFileUpload(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
     if (!file || file.type !== 'application/pdf') {
       alert('Please select a valid PDF file');
       return;
     }
     const reader = new FileReader();
     reader.onload = async (event) => {
-      await this.renderer.loadPDF(event.target.result);
+      await this.renderer.loadPDF(((event.target as FileReader).result as ArrayBuffer));
       this.elements = [];
-      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById("emptyState")!.style.display = 'none';
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       // On mobile, fit-to-width can give very small zooms (e.g. 35%) — enforce a readable minimum
       const isMobile = window.innerWidth <= 640;
@@ -509,14 +580,14 @@ export class PDFEditorApp {
     const focused = document.activeElement;
     const before = this.elements.length;
     this.elements = this.elements.filter(e => {
-      if (!(e.type === 'text' && !e.text)) return true;
+      if (!(e.type === 'text' && !(e as TextElement).text)) return true;
       const input = document.querySelector(`[data-id="${e.id}"] input, [data-id="${e.id}"] textarea`);
       return input && input === focused;
     });
     if (this.elements.length < before) this.renderElements();
   }
 
-  setMode(mode) {
+  setMode(mode: ToolMode) {
     // Don't clean here — setMode('select') is called right after placing a text element
     // and would delete it before the user types. Cleaning happens in selectElement() instead.
     this._cancelDrawing();
@@ -557,7 +628,7 @@ export class PDFEditorApp {
     return this.mode.startsWith('draw');
   }
 
-  _handleDrawPointerDown(e) {
+  _handleDrawPointerDown(e: PointerEvent) {
     if (!this.renderer.pdfDoc) return;
 
     // Track all canvas pointer contacts for pinch detection
@@ -599,7 +670,7 @@ export class PDFEditorApp {
     e.preventDefault();
   }
 
-  _handleDrawPointerMove(e) {
+  _handleDrawPointerMove(e: PointerEvent) {
     // Keep pinch pointer positions current
     if (this._pinchPointers.has(e.pointerId)) {
       this._pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -630,7 +701,7 @@ export class PDFEditorApp {
     this._updateDrawPreview(x, y);
   }
 
-  _updateDrawPreview(curX, curY) {
+  _updateDrawPreview(curX: number, curY: number) {
     if (!this._previewSvg) return;
     while (this._previewSvg.firstChild) this._previewSvg.firstChild.remove();
 
@@ -640,8 +711,8 @@ export class PDFEditorApp {
     const col = this.ui.shapeColor.value;
     const sw  = (parseInt(this.ui.shapeWidth.value) || 2) * s;
 
-    const sx0  = this._drawStart.x * s + ox;
-    const sy0  = this._drawStart.y * s + oy;
+    const sx0 = this._drawStart!.x * s + ox;
+    const sy0 = this._drawStart!.y * s + oy;
     const sxC  = curX * s + ox;
     const syC  = curY * s + oy;
 
@@ -649,32 +720,32 @@ export class PDFEditorApp {
 
     if (this.mode === 'drawRect') {
       const el = document.createElementNS(ns, 'rect');
-      el.setAttribute('x', Math.min(sx0, sxC));
-      el.setAttribute('y', Math.min(sy0, syC));
-      el.setAttribute('width',  Math.abs(sxC - sx0));
-      el.setAttribute('height', Math.abs(syC - sy0));
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
       el.setAttribute('fill', 'none');
       el.setAttribute('stroke', col);
-      el.setAttribute('stroke-width', sw);
+      el.setAttribute('stroke-width', String(sw));
       this._previewSvg.appendChild(el);
 
     } else if (this.mode === 'drawEllipse') {
       const el = document.createElementNS(ns, 'ellipse');
-      el.setAttribute('cx', (sx0 + sxC) / 2);
-      el.setAttribute('cy', (sy0 + syC) / 2);
-      el.setAttribute('rx', Math.abs(sxC - sx0) / 2);
-      el.setAttribute('ry', Math.abs(syC - sy0) / 2);
+      el.setAttribute('cx', String((sx0 + sxC) / 2));
+      el.setAttribute('cy', String((sy0 + syC) / 2));
+      el.setAttribute('rx', String(Math.abs(sxC - sx0) / 2));
+      el.setAttribute('ry', String(Math.abs(syC - sy0) / 2));
       el.setAttribute('fill', 'none');
       el.setAttribute('stroke', col);
-      el.setAttribute('stroke-width', sw);
+      el.setAttribute('stroke-width', String(sw));
       this._previewSvg.appendChild(el);
 
     } else if (this.mode === 'drawArrow') {
       const line = document.createElementNS(ns, 'line');
-      line.setAttribute('x1', sx0); line.setAttribute('y1', sy0);
-      line.setAttribute('x2', sxC); line.setAttribute('y2', syC);
+      line.setAttribute('x1', String(sx0)); line.setAttribute('y1', String(sy0));
+      line.setAttribute('x2', String(sxC)); line.setAttribute('y2', String(syC));
       line.setAttribute('stroke', col);
-      line.setAttribute('stroke-width', sw);
+      line.setAttribute('stroke-width', String(sw));
       line.setAttribute('stroke-linecap', 'round');
       this._previewSvg.appendChild(line);
 
@@ -697,20 +768,20 @@ export class PDFEditorApp {
       pl.setAttribute('points', pts);
       pl.setAttribute('fill', 'none');
       pl.setAttribute('stroke', col);
-      pl.setAttribute('stroke-width', sw);
+      pl.setAttribute('stroke-width', String(sw));
       pl.setAttribute('stroke-linecap', 'round');
       pl.setAttribute('stroke-linejoin', 'round');
       this._previewSvg.appendChild(pl);
     }
   }
 
-  _handleDrawPointerUp(e) {
+  _handleDrawPointerUp(e: PointerEvent) {
     this._pinchPointers.delete(e.pointerId);
 
     // Commit pinch zoom when finger count drops below 2
     if (this._pinchStartDist !== null && this._pinchPointers.size < 2) {
       const finalDist = this._lastPinchDist || this._pinchStartDist;
-      const newScale  = this._pinchStartZoom * finalDist / this._pinchStartDist;
+      const newScale = this._pinchStartZoom! * finalDist / this._pinchStartDist;
       this.ui.canvas.style.transform = '';
       this._pinchStartDist = null;
       this._pinchStartZoom = null;
@@ -735,21 +806,21 @@ export class PDFEditorApp {
     let shape  = null;
 
     if (this.mode === 'drawArrow') {
-      const x = Math.min(this._drawStart.x, endX);
-      const y = Math.min(this._drawStart.y, endY);
-      const w = Math.abs(endX - this._drawStart.x);
-      const h = Math.abs(endY - this._drawStart.y);
+      const x = Math.min(this._drawStart!.x, endX);
+      const y = Math.min(this._drawStart!.y, endY);
+      const w = Math.abs(endX - this._drawStart!.x);
+      const h = Math.abs(endY - this._drawStart!.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement('arrow', x, y, w, h, this.renderer.currentPage, {
-        ...opts, x1: this._drawStart.x, y1: this._drawStart.y, x2: endX, y2: endY
+        ...opts, x1: this._drawStart!.x, y1: this._drawStart!.y, x2: endX, y2: endY
       });
 
     } else if (this.mode === 'drawRect' || this.mode === 'drawEllipse') {
       const st = this.mode === 'drawRect' ? 'rect' : 'ellipse';
-      const x = Math.min(this._drawStart.x, endX);
-      const y = Math.min(this._drawStart.y, endY);
-      const w = Math.abs(endX - this._drawStart.x);
-      const h = Math.abs(endY - this._drawStart.y);
+      const x = Math.min(this._drawStart!.x, endX);
+      const y = Math.min(this._drawStart!.y, endY);
+      const w = Math.abs(endX - this._drawStart!.x);
+      const h = Math.abs(endY - this._drawStart!.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement(st, x, y, w, h, this.renderer.currentPage, opts);
 
@@ -776,7 +847,7 @@ export class PDFEditorApp {
     }
   }
 
-  _handleDrawPointerCancel(e) {
+  _handleDrawPointerCancel(e: PointerEvent) {
     this._pinchPointers.delete(e.pointerId);
     this._cancelDrawing();
     if (this._pinchPointers.size === 0) {
@@ -800,7 +871,7 @@ export class PDFEditorApp {
     const w = this.ui.signatureCanvas.offsetWidth || 500;
     this.ui.signatureCanvas.width = w;
     this.ui.signatureCanvas.height = Math.round(w * 0.4);
-    this.signaturePad.clear();
+    this.signaturePad!.clear();
   }
 
   closeSignatureModal() {
@@ -810,13 +881,13 @@ export class PDFEditorApp {
   }
 
   saveSignature() {
-    this.currentSignature = this.signaturePad.getDataURL();
+    this.currentSignature = this.signaturePad!.getDataURL();
     this.ui.signatureModal.classList.remove('active');
     this.mode = 'addSignature';
     this.ui.addSignatureBtn.classList.add('active');
   }
 
-  selectElement(element) {
+  selectElement(element: PDFElement | null) {
     if (this.selectedElement === element) {
       this._updateFormattingToolbar();
       return;
@@ -844,11 +915,11 @@ export class PDFEditorApp {
     this.ui.textColorInput.disabled = !isText;
     this.ui.colorSwatches.classList.toggle('disabled', !isText);
     if (isText) {
-      this.ui.fontFamily.value = el.fontFamily || 'Arial';
-      this.ui.boldBtn.classList.toggle('btn-active-fmt', !!el.bold);
-      this.ui.italicBtn.classList.toggle('btn-active-fmt', !!el.italic);
-      this.ui.fontSizeInput.value = el.fontSize;
-      this.ui.textColorInput.value = el.color;
+      this.ui.fontFamily.value = (el as TextElement).fontFamily || 'Arial';
+      this.ui.boldBtn.classList.toggle('btn-active-fmt', !!(el as TextElement).bold);
+      this.ui.italicBtn.classList.toggle('btn-active-fmt', !!(el as TextElement).italic);
+      this.ui.fontSizeInput.value = String((el as TextElement).fontSize);
+      this.ui.textColorInput.value = (el as TextElement).color;
     } else {
       this.ui.boldBtn.classList.remove('btn-active-fmt');
       this.ui.italicBtn.classList.remove('btn-active-fmt');
@@ -859,12 +930,12 @@ export class PDFEditorApp {
     this.ui.shapeColor.disabled = !shapeActive;
     this.ui.shapeWidth.disabled = !shapeActive;
     if (isShape) {
-      this.ui.shapeColor.value = el.strokeColor;
-      this.ui.shapeWidth.value = el.strokeWidth;
+      this.ui.shapeColor.value = (el as ShapeElement).strokeColor;
+      this.ui.shapeWidth.value = String((el as ShapeElement).strokeWidth);
     }
   }
 
-  handleCanvasClick(e) {
+  handleCanvasClick(e: MouseEvent) {
     if (this._isShapeMode()) return;
     if (this.mode === 'addText') {
       this.addTextAtPosition(e);
@@ -879,7 +950,7 @@ export class PDFEditorApp {
     }
   }
 
-  addTextAtPosition(e) {
+  addTextAtPosition(e: MouseEvent) {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
@@ -897,17 +968,17 @@ export class PDFEditorApp {
     const inputEl = this.ui.container.querySelector(
       `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
     );
-    if (inputEl) inputEl.focus();
+    if (inputEl) (inputEl as HTMLElement).focus();
   }
 
-  addSignatureAtPosition(e) {
+  addSignatureAtPosition(e: MouseEvent) {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
     const signatureElement = new SignatureElement(
       x, y,
       this.renderer.currentPage,
-      this.currentSignature
+      this.currentSignature!
     );
     signatureElement.x -= signatureElement.width / 2;
     signatureElement.y -= signatureElement.height / 2;
@@ -917,7 +988,7 @@ export class PDFEditorApp {
     this.renderElements();
   }
 
-  removeElement(id) {
+  removeElement(id: number) {
     this.pushHistory();
     this.elements = this.elements.filter(el => el.id !== id);
     if (this.selectedElement && this.selectedElement.id === id) {
@@ -953,9 +1024,9 @@ export class PDFEditorApp {
         const input = div.querySelector('input, textarea');
         if (input) {
           const isSelected = this.selectedElement && this.selectedElement.id === element.id;
-          if (!isSelected) input.style.pointerEvents = 'none';
+          if (!isSelected) (input as HTMLElement).style.pointerEvents = 'none';
           input.addEventListener('input', () => {
-            clearTimeout(this._textChangeTimer);
+            clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
               this.pushHistory();
               this._autosave();
@@ -967,7 +1038,7 @@ export class PDFEditorApp {
     });
   }
 
-  async _goToPage(n) {
+  async _goToPage(n: number) {
     if (!this.renderer.pdfDoc) return;
     const changed = await this.renderer.goToPage(n);
     if (changed) {
@@ -989,12 +1060,12 @@ export class PDFEditorApp {
 
   updatePageInfo() {
     const info = this.renderer.getPageInfo();
-    this.ui.pageInput.value = info.current;
-    this.ui.pageInput.max = info.total;
+    this.ui.pageInput.value = String(info.current);
+    this.ui.pageInput.max = String(info.total);
     this.ui.pageTotal.textContent = `/ ${info.total}`;
   }
 
-  async applyZoom(newScale) {
+  async applyZoom(newScale: number): Promise<void> {
     this.zoomScale = Math.max(0.25, Math.min(3.0, newScale));
     this.renderer.setScale(this.zoomScale);
     this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
@@ -1011,7 +1082,7 @@ export class PDFEditorApp {
     if (!this.renderer.pdfDoc) return;
     this._cleanEmptyTextElements();
     this.showToast('Generating PDF…', 60000);
-    const { PDFDocument, rgb, StandardFonts } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
     const pdfDoc = await PDFDocument.create();
     this.ui.container.style.opacity = '0.4';
     try {
@@ -1032,21 +1103,23 @@ export class PDFEditorApp {
 
         const pageElements = this.elements.filter(el => el.page === pageNum);
         for (const element of pageElements) {
-          if (element.type === 'text' && element.text) {
-            const { r, g, b } = this.hexToRgbValues(element.color);
+          if (element.type === 'text' && (element as TextElement).text) {
+            const te = element as TextElement;
+            const { r, g, b } = this.hexToRgbValues(te.color);
             const fontName = this._getStandardFont(
-              element.fontFamily, element.bold, element.italic
+              te.fontFamily, te.bold, te.italic
             );
-            const font = await pdfDoc.embedFont(StandardFonts[fontName]);
-            page.drawText(element.text, {
-              x: element.x,
-              y: origVp.height - element.y - element.fontSize,
-              size: element.fontSize,
+            const font = await pdfDoc.embedFont(StandardFonts[fontName as keyof typeof StandardFonts]);
+            page.drawText(te.text, {
+              x: te.x,
+                y: origVp.height - te.y - te.fontSize,
+              size: te.fontSize,
               font,
               color: rgb(r, g, b)
             });
           } else if (element.type === 'signature') {
-            const sigImage = await pdfDoc.embedPng(element.data);
+            const se = element as SignatureElement;
+            const sigImage = await pdfDoc.embedPng(se.data);
             page.drawImage(sigImage, {
               x: element.x,
               y: origVp.height - element.y - element.height,
@@ -1054,11 +1127,12 @@ export class PDFEditorApp {
               height: element.height
             });
           } else if (element.type === 'shape') {
-            const { r, g, b } = this.hexToRgbValues(element.strokeColor);
+            const she = element as ShapeElement;
+            const { r, g, b } = this.hexToRgbValues(she.strokeColor);
             const shapeColor = rgb(r, g, b);
-            const lw = element.strokeWidth;
+            const lw = she.strokeWidth;
 
-            switch (element.shapeType) {
+            switch (she.shapeType) {
               case 'rect':
                 // Omitting `color` gives stroke-only (no fill) in pdf-lib
                 page.drawRectangle({
@@ -1084,19 +1158,19 @@ export class PDFEditorApp {
 
               case 'arrow': {
                 page.drawLine({
-                  start: { x: element.x1, y: origVp.height - element.y1 },
-                  end:   { x: element.x2, y: origVp.height - element.y2 },
+                  start: { x: she.x1, y: origVp.height - she.y1 },
+                  end:   { x: she.x2, y: origVp.height - she.y2 },
                   thickness: lw,
                   color: shapeColor
                 });
                 // Two-line arrowhead (V-shape) at endpoint
                 const headLen = Math.max(8, lw * 4);
                 const pdfAngle = Math.atan2(
-                  -(element.y2 - element.y1),
-                   (element.x2 - element.x1)
+                  -(she.y2 - she.y1),
+                   (she.x2 - she.x1)
                 );
-                const ex = element.x2;
-                const ey = origVp.height - element.y2;
+                const ex = she.x2;
+                const ey = origVp.height - she.y2;
                 page.drawLine({
                   start: { x: ex, y: ey },
                   end:   { x: ex + headLen * Math.cos(pdfAngle + Math.PI * 0.75),
@@ -1113,8 +1187,8 @@ export class PDFEditorApp {
               }
 
               case 'freehand': {
-                if (element.points.length < 2) break;
-                const pts = element.points;
+                if (she.points.length < 2) break;
+                const pts = she.points;
                 // Pass screen-y coords (y from top); set y:origVp.height so pdf-lib's
                 // internal flip converts correctly to PDF space (y from bottom)
                 let d = `M ${pts[0].x} ${pts[0].y}`;
@@ -1136,7 +1210,7 @@ export class PDFEditorApp {
       }
 
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1152,7 +1226,7 @@ export class PDFEditorApp {
     }
   }
 
-  _getStandardFont(fontFamily, bold, italic) {
+  _getStandardFont(fontFamily: string, bold: boolean, italic: boolean): string {
     const f = (fontFamily || 'Arial').toLowerCase();
     if (f.includes('times')) {
       if (bold && italic) return 'TimesRomanBoldItalic';
@@ -1173,7 +1247,7 @@ export class PDFEditorApp {
     return 'Helvetica';
   }
 
-  hexToRgbValues(hex) {
+  hexToRgbValues(hex: string): { r: number; g: number; b: number } {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return { r: 0, g: 0, b: 0 };
     return {
@@ -1190,9 +1264,9 @@ export class PDFEditorApp {
     });
   }
 
-  importState(stateJSON) {
+  importState(stateJSON: string) {
     const state = JSON.parse(stateJSON);
-    this.elements = state.elements.map(data => {
+    this.elements = state.elements.map((data: Record<string, any>) => {
       if (data.type === 'text') {
         const el = new TextElement(data.x, data.y, data.page, {
           width: data.width,
