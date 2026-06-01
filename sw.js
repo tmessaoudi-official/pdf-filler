@@ -1,15 +1,15 @@
 const CACHE = 'pdfapp-v1';
 const SHELL = [
   './',
-  './js/main.js?v=5',
-  './js/pdfEditorApp.js?v=5',
-  './js/pdfRenderer.js?v=5',
-  './js/pdfElement.js?v=5',
-  './js/textElement.js?v=5',
-  './js/signatureElement.js?v=5',
-  './js/signaturePad.js?v=5',
-  './js/interactionHandler.js?v=5',
-  './js/shapeElement.js?v=5',
+  './js/main.js?v=7',
+  './js/pdfEditorApp.js?v=7',
+  './js/pdfRenderer.js?v=7',
+  './js/pdfElement.js?v=7',
+  './js/textElement.js?v=7',
+  './js/signatureElement.js?v=7',
+  './js/signaturePad.js?v=7',
+  './js/interactionHandler.js?v=7',
+  './js/shapeElement.js?v=7',
   './manifest.json',
   './icon.svg'
 ];

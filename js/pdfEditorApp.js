@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=5';
-import { TextElement } from './textElement.js?v=5';
-import { SignatureElement } from './signatureElement.js?v=5';
-import { SignaturePad } from './signaturePad.js?v=5';
-import { InteractionHandler } from './interactionHandler.js?v=5';
-import { ShapeElement } from './shapeElement.js?v=5';
+import { PDFRenderer } from './pdfRenderer.js?v=7';
+import { TextElement } from './textElement.js?v=7';
+import { SignatureElement } from './signatureElement.js?v=7';
+import { SignaturePad } from './signaturePad.js?v=7';
+import { InteractionHandler } from './interactionHandler.js?v=7';
+import { ShapeElement } from './shapeElement.js?v=7';
 
 export class PDFEditorApp {
   constructor() {
@@ -71,8 +71,10 @@ export class PDFEditorApp {
       rectBtn:     document.getElementById('rectBtn'),
       circleBtn:   document.getElementById('circleBtn'),
       freehandBtn: document.getElementById('freehandBtn'),
-      shapeColor:  document.getElementById('shapeColor'),
-      shapeWidth:  document.getElementById('shapeWidth')
+      shapeColor:       document.getElementById('shapeColor'),
+      shapeWidth:       document.getElementById('shapeWidth'),
+      fontSizeDownBtn:  document.getElementById('fontSizeDownBtn'),
+      fontSizeUpBtn:    document.getElementById('fontSizeUpBtn')
     };
     this.signaturePad = new SignaturePad(this.ui.signatureCanvas);
   }
@@ -188,6 +190,41 @@ export class PDFEditorApp {
       }
     });
 
+    this.ui.fontSizeDownBtn.addEventListener('click', () => {
+      if (!this.selectedElement || this.selectedElement.type !== 'text') return;
+      const newSize = Math.max(8, this.selectedElement.fontSize - 2);
+      this.selectedElement.fontSize = newSize;
+      this.ui.fontSizeInput.value = newSize;
+      this.renderElements();
+      this._autosave();
+    });
+
+    this.ui.fontSizeUpBtn.addEventListener('click', () => {
+      if (!this.selectedElement || this.selectedElement.type !== 'text') return;
+      const newSize = Math.min(72, this.selectedElement.fontSize + 2);
+      this.selectedElement.fontSize = newSize;
+      this.ui.fontSizeInput.value = newSize;
+      this.renderElements();
+      this._autosave();
+    });
+
+    // Shape property editing — update selected shape when color/width changes
+    this.ui.shapeColor.addEventListener('input', (e) => {
+      if (this.selectedElement?.type === 'shape') {
+        this.selectedElement.strokeColor = e.target.value;
+        this.renderElements();
+        this._autosave();
+      }
+    });
+
+    this.ui.shapeWidth.addEventListener('change', (e) => {
+      if (this.selectedElement?.type === 'shape') {
+        this.selectedElement.strokeWidth = parseInt(e.target.value) || 2;
+        this.renderElements();
+        this._autosave();
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
       // Escape always works — cancel mode and deselect
       if (e.key === 'Escape') {
@@ -197,7 +234,7 @@ export class PDFEditorApp {
       }
 
       // All other shortcuts blocked when typing in an input/textarea/select
-      if (e.target.matches('input, textarea, select')) return;
+      if (e.target instanceof Element && e.target.matches('input, textarea, select')) return;
 
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
@@ -391,7 +428,9 @@ export class PDFEditorApp {
       this.elements = [];
       document.getElementById('emptyState').style.display = 'none';
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
-      await this.applyZoom(fitScale);
+      // On mobile, fit-to-width can give very small zooms (e.g. 35%) — enforce a readable minimum
+      const isMobile = window.innerWidth <= 640;
+      await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
       this.enableUI();
       this.currentFilename = file.name;
       this.ui.clearSaveBtn.disabled = false;
@@ -428,7 +467,22 @@ export class PDFEditorApp {
     this._activeDrawPointerId = null;
   }
 
+  _cleanEmptyTextElements() {
+    // Preserve any empty text element whose input is currently focused
+    // (user just placed it and is about to type)
+    const focused = document.activeElement;
+    const before = this.elements.length;
+    this.elements = this.elements.filter(e => {
+      if (!(e.type === 'text' && !e.text)) return true;
+      const input = document.querySelector(`[data-id="${e.id}"] input, [data-id="${e.id}"] textarea`);
+      return input && input === focused;
+    });
+    if (this.elements.length < before) this.renderElements();
+  }
+
   setMode(mode) {
+    // Don't clean here — setMode('select') is called right after placing a text element
+    // and would delete it before the user types. Cleaning happens in selectElement() instead.
     this._cancelDrawing();
     this.mode = mode;
     // draw modes need touch-action:none so finger doesn't scroll container while drawing;
@@ -442,19 +496,20 @@ export class PDFEditorApp {
     this.ui.freehandBtn.classList.toggle('active', mode === 'drawFreehand');
 
     const badges = {
-      select:       '● SELECT',
-      addText:      '✚ ADD TEXT',
-      addSignature: '✍ SIGNING',
+      select:       'SELECT',
+      addText:      '+ TEXT',
+      addSignature: '✍ SIGN',
       drawArrow:    '→ ARROW',
       drawRect:     '□ RECT',
       drawEllipse:  '○ CIRCLE',
-      drawFreehand: '✏ DRAWING'
+      drawFreehand: '✏ DRAW'
     };
-    this.ui.modeBadge.textContent = badges[mode] || '● SELECT';
+    this.ui.modeBadge.textContent = badges[mode] || 'SELECT';
     this.ui.modeBadge.classList.toggle('active', mode !== 'select');
 
     this.ui.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
 
+    // Shape controls: enabled in draw modes; _updateFormattingToolbar handles selected shape
     const isShapeMode = mode.startsWith('draw');
     this.ui.shapeColor.disabled = !isShapeMode;
     this.ui.shapeWidth.disabled = !isShapeMode;
@@ -730,6 +785,9 @@ export class PDFEditorApp {
       this._updateFormattingToolbar();
       return;
     }
+    // Clean up all empty text elements (except any currently focused input)
+    // whenever the user selects something or clicks away
+    this._cleanEmptyTextElements();
     this.selectedElement = element;
     this.renderElements();
     this._updateFormattingToolbar();
@@ -737,11 +795,16 @@ export class PDFEditorApp {
 
   _updateFormattingToolbar() {
     const el = this.selectedElement;
-    const isText = el && el.type === 'text';
-    this.ui.fontFamily.disabled = !isText;
-    this.ui.boldBtn.disabled = !isText;
-    this.ui.italicBtn.disabled = !isText;
-    this.ui.fontSizeInput.disabled = !isText;
+    const isText  = el?.type === 'text';
+    const isShape = el?.type === 'shape';
+
+    // Text controls
+    this.ui.fontFamily.disabled     = !isText;
+    this.ui.boldBtn.disabled        = !isText;
+    this.ui.italicBtn.disabled      = !isText;
+    this.ui.fontSizeInput.disabled  = !isText;
+    this.ui.fontSizeDownBtn.disabled = !isText;
+    this.ui.fontSizeUpBtn.disabled   = !isText;
     this.ui.textColorInput.disabled = !isText;
     if (isText) {
       this.ui.fontFamily.value = el.fontFamily || 'Arial';
@@ -752,6 +815,15 @@ export class PDFEditorApp {
     } else {
       this.ui.boldBtn.classList.remove('btn-active-fmt');
       this.ui.italicBtn.classList.remove('btn-active-fmt');
+    }
+
+    // Shape controls: enabled when shape selected OR in active draw mode
+    const shapeActive = isShape || this.mode.startsWith('draw');
+    this.ui.shapeColor.disabled = !shapeActive;
+    this.ui.shapeWidth.disabled = !shapeActive;
+    if (isShape) {
+      this.ui.shapeColor.value = el.strokeColor;
+      this.ui.shapeWidth.value = el.strokeWidth;
     }
   }
 
@@ -894,6 +966,8 @@ export class PDFEditorApp {
 
   async downloadPDF() {
     if (!this.renderer.pdfDoc) return;
+    this._cleanEmptyTextElements();
+    this.showToast('Generating PDF…', 60000);
     const { PDFDocument, rgb, StandardFonts } = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm');
     const pdfDoc = await PDFDocument.create();
     this.ui.container.style.opacity = '0.4';
@@ -1023,7 +1097,8 @@ export class PDFEditorApp {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'filled-signed-' + Date.now() + '.pdf';
+      const baseName = (this.currentFilename || 'document').replace(/\.pdf$/i, '');
+      link.download = baseName + '-signed.pdf';
       link.click();
       this.showToast('PDF downloaded!');
       URL.revokeObjectURL(url);
