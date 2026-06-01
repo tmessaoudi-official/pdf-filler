@@ -5,6 +5,7 @@ export class InteractionHandler {
     this.isDragging = false;
     this.isResizing = false;
     this.currentElement = null;
+    this._activePointerId = null;
     this.offsetX = 0;
     this.offsetY = 0;
     this.startX = 0;
@@ -16,7 +17,7 @@ export class InteractionHandler {
     this._preActionSnapshot = null;
   }
 
-  handleMouseDown(e, element, div) {
+  handlePointerDown(e, element, div) {
     if (e.target.classList.contains('control-btn')) return;
     if (e.target.classList.contains('resize-handle')) {
       this._startElementX = element.x;
@@ -32,6 +33,7 @@ export class InteractionHandler {
   startDrag(e, element, div) {
     this.isDragging = true;
     this.currentElement = element;
+    this._activePointerId = e.pointerId;
     this._preActionSnapshot = this.app._snapshotElements();
     const divRect = div.getBoundingClientRect();
     this.offsetX = e.clientX - divRect.left;
@@ -42,6 +44,7 @@ export class InteractionHandler {
   startResize(e, element) {
     this.isResizing = true;
     this.currentElement = element;
+    this._activePointerId = e.pointerId;
     this._preActionSnapshot = this.app._snapshotElements();
     this.startX = e.clientX;
     this.startY = e.clientY;
@@ -51,7 +54,8 @@ export class InteractionHandler {
     e.stopPropagation();
   }
 
-  handleMouseMove(e) {
+  handlePointerMove(e) {
+    if (e.pointerId !== this._activePointerId) return;
     if (this.isDragging && this.currentElement) this.drag(e);
     else if (this.isResizing && this.currentElement) this.resize(e);
   }
@@ -99,7 +103,17 @@ export class InteractionHandler {
     this.app.renderElements();
   }
 
-  handleMouseUp() {
+  handlePointerUp(e) {
+    if (e.pointerId !== this._activePointerId) return;
+    this._finish();
+  }
+
+  handlePointerCancel(e) {
+    if (e.pointerId !== this._activePointerId) return;
+    this._finish();
+  }
+
+  _finish() {
     const wasDragging = this.isDragging;
     const wasResizing = this.isResizing;
     const movedEl = this.currentElement;
@@ -107,6 +121,7 @@ export class InteractionHandler {
     this.isDragging = false;
     this.isResizing = false;
     this.currentElement = null;
+    this._activePointerId = null;
 
     if (movedEl && (wasDragging || wasResizing)) {
       const movedX = movedEl.x !== this._startElementX;

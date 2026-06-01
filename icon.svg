@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Blue rounded background -->
+  <rect width="192" height="192" rx="28" fill="#2563eb"/>
+  <!-- White document body -->
+  <rect x="44" y="28" width="88" height="112" rx="8" fill="white"/>
+  <!-- Fold corner cut-out (blue triangle) -->
+  <polygon points="108,28 132,52 108,52" fill="#2563eb"/>
+  <!-- Fold crease (white line on blue triangle) -->
+  <line x1="108" y1="28" x2="132" y2="52" stroke="#1d4ed8" stroke-width="1.5"/>
+  <!-- Document lines (text preview) -->
+  <rect x="56" y="72"  width="52" height="6" rx="3" fill="#93c5fd"/>
+  <rect x="56" y="86"  width="44" height="6" rx="3" fill="#93c5fd"/>
+  <rect x="56" y="100" width="48" height="6" rx="3" fill="#93c5fd"/>
+  <!-- Green pen-badge bottom-right -->
+  <circle cx="148" cy="148" r="30" fill="#10b981"/>
+  <!-- Pen icon (white) -->
+  <path d="M140 158 L156 134 L162 140 Z" fill="white"/>
+  <rect x="153" y="126" width="8" height="14" rx="2"
+        transform="rotate(45 157 133)" fill="white"/>
+</svg>

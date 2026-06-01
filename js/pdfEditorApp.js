@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=4';
-import { TextElement } from './textElement.js?v=4';
-import { SignatureElement } from './signatureElement.js?v=4';
-import { SignaturePad } from './signaturePad.js?v=4';
-import { InteractionHandler } from './interactionHandler.js?v=4';
-import { ShapeElement } from './shapeElement.js?v=4';
+import { PDFRenderer } from './pdfRenderer.js?v=5';
+import { TextElement } from './textElement.js?v=5';
+import { SignatureElement } from './signatureElement.js?v=5';
+import { SignaturePad } from './signaturePad.js?v=5';
+import { InteractionHandler } from './interactionHandler.js?v=5';
+import { ShapeElement } from './shapeElement.js?v=5';
 
 export class PDFEditorApp {
   constructor() {
@@ -25,6 +25,11 @@ export class PDFEditorApp {
     this._drawStart   = null;
     this._drawPoints  = [];
     this._previewSvg  = null;
+    this._activeDrawPointerId = null;
+    this._pinchPointers   = new Map();
+    this._pinchStartDist  = null;
+    this._pinchStartZoom  = null;
+    this._lastPinchDist   = null;
     this.initUI();
     this.setupEventListeners();
   }
@@ -95,13 +100,17 @@ export class PDFEditorApp {
     this.ui.sigColorInput.addEventListener('change', (e) => {
       this.signaturePad.setColor(e.target.value);
     });
-    document.addEventListener('mousemove', (e) => {
-      this.interactionHandler.handleMouseMove(e);
-      this._handleDrawMouseMove(e);
+    document.addEventListener('pointermove', (e) => {
+      this.interactionHandler.handlePointerMove(e);
+      this._handleDrawPointerMove(e);
     });
-    document.addEventListener('mouseup', (e) => {
-      this.interactionHandler.handleMouseUp();
-      this._handleDrawMouseUp(e);
+    document.addEventListener('pointerup', (e) => {
+      this.interactionHandler.handlePointerUp(e);
+      this._handleDrawPointerUp(e);
+    });
+    document.addEventListener('pointercancel', (e) => {
+      this.interactionHandler.handlePointerCancel(e);
+      this._handleDrawPointerCancel(e);
     });
     this.ui.zoomInBtn.addEventListener('click', () =>
       this.applyZoom(this.zoomScale + 0.1));
@@ -116,7 +125,7 @@ export class PDFEditorApp {
     this.ui.circleBtn.addEventListener('click',   () => this.setMode('drawEllipse'));
     this.ui.freehandBtn.addEventListener('click', () => this.setMode('drawFreehand'));
 
-    this.ui.canvas.addEventListener('mousedown', (e) => this._handleDrawMouseDown(e));
+    this.ui.canvas.addEventListener('pointerdown', (e) => this._handleDrawPointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
@@ -262,6 +271,10 @@ export class PDFEditorApp {
           break;
       }
     });
+
+    // Initialize canvas touch-action for select mode (pan allowed).
+    // setMode() overrides this to 'none' when entering draw modes.
+    this.ui.canvas.style.touchAction = 'pan-x pan-y';
   }
 
   _snapshotElements() {
@@ -409,14 +422,18 @@ export class PDFEditorApp {
 
   _cancelDrawing() {
     if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
-    this._drawing    = false;
-    this._drawStart  = null;
-    this._drawPoints = [];
+    this._drawing             = false;
+    this._drawStart           = null;
+    this._drawPoints          = [];
+    this._activeDrawPointerId = null;
   }
 
   setMode(mode) {
     this._cancelDrawing();
     this.mode = mode;
+    // draw modes need touch-action:none so finger doesn't scroll container while drawing;
+    // select mode restores single-finger pan of zoomed PDF
+    this.ui.canvas.style.touchAction = mode.startsWith('draw') ? 'none' : 'pan-x pan-y';
     this.ui.addTextBtn.classList.toggle('active', mode === 'addText');
     this.ui.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
     this.ui.arrowBtn.classList.toggle('active',    mode === 'drawArrow');
@@ -449,18 +466,36 @@ export class PDFEditorApp {
     return this.mode.startsWith('draw');
   }
 
-  _handleDrawMouseDown(e) {
+  _handleDrawPointerDown(e) {
+    if (!this.renderer.pdfDoc) return;
+
+    // Track all canvas pointer contacts for pinch detection
+    this._pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Second finger → cancel any draw in progress and switch to pinch-zoom
+    if (this._pinchPointers.size >= 2) {
+      this._cancelDrawing();
+      if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
+      this._pinchStartDist = this._getPinchDist();
+      this._pinchStartZoom = this.zoomScale;
+      this._lastPinchDist  = this._pinchStartDist;
+      e.preventDefault();
+      return;
+    }
+
+    if (!this._isShapeMode()) return;
     if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
-    if (!this._isShapeMode() || !this.renderer.pdfDoc) return;
+
     const rect = this.ui.canvas.getBoundingClientRect();
     if (e.clientX < rect.left || e.clientX > rect.right ||
         e.clientY < rect.top  || e.clientY > rect.bottom) return;
 
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top)  / this.zoomScale;
-    this._drawing   = true;
-    this._drawStart = { x, y };
-    this._drawPoints = [{ x, y }];
+    this._drawing             = true;
+    this._activeDrawPointerId = e.pointerId;
+    this._drawStart           = { x, y };
+    this._drawPoints          = [{ x, y }];
 
     this._previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this._previewSvg.id = 'drawPreview';
@@ -473,8 +508,25 @@ export class PDFEditorApp {
     e.preventDefault();
   }
 
-  _handleDrawMouseMove(e) {
+  _handleDrawPointerMove(e) {
+    // Keep pinch pointer positions current
+    if (this._pinchPointers.has(e.pointerId)) {
+      this._pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Live CSS-scale feedback during pinch (no PDF re-render until release)
+    if (this._pinchPointers.size >= 2 && this._pinchStartDist) {
+      const dist = this._getPinchDist();
+      this._lastPinchDist = dist;
+      const ratio = dist / this._pinchStartDist;
+      this.ui.canvas.style.transform = `scale(${ratio})`;
+      this.ui.canvas.style.transformOrigin = 'center center';
+      return;
+    }
+
     if (!this._drawing || !this._drawStart) return;
+    if (e.pointerId !== this._activeDrawPointerId) return;
+
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top)  / this.zoomScale;
@@ -561,9 +613,25 @@ export class PDFEditorApp {
     }
   }
 
-  _handleDrawMouseUp(e) {
+  _handleDrawPointerUp(e) {
+    this._pinchPointers.delete(e.pointerId);
+
+    // Commit pinch zoom when finger count drops below 2
+    if (this._pinchStartDist !== null && this._pinchPointers.size < 2) {
+      const finalDist = this._lastPinchDist || this._pinchStartDist;
+      const newScale  = this._pinchStartZoom * finalDist / this._pinchStartDist;
+      this.ui.canvas.style.transform = '';
+      this._pinchStartDist = null;
+      this._pinchStartZoom = null;
+      this._lastPinchDist  = null;
+      this.applyZoom(newScale);
+      return;
+    }
+
     if (!this._drawing) return;
-    this._drawing = false;
+    if (e.pointerId !== this._activeDrawPointerId) return;
+    this._drawing             = false;
+    this._activeDrawPointerId = null;
 
     if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
 
@@ -617,9 +685,31 @@ export class PDFEditorApp {
     }
   }
 
+  _handleDrawPointerCancel(e) {
+    this._pinchPointers.delete(e.pointerId);
+    this._cancelDrawing();
+    if (this._pinchPointers.size === 0) {
+      this.ui.canvas.style.transform = '';
+      this._pinchStartDist = null;
+      this._pinchStartZoom = null;
+      this._lastPinchDist  = null;
+    }
+  }
+
+  _getPinchDist() {
+    const pts = [...this._pinchPointers.values()];
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+  }
+
   openSignatureModal() {
-    this.signaturePad.clear();
     this.ui.signatureModal.classList.add('active');
+    // Resize canvas intrinsic dimensions to match rendered width (must be after show).
+    // offsetWidth forces layout flush so the value reflects the actual rendered size.
+    const w = this.ui.signatureCanvas.offsetWidth || 500;
+    this.ui.signatureCanvas.width = w;
+    this.ui.signatureCanvas.height = Math.round(w * 0.4);
+    this.signaturePad.clear();
   }
 
   closeSignatureModal() {
@@ -743,8 +833,8 @@ export class PDFEditorApp {
         e.stopPropagation();
         this.selectElement(element);
       });
-      div.addEventListener('mousedown', (e) => {
-        this.interactionHandler.handleMouseDown(e, element, div);
+      div.addEventListener('pointerdown', (e) => {
+        this.interactionHandler.handlePointerDown(e, element, div);
       });
       if (element.type === 'text') {
         const input = div.querySelector('input, textarea');
