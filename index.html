@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon.svg">
   <title>PDF Fill & Sign</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
@@ -142,6 +148,72 @@
       pointer-events: none;
     }
     #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Touch: show controls when element is selected (hover doesn't fire on mobile) */
+    .pdf-element.selected .element-controls { opacity: 1; }
+    /* Touch: prevent container scroll while dragging an element */
+    .pdf-element { touch-action: none; }
+    /* Signature canvas fills its container, JS sets intrinsic size */
+    #signatureCanvas { width: 100%; max-width: 500px; display: block; }
+
+    /* ── Mobile responsive ─────────────────────────────────── */
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .container {
+        border-radius: 0;
+        box-shadow: none;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header { padding: 10px 16px; }
+      .header h1 { font-size: 16px; }
+      .toolbar { padding: 6px 8px; gap: 5px; }
+      /* Minimum 40px touch targets for all interactive toolbar elements */
+      .btn-icon {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px 6px;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .btn { min-height: 40px; padding: 8px 10px; font-size: 13px; }
+      .btn-sm { min-height: 36px; }
+      .toolbar-color { width: 36px; height: 36px; }
+      .toolbar-number { width: 40px; padding: 4px 2px; }
+      .page-input { width: 36px; }
+      .page-total { display: none; }
+      .zoom-display { min-width: 28px; }
+      .mode-badge { font-size: 10px; padding: 3px 7px; }
+      /* Canvas container fills remaining space */
+      .canvas-container {
+        flex: 1;
+        min-height: 0;
+        padding: 8px;
+        max-height: none;
+      }
+      /* Larger resize handle for fat-finger accuracy */
+      .resize-handle { width: 22px; height: 22px; bottom: -8px; right: -8px; }
+      /* Larger delete button */
+      .control-btn { width: 36px; height: 36px; font-size: 16px; }
+      .element-controls { top: -42px; gap: 6px; }
+      /* Toast at top — bottom is hidden by soft keyboard */
+      #toast {
+        bottom: auto;
+        top: 16px;
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        white-space: nowrap;
+      }
+      #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      /* Compact signature modal */
+      .signature-content { padding: 14px; }
+    }
+    /* ── End mobile ─────────────────────────────────────────── */
+
     #pdfCanvas.cursor-default { cursor: default; }
     #pdfCanvas.cursor-crosshair { cursor: crosshair; }
     .btn {
@@ -403,6 +475,11 @@
 
 <span id="pageInfo" style="display:none"></span>
 <div id="toast"></div>
-<script type="module" src="./js/main.js?v=4"></script>
+<script type="module" src="./js/main.js?v=5"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  }
+</script>
 </body>
 </html>
