@@ -1,14 +1,24 @@
-// SignaturePad module
+export interface SignaturePadOptions {
+  lineWidth?: number;
+  color?: string;
+}
+
 export class SignaturePad {
-  constructor(canvas, options = {}) {
+  canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private isDrawing = false;
+  lineWidth: number;
+  color: string;
+
+  constructor(canvas: HTMLCanvasElement, options: SignaturePadOptions = {}) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.isDrawing = false;
-    this.lineWidth = options.lineWidth || 2;
-    this.color = options.color || '#000000';
+    this.ctx = canvas.getContext('2d')!;
+    this.lineWidth = options.lineWidth ?? 2;
+    this.color = options.color ?? '#000000';
     this.setupEvents();
   }
-  setupEvents() {
+
+  private setupEvents(): void {
     this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
     this.canvas.addEventListener('mousemove', (e) => this.draw(e));
     this.canvas.addEventListener('mouseup', () => this.stopDrawing());
@@ -16,33 +26,27 @@ export class SignaturePad {
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousedown', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      this.canvas.dispatchEvent(mouseEvent);
+      this.canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY }));
     });
     this.canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      this.canvas.dispatchEvent(mouseEvent);
+      this.canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY }));
     });
     this.canvas.addEventListener('touchend', (e) => {
       e.preventDefault();
       this.canvas.dispatchEvent(new MouseEvent('mouseup'));
     });
   }
-  startDrawing(e) {
+
+  private startDrawing(e: MouseEvent): void {
     this.isDrawing = true;
     const rect = this.canvas.getBoundingClientRect();
     this.ctx.beginPath();
     this.ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
   }
-  draw(e) {
+
+  private draw(e: MouseEvent): void {
     if (!this.isDrawing) return;
     const rect = this.canvas.getBoundingClientRect();
     this.ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
@@ -52,19 +56,11 @@ export class SignaturePad {
     this.ctx.lineJoin = 'round';
     this.ctx.stroke();
   }
-  stopDrawing() {
-    this.isDrawing = false;
-  }
-  clear() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-  getDataURL() {
-    return this.canvas.toDataURL();
-  }
-  setLineWidth(width) {
-    this.lineWidth = width;
-  }
-  setColor(color) {
-    this.color = color;
-  }
+
+  private stopDrawing(): void { this.isDrawing = false; }
+
+  clear(): void { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
+  getDataURL(): string { return this.canvas.toDataURL(); }
+  setLineWidth(width: number): void { this.lineWidth = width; }
+  setColor(color: string): void { this.color = color; }
 }
