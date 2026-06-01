@@ -289,6 +289,7 @@
       cursor: move;
       min-width: 50px;
       min-height: 20px;
+      touch-action: none;
     }
     .pdf-element.selected {
       border-color: #ef4444;
@@ -493,7 +494,7 @@
 
 <span id="pageInfo" style="display:none"></span>
 <div id="toast"></div>
-<script type="module" src="./js/main.js?v=7"></script>
+<script type="module" src="./js/main.js?v=8"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

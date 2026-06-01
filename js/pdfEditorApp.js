@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=7';
-import { TextElement } from './textElement.js?v=7';
-import { SignatureElement } from './signatureElement.js?v=7';
-import { SignaturePad } from './signaturePad.js?v=7';
-import { InteractionHandler } from './interactionHandler.js?v=7';
-import { ShapeElement } from './shapeElement.js?v=7';
+import { PDFRenderer } from './pdfRenderer.js?v=8';
+import { TextElement } from './textElement.js?v=8';
+import { SignatureElement } from './signatureElement.js?v=8';
+import { SignaturePad } from './signaturePad.js?v=8';
+import { InteractionHandler } from './interactionHandler.js?v=8';
+import { ShapeElement } from './shapeElement.js?v=8';
 
 export class PDFEditorApp {
   constructor() {
@@ -911,6 +911,8 @@ export class PDFEditorApp {
       if (element.type === 'text') {
         const input = div.querySelector('input, textarea');
         if (input) {
+          const isSelected = this.selectedElement && this.selectedElement.id === element.id;
+          if (!isSelected) input.style.pointerEvents = 'none';
           input.addEventListener('input', () => {
             clearTimeout(this._textChangeTimer);
             this._textChangeTimer = setTimeout(() => {
