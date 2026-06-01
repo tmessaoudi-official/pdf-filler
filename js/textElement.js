@@ -1,5 +1,5 @@
 // TextElement module
-import { PDFElement } from './pdfElement.js?v=9';
+import { PDFElement } from './pdfElement.js?v=10';
 
 export class TextElement extends PDFElement {
   constructor(x, y, page, options = {}) {
