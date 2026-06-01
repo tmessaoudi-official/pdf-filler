@@ -1,5 +1,5 @@
 // ShapeElement module — arrow, rect, ellipse, freehand
-import { PDFElement } from './pdfElement.js?v=10';
+import { PDFElement } from './pdfElement.js?v=11';
 
 export class ShapeElement extends PDFElement {
   constructor(shapeType, x, y, width, height, page, options = {}) {
