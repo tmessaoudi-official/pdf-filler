@@ -4,11 +4,12 @@ import { SignatureElement } from './signatureElement';
 import { SignaturePad } from './signaturePad';
 import { InteractionHandler } from './interactionHandler';
 import { ShapeElement } from './shapeElement';
-import type { PDFElement, ElementJSON } from './pdfElement';
+import type { PDFElement } from './pdfElement';
 import { ElementFactory } from './elementFactory';
 import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
+import { HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd } from './historyManager';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand';
 
@@ -20,9 +21,9 @@ export class PDFEditorApp {
   mode: ToolMode = 'select';
   zoomScale = 1.0;
   selectedElement: PDFElement | null = null;
-  historyStack: ElementJSON[][] = [];
-  redoStack: ElementJSON[][] = [];
+  historyManager!: HistoryManager;
   _textChangeTimer: ReturnType<typeof setTimeout> | null = null;
+  _pendingTextCmd: SnapshotCmd | null = null;
   currentFilename: string | null = null;
   currentSignature: string | null = null;
   uiController!: UIController;
@@ -40,9 +41,11 @@ export class PDFEditorApp {
     this.mode = 'select';
     this.zoomScale = 1.0;
     this.selectedElement = null;
-    this.historyStack = [];
-    this.redoStack = [];
+    this.historyManager = new HistoryManager(50, (canUndo, canRedo) => {
+      this.uiController.updateUndoRedoBtns(canUndo, canRedo);
+    });
     this._textChangeTimer = null;
+    this._pendingTextCmd = null;
     this.currentFilename = null;
     this.currentSignature = null;
     this.setupEventListeners();
@@ -209,6 +212,7 @@ export class PDFEditorApp {
         if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
         this.setMode('select');
         this.selectElement(null);
+        (document.activeElement as HTMLElement)?.blur();
         return;
       }
 
@@ -287,47 +291,22 @@ export class PDFEditorApp {
     this.ui.canvas.style.touchAction = 'pan-x pan-y';
   }
 
-  _snapshotElements(): ElementJSON[] {
-    return this.elements.map(el => el.toJSON());
-  }
-
-  pushHistory() {
-    this.historyStack.push(this._snapshotElements());
-    if (this.historyStack.length > 50) this.historyStack.shift();
-    this.redoStack = [];
-    this._updateUndoRedoBtns();
-  }
-
   undo() {
-    if (!this.historyStack.length) return;
-    this.redoStack.push(this._snapshotElements());
-    const snapshot = this.historyStack.pop();
-    this._restoreSnapshot(snapshot!);
-    this._updateUndoRedoBtns();
+    if (this.historyManager.undo()) {
+      this.selectedElement = null;
+      this.renderElements();
+      this._updateFormattingToolbar();
+      this._autosave();
+    }
   }
 
   redo() {
-    if (!this.redoStack.length) return;
-    this.historyStack.push(this._snapshotElements());
-    const snapshot = this.redoStack.pop();
-    this._restoreSnapshot(snapshot!);
-    this._updateUndoRedoBtns();
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _restoreSnapshot(snapshot: Array<Record<string, any>>) {
-    const restored = snapshot
-      .map(data => ElementFactory.fromJSON(data))
-      .filter((el): el is TextElement | SignatureElement | ShapeElement => el !== null);
-    this.elements.splice(0, this.elements.length, ...restored);
-    this.selectedElement = null;
-    this.renderElements();
-    this._updateFormattingToolbar();
-    this._autosave();
-  }
-
-  _updateUndoRedoBtns() {
-    this.uiController.updateUndoRedoBtns(this.historyStack.length > 0, this.redoStack.length > 0);
+    if (this.historyManager.redo()) {
+      this.selectedElement = null;
+      this.renderElements();
+      this._updateFormattingToolbar();
+      this._autosave();
+    }
   }
 
   _autosave() {
@@ -360,8 +339,7 @@ export class PDFEditorApp {
 
   clearAll() {
     if (!this.elements.length) return;
-    this.pushHistory();
-    this.elements.splice(0);
+    this.historyManager.execute(new ClearAllCmd(this.elements));
     this.selectedElement = null;
     this._updateFormattingToolbar();
     this._autosave();
@@ -488,8 +466,7 @@ export class PDFEditorApp {
     const textElement = new TextElement(x, y, this.renderer.currentPage, options);
     textElement.x -= textElement.width / 2;
     textElement.y -= textElement.height / 2;
-    this.pushHistory();
-    this.elements.push(textElement);
+    this.historyManager.execute(new AddElementCmd(this.elements, textElement));
     this._autosave();
     this.renderElements();
     const inputEl = this.ui.container.querySelector(
@@ -508,16 +485,15 @@ export class PDFEditorApp {
     const sigElement = new SignatureElement(x, y, this.renderer.currentPage, this.currentSignature!);
     sigElement.x -= sigElement.width / 2;
     sigElement.y -= sigElement.height / 2;
-    this.pushHistory();
-    this.elements.push(sigElement);
+    this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
     this._autosave();
     this.renderElements();
   }
 
   removeElement(id: number) {
-    this.pushHistory();
-    const idx = this.elements.findIndex(el => el.id === id);
-    if (idx !== -1) this.elements.splice(idx, 1);
+    const el = this.elements.find(e => e.id === id);
+    if (!el) return;
+    this.historyManager.execute(new RemoveElementCmd(this.elements, el));
     if (this.selectedElement && this.selectedElement.id === id) {
       this.selectedElement = null;
       this._updateFormattingToolbar();
@@ -553,9 +529,14 @@ export class PDFEditorApp {
           const isSelected = this.selectedElement && this.selectedElement.id === element.id;
           if (!isSelected) (input as HTMLElement).style.pointerEvents = 'none';
           input.addEventListener('input', () => {
+            if (!this._pendingTextCmd) {
+              this._pendingTextCmd = new SnapshotCmd(this.elements);
+            }
             clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
-              this.pushHistory();
+              this._pendingTextCmd!.captureAfter();
+              this.historyManager.record(this._pendingTextCmd!);
+              this._pendingTextCmd = null;
               this._autosave();
             }, 500);
           });
