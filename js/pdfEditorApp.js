@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=10';
-import { TextElement } from './textElement.js?v=10';
-import { SignatureElement } from './signatureElement.js?v=10';
-import { SignaturePad } from './signaturePad.js?v=10';
-import { InteractionHandler } from './interactionHandler.js?v=10';
-import { ShapeElement } from './shapeElement.js?v=10';
+import { PDFRenderer } from './pdfRenderer.js?v=11';
+import { TextElement } from './textElement.js?v=11';
+import { SignatureElement } from './signatureElement.js?v=11';
+import { SignaturePad } from './signaturePad.js?v=11';
+import { InteractionHandler } from './interactionHandler.js?v=11';
+import { ShapeElement } from './shapeElement.js?v=11';
 
 export class PDFEditorApp {
   constructor() {
@@ -74,7 +74,11 @@ export class PDFEditorApp {
       shapeColor:       document.getElementById('shapeColor'),
       shapeWidth:       document.getElementById('shapeWidth'),
       fontSizeDownBtn:  document.getElementById('fontSizeDownBtn'),
-      fontSizeUpBtn:    document.getElementById('fontSizeUpBtn')
+      fontSizeUpBtn:    document.getElementById('fontSizeUpBtn'),
+      clearAllBtn:  document.getElementById('clearAllBtn'),
+      helpBtn:      document.getElementById('helpBtn'),
+      helpModal:    document.getElementById('helpModal'),
+      colorSwatches: document.getElementById('colorSwatches')
     };
     this.signaturePad = new SignaturePad(this.ui.signatureCanvas);
   }
@@ -130,6 +134,17 @@ export class PDFEditorApp {
     this.ui.canvas.addEventListener('pointerdown', (e) => this._handleDrawPointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
+    this.ui.clearAllBtn.addEventListener('click', () => this.clearAll());
+    this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
+    document.getElementById('closeHelp').addEventListener('click', () => this._toggleHelp(false));
+    this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
+    this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        if (this.ui.textColorInput.disabled) return;
+        this.ui.textColorInput.value = swatch.dataset.color;
+        this.ui.textColorInput.dispatchEvent(new Event('change'));
+      });
+    });
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
     this.ui.lastPage.addEventListener('click', () =>
       this._goToPage(this.renderer.pdfDoc?.numPages || 1));
@@ -226,8 +241,9 @@ export class PDFEditorApp {
     });
 
     document.addEventListener('keydown', (e) => {
-      // Escape always works — cancel mode and deselect
+      // Escape always works — close help first, then cancel mode
       if (e.key === 'Escape') {
+        if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
         this.setMode('select');
         this.selectElement(null);
         return;
@@ -291,6 +307,9 @@ export class PDFEditorApp {
         case 'd':
         case 'D':
           if (this.renderer.pdfDoc) this.setMode('drawFreehand');
+          break;
+        case '?':
+          this._toggleHelp();
           break;
         case 'ArrowUp':
         case 'ArrowDown':
@@ -407,6 +426,22 @@ export class PDFEditorApp {
     this.showToast('Saved session cleared');
   }
 
+  clearAll() {
+    if (!this.elements.length) return;
+    this.pushHistory();
+    this.elements = [];
+    this.selectedElement = null;
+    this._updateFormattingToolbar();
+    this._autosave();
+    this.renderElements();
+    this.showToast('All annotations cleared — Ctrl+Z to undo');
+  }
+
+  _toggleHelp(show) {
+    const shouldShow = show !== undefined ? show : !this.ui.helpModal.classList.contains('active');
+    this.ui.helpModal.classList.toggle('active', shouldShow);
+  }
+
   showToast(msg, duration = 3000) {
     this.ui.toast.textContent = msg;
     this.ui.toast.classList.add('show');
@@ -457,6 +492,7 @@ export class PDFEditorApp {
     this.ui.rectBtn.disabled     = false;
     this.ui.circleBtn.disabled   = false;
     this.ui.freehandBtn.disabled = false;
+    this.ui.clearAllBtn.disabled = false;
   }
 
   _cancelDrawing() {
@@ -806,6 +842,7 @@ export class PDFEditorApp {
     this.ui.fontSizeDownBtn.disabled = !isText;
     this.ui.fontSizeUpBtn.disabled   = !isText;
     this.ui.textColorInput.disabled = !isText;
+    this.ui.colorSwatches.classList.toggle('disabled', !isText);
     if (isText) {
       this.ui.fontFamily.value = el.fontFamily || 'Arial';
       this.ui.boldBtn.classList.toggle('btn-active-fmt', !!el.bold);
