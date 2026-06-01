@@ -96,6 +96,15 @@
       min-width: 38px;
       text-align: center;
     }
+    .toolbar-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    #navGroup { margin-left: auto; }
     .btn-icon {
       padding: 4px 8px;
       background: white;
@@ -124,6 +133,7 @@
       font-weight: 700;
       background: #e2e8f0;
       color: #475569;
+      border: 1px solid #94a3b8;
       white-space: nowrap;
       flex-shrink: 0;
       letter-spacing: 0.03em;
@@ -205,9 +215,17 @@
       #tbsep-break { order: 9; flex-basis: 100%; height: 1px; margin: 1px 0; }
       /* Hide internal separators on mobile */
       #tbsep-1, #tbsep-2, #tbsep-3 { display: none; }
-      /* Tools row: text/sign + all shape buttons */
-      #tbg-edit   { order: 10; }
-      #tbg-shapes { order: 11; flex: 1; justify-content: space-between; }
+      /* Tools row: text/sign + all shape buttons — evenly spread */
+      #tbg-edit   { order: 10; flex: 1; justify-content: space-evenly; }
+      #tbg-shapes { order: 11; flex: 2; justify-content: space-evenly; }
+      /* Hide first/last page on mobile to save space */
+      #firstPage, #lastPage { display: none; }
+      /* Nav group: no auto-margin on mobile (it's in the scroll row) */
+      #navGroup { margin-left: 0; }
+      /* Suppress label text on mobile — icons are enough context */
+      .toolbar-label { display: none; }
+      /* Icon-only Upload/Download on mobile so line 1 fits in one row */
+      .btn-label { display: none; }
       /* Larger resize handle for fat-finger accuracy */
       .resize-handle { width: 22px; height: 22px; bottom: -8px; right: -8px; }
       /* Larger delete button */
@@ -398,7 +416,7 @@
   </div>
   <div class="toolbar toolbar-row1">
     <div class="toolbar-group" id="tbg-file">
-      <label for="fileInput" class="btn btn-primary">📁 Upload PDF</label>
+      <label for="fileInput" class="btn btn-primary">📁 <span class="btn-label">Upload PDF</span></label>
       <input type="file" id="fileInput" accept="application/pdf">
     </div>
     <div class="toolbar-group" id="tbg-history">
@@ -421,13 +439,14 @@
     </div>
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-actions">
-      <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ Download</button>
+      <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ <span class="btn-label">Download</span></button>
       <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
   <div class="toolbar toolbar-row2">
     <div class="toolbar-group" id="formattingGroup">
+      <span class="toolbar-label">Text</span>
       <select id="fontFamily" class="toolbar-select" disabled>
         <option value="Arial">Arial</option>
         <option value="Helvetica">Helvetica</option>
@@ -443,7 +462,7 @@
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
-      <span style="font-size:12px;color:#555;flex-shrink:0;">Shape:</span>
+      <span class="toolbar-label">Shape</span>
       <input type="color" id="shapeColor" value="#ef4444" class="toolbar-color" disabled>
       <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
     </div>
@@ -455,7 +474,7 @@
       <button id="fitBtn" class="btn btn-secondary btn-sm" disabled title="Fit to width">⊡ Fit</button>
     </div>
     <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
+    <div class="toolbar-group" id="navGroup">
       <button id="firstPage" class="btn btn-icon" disabled title="First page">◀◀</button>
       <button id="prevPage" class="btn btn-icon" disabled title="Previous page (Ctrl+←)">◀</button>
       <input type="number" id="pageInput" value="1" min="1" class="toolbar-number page-input" disabled>
@@ -494,7 +513,7 @@
 
 <span id="pageInfo" style="display:none"></span>
 <div id="toast"></div>
-<script type="module" src="./js/main.js?v=9"></script>
+<script type="module" src="./js/main.js?v=10"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

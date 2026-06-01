@@ -1,10 +1,10 @@
 // PDFEditorApp module
-import { PDFRenderer } from './pdfRenderer.js?v=9';
-import { TextElement } from './textElement.js?v=9';
-import { SignatureElement } from './signatureElement.js?v=9';
-import { SignaturePad } from './signaturePad.js?v=9';
-import { InteractionHandler } from './interactionHandler.js?v=9';
-import { ShapeElement } from './shapeElement.js?v=9';
+import { PDFRenderer } from './pdfRenderer.js?v=10';
+import { TextElement } from './textElement.js?v=10';
+import { SignatureElement } from './signatureElement.js?v=10';
+import { SignaturePad } from './signaturePad.js?v=10';
+import { InteractionHandler } from './interactionHandler.js?v=10';
+import { ShapeElement } from './shapeElement.js?v=10';
 
 export class PDFEditorApp {
   constructor() {
