@@ -1,5 +1,7 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import type { PDFElement } from './pdfElement';
+import type { ShapeElement } from './shapeElement';
+import { MoveResizeCmd } from './historyManager';
 
 export class InteractionHandler {
   private app: PDFEditorApp;
@@ -13,21 +15,31 @@ export class InteractionHandler {
   private startY = 0;
   private startWidth = 0;
   private startHeight = 0;
-  private _startElementX = 0;
-  private _startElementY = 0;
-  private _preActionSnapshot: import("./pdfElement").ElementJSON[] | null = null;
+  private _beforeState: Record<string, unknown> | null = null;
 
   constructor(app: PDFEditorApp) {
     this.app = app;
   }
 
+  private _captureState(el: PDFElement): Record<string, unknown> {
+    const base = { x: el.x, y: el.y, width: el.width, height: el.height };
+    if (el.type === 'shape') {
+      const s = el as ShapeElement;
+      if (s.shapeType === 'arrow') {
+        return { ...base, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2 };
+      }
+      if (s.shapeType === 'freehand') {
+        return { ...base, points: s.points.map(p => ({ ...p })) };
+      }
+    }
+    return base;
+  }
+
   handlePointerDown(e: PointerEvent, element: PDFElement, div: HTMLDivElement): void {
     if ((e.target as HTMLElement).classList.contains('control-btn')) return;
     if ((e.target as HTMLElement).classList.contains('resize-handle')) {
-      this._startElementX = element.x; this._startElementY = element.y;
       this.startResize(e, element);
     } else if (!(e.target as HTMLElement).matches('input, textarea')) {
-      this._startElementX = element.x; this._startElementY = element.y;
       this.startDrag(e, element, div);
     }
   }
@@ -36,7 +48,7 @@ export class InteractionHandler {
     this.isDragging = true;
     this.currentElement = element;
     this._activePointerId = e.pointerId;
-    this._preActionSnapshot = this.app._snapshotElements();
+    this._beforeState = this._captureState(element);
     const divRect = div.getBoundingClientRect();
     this.offsetX = e.clientX - divRect.left;
     this.offsetY = e.clientY - divRect.top;
@@ -47,7 +59,7 @@ export class InteractionHandler {
     this.isResizing = true;
     this.currentElement = element;
     this._activePointerId = e.pointerId;
-    this._preActionSnapshot = this.app._snapshotElements();
+    this._beforeState = this._captureState(element);
     this.startX = e.clientX; this.startY = e.clientY;
     this.startWidth = element.width; this.startHeight = element.height;
     e.preventDefault(); e.stopPropagation();
@@ -74,7 +86,7 @@ export class InteractionHandler {
     this.currentElement!.x = clampedX;
     this.currentElement!.y = clampedY;
 
-    const el = this.currentElement as import('./shapeElement').ShapeElement;
+    const el = this.currentElement as ShapeElement;
     if (el.type === 'shape') {
       if (el.shapeType === 'arrow') {
         el.x1 += dx; el.y1 += dy; el.x2 += dx; el.y2 += dy;
@@ -113,21 +125,19 @@ export class InteractionHandler {
     const wasDragging = this.isDragging;
     const wasResizing = this.isResizing;
     const movedEl = this.currentElement;
+    const before = this._beforeState;
     this.isDragging = false; this.isResizing = false;
     this.currentElement = null; this._activePointerId = null;
+    this._beforeState = null;
 
-    if (movedEl && (wasDragging || wasResizing)) {
-      const movedX = movedEl.x !== this._startElementX;
-      const movedY = movedEl.y !== this._startElementY;
-      const resized = wasResizing && (movedEl.width !== this.startWidth || movedEl.height !== this.startHeight);
-      if ((movedX || movedY || resized) && this._preActionSnapshot) {
-        this.app.historyStack.push(this._preActionSnapshot);
-        if (this.app.historyStack.length > 50) this.app.historyStack.shift();
-        this.app.redoStack = [];
-        this.app._updateUndoRedoBtns();
+    if (movedEl && (wasDragging || wasResizing) && before) {
+      const after = this._captureState(movedEl);
+      const moved = (after['x'] !== before['x']) || (after['y'] !== before['y']);
+      const resized = wasResizing && ((after['width'] !== before['width']) || (after['height'] !== before['height']));
+      if (moved || resized) {
+        this.app.historyManager.record(new MoveResizeCmd(movedEl, before, after));
         this.app._autosave();
       }
     }
-    this._preActionSnapshot = null;
   }
 }
