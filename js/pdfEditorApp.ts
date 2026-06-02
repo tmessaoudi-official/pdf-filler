@@ -22,8 +22,10 @@ import { DocumentModel } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
+import { CommentElement } from './commentElement';
+import { RedactionElement } from './redactionElement';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
@@ -98,6 +100,9 @@ export class PDFEditorApp {
     this.ui.addImageBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.ui.addImageInput.click(); });
     this.ui.addImageInput.addEventListener('change', (e) => this._handleImageFileSelect(e));
     this.ui.highlightBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawHighlight'); });
+    this.ui.commentBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addComment'); });
+    this.ui.redactBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawRedaction'); });
+    this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
     this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
     this.ui.findInput.addEventListener('input', () => this._search());
     this.ui.findNext.addEventListener('click', () => this._nextMatch());
@@ -821,9 +826,24 @@ export class PDFEditorApp {
       this.currentSignature = null;
     } else if (this.mode === 'addImage' && this._pendingImageSrc) {
       this.addImageAtPosition(e);
+    } else if (this.mode === 'addComment') {
+      this._addCommentAtPosition(e);
+      this.setMode('select');
     } else {
       this.selectElement(null);
     }
+  }
+
+  private _addCommentAtPosition(e: MouseEvent): void {
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top)  / this.zoomScale;
+    const el = new CommentElement(x, y, pageId);
+    this.historyManager.execute(new AddElementCmd(this.elements, el));
+    this._autosave();
+    this.renderElements();
   }
 
   addTextAtPosition(e: MouseEvent) {
@@ -1063,6 +1083,110 @@ export class PDFEditorApp {
     }
   }
 
+  // ── Feature B: Split — export one page as PDF ────────────────
+  async downloadPage(pageIdx: number): Promise<void> {
+    const docPage = this.documentModel.pages[pageIdx];
+    if (!docPage) return;
+    this.showToast('Generating page PDF…', 30000);
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    this.ui.container.style.opacity = '0.4';
+    try {
+      const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+      if (!srcEntry) return;
+      const srcDoc  = await PDFDocument.load(srcEntry.bytes);
+      const pdfDoc  = await PDFDocument.create();
+      const [page]  = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
+      pdfDoc.addPage(page);
+
+      const userRot  = docPage.rotation ?? 0;
+      const srcRot   = page.getRotation().angle as number;
+      const totalRot = (srcRot + userRot) % 360;
+      if (userRot) page.setRotation(degrees(totalRot));
+
+      const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
+      const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+      const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+      for (const element of pageElements) {
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
+      }
+      if (this.documentModel.watermark.enabled) {
+        await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const base = (this.currentFilename || 'document').replace(/\.pdf$/i, '');
+      link.download = `${base}-page${pageIdx + 1}.pdf`;
+      link.click();
+      this.showToast(`Page ${pageIdx + 1} downloaded!`);
+      URL.revokeObjectURL(url);
+    } finally {
+      this.ui.container.style.opacity = '1';
+    }
+  }
+
+  // ── Feature D: Export current page as PNG image ───────────────
+  async downloadPageAsImage(): Promise<void> {
+    const pageIdx = this.documentModel.currentPageIndex;
+    const docPage = this.documentModel.pages[pageIdx];
+    if (!docPage) return;
+    this.showToast('Rendering page image…', 30000);
+    this.ui.container.style.opacity = '0.4';
+    try {
+      // Build a single-page PDF with all elements drawn in
+      const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+      const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+      if (!srcEntry) return;
+      const srcDoc = await PDFDocument.load(srcEntry.bytes);
+      const pdfDoc = await PDFDocument.create();
+      const [page] = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
+      pdfDoc.addPage(page);
+
+      const userRot  = docPage.rotation ?? 0;
+      const srcRot   = page.getRotation().angle as number;
+      const totalRot = (srcRot + userRot) % 360;
+      if (userRot) page.setRotation(degrees(totalRot));
+      const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
+      const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+
+      for (const element of this.elements.filter(el => el.pageId === docPage.id)) {
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
+      }
+      if (this.documentModel.watermark.enabled) {
+        await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+      }
+
+      // Rasterize via pdf.js at 2× scale
+      const pdfBytes  = await pdfDoc.save();
+      const renderDoc = await pdfjsLib.getDocument(pdfBytes).promise;
+      const renderPage = await renderDoc.getPage(1);
+      const SCALE = 2;
+      const vp = renderPage.getViewport({ scale: SCALE });
+      const offscreen = document.createElement('canvas');
+      offscreen.width  = Math.round(vp.width);
+      offscreen.height = Math.round(vp.height);
+      const ctx = offscreen.getContext('2d')!;
+      await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
+
+      offscreen.toBlob((blob) => {
+        if (!blob) { this.showToast('Image export failed'); return; }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const base = (this.currentFilename || 'document').replace(/\.pdf$/i, '');
+        link.download = `${base}-page${pageIdx + 1}.png`;
+        link.click();
+        this.showToast(`Page ${pageIdx + 1} exported as PNG!`);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    } finally {
+      this.ui.container.style.opacity = '1';
+    }
+  }
+
   private _getEffectivePageDims(page: { getSize(): { width: number; height: number }; getRotation(): { angle: number } }): { width: number; height: number } {
     const { width, height } = page.getSize();
     const angle = page.getRotation().angle;
@@ -1137,6 +1261,19 @@ export class PDFEditorApp {
           break;
         }
       }
+    } else if (element.type === 'comment') {
+      const ce = element as CommentElement;
+      const col = this.hexToRgbValues(ce.color);
+      const anchor = tp(ce.x, ce.y + ce.height);
+      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? ce.height : ce.width, height: swapDims ? ce.width : ce.height, color: rgb(col.r, col.g, col.b), opacity: 0.85, borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1 });
+      if (ce.text) {
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const anchor2 = tp(ce.x + 4, ce.y + ce.height - 18);
+        page.drawText(ce.text.slice(0, 200), { x: anchor2.x, y: anchor2.y, size: 10, font, color: rgb(0, 0, 0), maxWidth: swapDims ? ce.height - 8 : ce.width - 8, opacity: 0.9 });
+      }
+    } else if (element.type === 'redaction') {
+      const anchor = tp(element.x, element.y + element.height);
+      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, color: rgb(0, 0, 0), borderWidth: 0 });
     }
   }
 

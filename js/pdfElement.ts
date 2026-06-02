@@ -1,4 +1,4 @@
-export type ElementType = 'text' | 'signature' | 'shape' | 'image' | 'highlight';
+export type ElementType = 'text' | 'signature' | 'shape' | 'image' | 'highlight' | 'comment' | 'redaction';
 
 export interface ElementJSON {
   id: number;

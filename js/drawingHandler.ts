@@ -1,6 +1,7 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import { ShapeElement } from './shapeElement';
 import { HighlightElement } from './highlightElement';
+import { RedactionElement } from './redactionElement';
 import { AddElementCmd } from './historyManager';
 
 export class DrawingHandler {
@@ -169,6 +170,20 @@ export class DrawingHandler {
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement('freehand', x, y, w, h, pageId,
         { ...opts, points: [...this._drawPoints] });
+
+    } else if (this.app.mode === 'drawRedaction') {
+      const x = Math.min(start.x, endX);
+      const y = Math.min(start.y, endY);
+      const w = Math.abs(endX - start.x);
+      const h = Math.abs(endY - start.y);
+      if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      const redEl = new RedactionElement(x, y, w, h, pageId);
+      this._drawStart = null;
+      this._drawPoints = [];
+      this.app.historyManager.execute(new AddElementCmd(this.app.elements, redEl));
+      this.app._autosave();
+      this.app.renderElements();
+      return;
     }
 
     this._drawStart  = null;
@@ -275,6 +290,18 @@ export class DrawingHandler {
       pl.setAttribute('stroke-linecap', 'round');
       pl.setAttribute('stroke-linejoin', 'round');
       this._previewSvg.appendChild(pl);
+
+    } else if (this.app.mode === 'drawRedaction') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(0,0,0,0.8)');
+      el.setAttribute('stroke', '#c00');
+      el.setAttribute('stroke-width', '2');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
     }
   }
 
