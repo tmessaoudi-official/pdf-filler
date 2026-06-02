@@ -189,7 +189,7 @@ export class InteractionHandler {
       const moved = (after['x'] !== before['x']) || (after['y'] !== before['y']);
       const resized = wasResizing && ((after['width'] !== before['width']) || (after['height'] !== before['height']));
       if (moved || resized) {
-        this.app.historyManager.record(new MoveResizeCmd(movedEl, before, after));
+        this.app.historyManager.record(new MoveResizeCmd(this.app.elements, movedEl, before, after));
         this.app._autosave();
       }
     }

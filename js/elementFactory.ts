@@ -19,26 +19,35 @@ export class ElementFactory {
         multiline: data['multiline']
       });
       el.text = data['text'] || '';
+      el.id = data['id'] as number;
       return el;
     }
     if (data['type'] === 'signature') {
-      return new SignatureElement(data['x'], data['y'], pageId, data['data'],
+      const el = new SignatureElement(data['x'], data['y'], pageId, data['data'],
         { width: data['width'], height: data['height'] });
+      el.id = data['id'] as number;
+      return el;
     }
     if (data['type'] === 'shape') {
-      return new ShapeElement(
+      const el = new ShapeElement(
         data['shapeType'] as ShapeType,
         data['x'], data['y'], data['width'], data['height'], pageId, {
           strokeColor: data['strokeColor'], strokeWidth: data['strokeWidth'],
           x1: data['x1'], y1: data['y1'], x2: data['x2'], y2: data['y2'],
           points: data['points'] || []
         });
+      el.id = data['id'] as number;
+      return el;
     }
     if (data['type'] === 'image') {
-      return new ImageElement(data['x'], data['y'], data['width'], data['height'], pageId, data['src'] || '');
+      const el = new ImageElement(data['x'], data['y'], data['width'], data['height'], pageId, data['src'] || '');
+      el.id = data['id'] as number;
+      return el;
     }
     if (data['type'] === 'highlight') {
-      return new HighlightElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] || '#FFFF00', data['opacity'] ?? 0.3);
+      const el = new HighlightElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] || '#FFFF00', data['opacity'] ?? 0.3);
+      el.id = data['id'] as number;
+      return el;
     }
     return null;
   }
