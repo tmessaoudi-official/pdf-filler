@@ -98,10 +98,18 @@ export class PageThumbnailPanel {
       rotateCw.title = 'Rotate CW';
       rotateCw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, -90); });
 
+      // Per-page download button (Feature B: split PDF)
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'thumb-dl';
+      dlBtn.textContent = '⬇';
+      dlBtn.title = `Download page ${i + 1}`;
+      dlBtn.addEventListener('click', (e) => { e.stopPropagation(); window.app.downloadPage(i); });
+
       item.appendChild(img);
       item.appendChild(label);
       item.appendChild(rotateCcw);
       item.appendChild(rotateCw);
+      item.appendChild(dlBtn);
       item.appendChild(del);
 
       // Navigate on click

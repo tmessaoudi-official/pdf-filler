@@ -3,6 +3,8 @@ import { SignatureElement } from './signatureElement';
 import { ShapeElement } from './shapeElement';
 import { ImageElement } from './imageElement';
 import { HighlightElement } from './highlightElement';
+import { CommentElement } from './commentElement';
+import { RedactionElement } from './redactionElement';
 import type { ShapeType } from './shapeElement';
 import type { PDFElement } from './pdfElement';
 
@@ -46,6 +48,18 @@ export class ElementFactory {
     }
     if (data['type'] === 'highlight') {
       const el = new HighlightElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] || '#FFFF00', data['opacity'] ?? 0.3);
+      el.id = data['id'] as number;
+      return el;
+    }
+    if (data['type'] === 'comment') {
+      const el = new CommentElement(data['x'], data['y'], pageId, { color: data['color'] as string, text: data['text'] as string });
+      el.width  = data['width']  as number;
+      el.height = data['height'] as number;
+      el.id = data['id'] as number;
+      return el;
+    }
+    if (data['type'] === 'redaction') {
+      const el = new RedactionElement(data['x'], data['y'], data['width'], data['height'], pageId);
       el.id = data['id'] as number;
       return el;
     }

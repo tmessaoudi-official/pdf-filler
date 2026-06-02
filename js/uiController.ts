@@ -74,6 +74,9 @@ export interface UIRefs {
   wmCancel: HTMLButtonElement;
   pageThumbnailContainer: HTMLElement;
   addPdfInput: HTMLInputElement;
+  commentBtn: HTMLButtonElement;
+  redactBtn: HTMLButtonElement;
+  exportImgBtn: HTMLButtonElement;
 }
 
 export class UIController {
@@ -152,6 +155,9 @@ export class UIController {
       wmCancel:         document.getElementById('wmCancel')         as HTMLButtonElement,
       pageThumbnailContainer: document.getElementById('pageThumbnailContainer') as HTMLElement,
       addPdfInput:      document.getElementById('addPdfInput')      as HTMLInputElement,
+      commentBtn:       document.getElementById('commentBtn')       as HTMLButtonElement,
+      redactBtn:        document.getElementById('redactBtn')        as HTMLButtonElement,
+      exportImgBtn:     document.getElementById('exportImgBtn')     as HTMLButtonElement,
     };
   }
 
@@ -177,6 +183,9 @@ export class UIController {
     r.highlightBtn.disabled   = false;
     r.findBtn.disabled        = false;
     r.watermarkBtn.disabled   = false;
+    r.commentBtn.disabled     = false;
+    r.redactBtn.disabled      = false;
+    r.exportImgBtn.disabled   = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -190,17 +199,19 @@ export class UIController {
     r.rectBtn.classList.toggle('active',         mode === 'drawRect');
     r.circleBtn.classList.toggle('active',       mode === 'drawEllipse');
     r.freehandBtn.classList.toggle('active',     mode === 'drawFreehand');
+    r.commentBtn.classList.toggle('active',      mode === 'addComment');
+    r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
 
     const badges: Record<string, string> = {
       select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN', addImage: '🖼 IMAGE',
       drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW',
-      drawHighlight: '🖊 HIGHLIGHT',
+      drawHighlight: '🖊 HIGHLIGHT', addComment: '💬 COMMENT', drawRedaction: '⬛ REDACT',
     };
     r.modeBadge.textContent = badges[mode] || 'SELECT';
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
 
-    const isShapeMode = mode.startsWith('draw');
+    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction';
     r.shapeColor.disabled = !isShapeMode;
     r.shapeWidth.disabled = !isShapeMode;
   }
