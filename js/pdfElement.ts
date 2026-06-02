@@ -40,7 +40,13 @@ export abstract class PDFElement {
     deleteBtn.title = 'Delete';
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      window.app.removeElement(this.id);
+      deleteBtn.dispatchEvent(
+        new CustomEvent<{ id: number }>('element:delete', {
+          bubbles: true,
+          composed: true,
+          detail: { id: this.id },
+        })
+      );
     });
     controls.appendChild(deleteBtn);
     return controls;
@@ -59,9 +65,3 @@ export abstract class PDFElement {
   }
 }
 
-// Augment global Window so window.app is known
-declare global {
-  interface Window {
-    app: import('./pdfEditorApp').PDFEditorApp;
-  }
-}

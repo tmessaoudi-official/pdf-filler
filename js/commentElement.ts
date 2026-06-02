@@ -65,7 +65,9 @@ export class CommentElement extends PDFElement {
     textarea.placeholder = 'Add a note…';
     textarea.addEventListener('input', () => {
       this.text = textarea.value;
-      window.app._autosave?.();
+      textarea.dispatchEvent(
+        new CustomEvent('element:autosave', { bubbles: true, composed: true })
+      );
     });
     textarea.addEventListener('click', e => e.stopPropagation());
 
