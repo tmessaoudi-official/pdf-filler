@@ -12,6 +12,7 @@ export interface DocumentPage {
   id: string;
   sourcePdfId: string;
   sourcePageNum: number; // 1-indexed within source PDF
+  rotation?: number;     // CCW degrees applied by user (0/90/180/270); defaults to 0
 }
 
 export interface WatermarkSettings {

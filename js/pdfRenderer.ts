@@ -15,7 +15,7 @@ export class PDFRenderer {
   pdfDoc: PDFDocumentProxy | null = null;
   scale = 1.0;
   private isRendering = false;
-  private pendingPage: { doc: PDFDocumentProxy; pageNum: number } | null = null;
+  private pendingPage: { doc: PDFDocumentProxy; pageNum: number; userRotation: number } | null = null;
   private _pendingResolve: (() => void) | null = null;
   private _model: DocumentModel | null = null;
 
@@ -64,7 +64,7 @@ export class PDFRenderer {
     const docPage = model.currentPage;
     const src = model.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
-    await this._renderPdfPage(src.doc, docPage.sourcePageNum);
+    await this._renderPdfPage(src.doc, docPage.sourcePageNum, docPage.rotation ?? 0);
   }
 
   async renderPageAtIndex(index: number): Promise<void> {
@@ -78,30 +78,31 @@ export class PDFRenderer {
     if (!docPage) return;
     const src = model.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
-    await this._renderPdfPage(src.doc, docPage.sourcePageNum);
+    await this._renderPdfPage(src.doc, docPage.sourcePageNum, docPage.rotation ?? 0);
   }
 
   /** Render a specific page from a specific pdf.js document */
-  private async _renderPdfPage(doc: PDFDocumentProxy, pageNum: number): Promise<void> {
+  private async _renderPdfPage(doc: PDFDocumentProxy, pageNum: number, userRotation = 0): Promise<void> {
     if (this.isRendering) {
       return new Promise<void>((resolve) => {
-        this.pendingPage = { doc, pageNum };
+        this.pendingPage = { doc, pageNum, userRotation };
         this._pendingResolve = resolve;
       });
     }
     this.isRendering = true;
     const page = await doc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: this.scale });
+    const effectiveRotation = (page.rotate + userRotation) % 360;
+    const viewport = page.getViewport({ scale: this.scale, rotation: effectiveRotation });
     this.canvas.height = viewport.height;
     this.canvas.width = viewport.width;
     await page.render({ canvasContext: this.ctx, viewport }).promise;
     this.isRendering = false;
     if (this.pendingPage !== null) {
-      const { doc: pendingDoc, pageNum: pending } = this.pendingPage;
+      const { doc: pendingDoc, pageNum: pending, userRotation: pendingRot } = this.pendingPage;
       const pendingResolve = this._pendingResolve;
       this.pendingPage = null;
       this._pendingResolve = null;
-      await this._renderPdfPage(pendingDoc, pending);
+      await this._renderPdfPage(pendingDoc, pending, pendingRot);
       if (pendingResolve) pendingResolve();
     }
   }
@@ -116,7 +117,8 @@ export class PDFRenderer {
     if (!src) return '';
 
     const page = await src.doc.getPage(docPage.sourcePageNum);
-    const vp = page.getViewport({ scale: thumbScale });
+    const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+    const vp = page.getViewport({ scale: thumbScale, rotation: effectiveRotation });
     const canvas = document.createElement('canvas');
     canvas.width = vp.width;
     canvas.height = vp.height;

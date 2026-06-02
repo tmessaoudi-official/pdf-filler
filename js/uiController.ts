@@ -49,6 +49,15 @@ export interface UIRefs {
   colorSwatches: HTMLElement;
   addImageBtn: HTMLButtonElement;
   addImageInput: HTMLInputElement;
+  highlightBtn: HTMLButtonElement;
+  findBtn: HTMLButtonElement;
+  findBar: HTMLElement;
+  findInput: HTMLInputElement;
+  findPrev: HTMLButtonElement;
+  findNext: HTMLButtonElement;
+  findHighlight: HTMLButtonElement;
+  findClose: HTMLButtonElement;
+  findCount: HTMLElement;
   watermarkBtn: HTMLButtonElement;
   watermarkModal: HTMLElement;
   wmEnabled: HTMLInputElement;
@@ -118,6 +127,15 @@ export class UIController {
       colorSwatches:    document.getElementById('colorSwatches')    as HTMLElement,
       addImageBtn:      document.getElementById('addImageBtn')      as HTMLButtonElement,
       addImageInput:    document.getElementById('addImageInput')    as HTMLInputElement,
+      highlightBtn:     document.getElementById('highlightBtn')     as HTMLButtonElement,
+      findBtn:          document.getElementById('findBtn')          as HTMLButtonElement,
+      findBar:          document.getElementById('findBar')          as HTMLElement,
+      findInput:        document.getElementById('findInput')        as HTMLInputElement,
+      findPrev:         document.getElementById('findPrev')         as HTMLButtonElement,
+      findNext:         document.getElementById('findNext')         as HTMLButtonElement,
+      findHighlight:    document.getElementById('findHighlight')    as HTMLButtonElement,
+      findClose:        document.getElementById('findClose')        as HTMLButtonElement,
+      findCount:        document.getElementById('findCount')        as HTMLElement,
       watermarkBtn:     document.getElementById('watermarkBtn')     as HTMLButtonElement,
       watermarkModal:   document.getElementById('watermarkModal')   as HTMLElement,
       wmEnabled:        document.getElementById('wmEnabled')        as HTMLInputElement,
@@ -156,6 +174,8 @@ export class UIController {
     r.freehandBtn.disabled    = false;
     r.clearAllBtn.disabled    = false;
     r.addImageBtn.disabled    = false;
+    r.highlightBtn.disabled   = false;
+    r.findBtn.disabled        = false;
     r.watermarkBtn.disabled   = false;
   }
 
@@ -165,6 +185,7 @@ export class UIController {
     r.addTextBtn.classList.toggle('active',      mode === 'addText');
     r.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
     r.addImageBtn.classList.toggle('active',     mode === 'addImage');
+    r.highlightBtn.classList.toggle('active',    mode === 'drawHighlight');
     r.arrowBtn.classList.toggle('active',        mode === 'drawArrow');
     r.rectBtn.classList.toggle('active',         mode === 'drawRect');
     r.circleBtn.classList.toggle('active',       mode === 'drawEllipse');
@@ -172,7 +193,8 @@ export class UIController {
 
     const badges: Record<string, string> = {
       select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN', addImage: '🖼 IMAGE',
-      drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW'
+      drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW',
+      drawHighlight: '🖊 HIGHLIGHT',
     };
     r.modeBadge.textContent = badges[mode] || 'SELECT';
     r.modeBadge.classList.toggle('active', mode !== 'select');

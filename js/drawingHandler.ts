@@ -1,5 +1,6 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import { ShapeElement } from './shapeElement';
+import { HighlightElement } from './highlightElement';
 import { AddElementCmd } from './historyManager';
 
 export class DrawingHandler {
@@ -144,6 +145,20 @@ export class DrawingHandler {
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
       shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, pageId, opts);
 
+    } else if (this.app.mode === 'drawHighlight') {
+      const x = Math.min(start.x, endX);
+      const y = Math.min(start.y, endY);
+      const w = Math.abs(endX - start.x);
+      const h = Math.abs(endY - start.y);
+      if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      const hlEl = new HighlightElement(x, y, w, h, pageId);
+      this._drawStart = null;
+      this._drawPoints = [];
+      this.app.historyManager.execute(new AddElementCmd(this.app.elements, hlEl));
+      this.app._autosave();
+      this.app.renderElements();
+      return;
+
     } else if (this.app.mode === 'drawFreehand') {
       this._drawPoints.push({ x: endX, y: endY });
       if (this._drawPoints.length < 2) { this._drawStart = null; this._drawPoints = []; return; }
@@ -237,6 +252,17 @@ export class DrawingHandler {
       head.setAttribute('fill', col);
       head.setAttribute('stroke', 'none');
       this._previewSvg.appendChild(head);
+
+    } else if (this.app.mode === 'drawHighlight') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(255,220,0,0.35)');
+      el.setAttribute('stroke', '#e5a000');
+      el.setAttribute('stroke-width', '1');
+      this._previewSvg.appendChild(el);
 
     } else if (this.app.mode === 'drawFreehand') {
       if (this._drawPoints.length < 2) return;

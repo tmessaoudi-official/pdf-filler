@@ -3,6 +3,9 @@ import { PDFRenderer } from './pdfRenderer';
 import { TextElement } from './textElement';
 import { SignatureElement } from './signatureElement';
 import { ImageElement } from './imageElement';
+import { HighlightElement } from './highlightElement';
+import { TextSearchHandler } from './textSearchHandler';
+import type { MatchResult } from './textSearchHandler';
 import { SignaturePad } from './signaturePad';
 import { InteractionHandler } from './interactionHandler';
 import { ShapeElement } from './shapeElement';
@@ -13,13 +16,14 @@ import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd,
-  DeletePageCmd, ReorderPagesCmd, AddPagesCmd,
+  DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
 } from './historyManager';
 import { DocumentModel } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
+import { FormFieldOverlay } from './formFieldOverlay';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
@@ -40,6 +44,11 @@ export class PDFEditorApp {
   private _thumbnailPanel: PageThumbnailPanel | null = null;
   private _pendingImageSrc: string | null = null;
   private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private _textSearch = new TextSearchHandler();
+  private _findMatches: MatchResult[] = [];
+  private _findMatchIndex = -1;
+  private _formFieldOverlay!: FormFieldOverlay;
+  private _formValues: Record<string, Record<string, string>> = {};
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -52,6 +61,7 @@ export class PDFEditorApp {
     this.interactionHandler = new InteractionHandler(this);
     this.drawingHandler = new DrawingHandler(this);
     this.signaturePad = new SignaturePad(this.uiController.refs.signatureCanvas);
+    this._formFieldOverlay = new FormFieldOverlay(this.uiController.refs.container);
     this.mode = 'select';
     this.zoomScale = 1.0;
     this.selectedElement = null;
@@ -75,6 +85,7 @@ export class PDFEditorApp {
       onNavigate: (index) => this._goToPageIndex(index),
       onDelete: (pageId) => this._deletePage(pageId),
       onReorder: (newOrder) => this._reorderPages(newOrder),
+      onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
     });
   }
@@ -86,6 +97,17 @@ export class PDFEditorApp {
     this.ui.addSignatureBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addSignature'); });
     this.ui.addImageBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.ui.addImageInput.click(); });
     this.ui.addImageInput.addEventListener('change', (e) => this._handleImageFileSelect(e));
+    this.ui.highlightBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawHighlight'); });
+    this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
+    this.ui.findInput.addEventListener('input', () => this._search());
+    this.ui.findNext.addEventListener('click', () => this._nextMatch());
+    this.ui.findPrev.addEventListener('click', () => this._prevMatch());
+    this.ui.findHighlight.addEventListener('click', () => this._highlightCurrentMatch());
+    this.ui.findClose.addEventListener('click', () => this._closeFindBar());
+    this.ui.findInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? this._prevMatch() : this._nextMatch(); }
+      if (e.key === 'Escape') { e.preventDefault(); this._closeFindBar(); }
+    });
     this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
@@ -231,6 +253,7 @@ export class PDFEditorApp {
       if (e.key === 'Escape') {
         if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
         if (this.ui.watermarkModal.classList.contains('active')) { this._closeWatermarkModal(); return; }
+        if (this.ui.findBar.style.display !== 'none') { this._closeFindBar(); return; }
         this.setMode('select');
         this.selectElement(null);
         (document.activeElement as HTMLElement)?.blur();
@@ -241,6 +264,7 @@ export class PDFEditorApp {
         switch (e.key.toLowerCase()) {
           case 'z': e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); break;
           case 'y': e.preventDefault(); this.redo(); break;
+          case 'f': e.preventDefault(); if (this.documentModel.pageCount) this._openFindBar(); break;
           case 'arrowright': e.preventDefault(); this.nextPage(); break;
           case 'arrowleft':  e.preventDefault(); this.prevPage(); break;
         }
@@ -262,6 +286,7 @@ export class PDFEditorApp {
         case 'r': case 'R': if (this.documentModel.pageCount) this.setMode('drawRect'); break;
         case 'c': case 'C': if (this.documentModel.pageCount) this.setMode('drawEllipse'); break;
         case 'd': case 'D': if (this.documentModel.pageCount) this.setMode('drawFreehand'); break;
+        case 'h': case 'H': if (this.documentModel.pageCount) this.setMode('drawHighlight'); break;
         case '?': this._toggleHelp(); break;
         case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight':
           if (this.selectedElement) {
@@ -340,6 +365,104 @@ export class PDFEditorApp {
     this._autosave();
     const status = this.documentModel.watermark.enabled ? 'Watermark enabled' : 'Watermark disabled';
     this.showToast(status);
+  }
+
+  // ── Find bar ─────────────────────────────────────────────────
+  _openFindBar(): void {
+    this.ui.findBar.style.display = '';
+    this.ui.findInput.focus();
+    this.ui.findInput.select();
+    if (this.ui.findInput.value) this._search();
+  }
+
+  _closeFindBar(): void {
+    this.ui.findBar.style.display = 'none';
+    this._clearSearchMatches();
+    this._findMatches = [];
+    this._findMatchIndex = -1;
+    this.ui.findCount.textContent = '';
+  }
+
+  private async _search(): Promise<void> {
+    this._clearSearchMatches();
+    this._findMatches = [];
+    this._findMatchIndex = -1;
+    const query = this.ui.findInput.value;
+    const docPage = this.documentModel.currentPage;
+    if (!query.trim() || !docPage) { this._updateFindCount(); return; }
+
+    const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+    const page = await src.doc.getPage(docPage.sourcePageNum);
+    await this._textSearch.buildIndex(page, docPage.id);
+
+    const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+    const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
+    this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale);
+
+    if (this._findMatches.length > 0) {
+      this._findMatchIndex = 0;
+      this._showSearchMatches();
+    }
+    this._updateFindCount();
+  }
+
+  private _nextMatch(): void {
+    if (!this._findMatches.length) return;
+    this._findMatchIndex = (this._findMatchIndex + 1) % this._findMatches.length;
+    this._showSearchMatches();
+    this._updateFindCount();
+  }
+
+  private _prevMatch(): void {
+    if (!this._findMatches.length) return;
+    this._findMatchIndex = (this._findMatchIndex - 1 + this._findMatches.length) % this._findMatches.length;
+    this._showSearchMatches();
+    this._updateFindCount();
+  }
+
+  private _highlightCurrentMatch(): void {
+    if (this._findMatchIndex < 0 || this._findMatchIndex >= this._findMatches.length) return;
+    const match = this._findMatches[this._findMatchIndex];
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
+    const hlEl = new HighlightElement(match.x, match.y, match.width, match.height, pageId);
+    this.historyManager.execute(new AddElementCmd(this.elements, hlEl));
+    this._autosave();
+    this.renderElements();
+    this._showSearchMatches(); // re-render match overlays after renderElements clears elements
+    this.showToast('Highlight added — Ctrl+Z to undo');
+  }
+
+  private _showSearchMatches(): void {
+    this._clearSearchMatches();
+    const offset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
+    this._findMatches.forEach((match, i) => {
+      const div = document.createElement('div');
+      div.className = 'search-match' + (i === this._findMatchIndex ? ' search-match-active' : '');
+      Object.assign(div.style, {
+        position: 'absolute',
+        left: `${offset.left + match.x * this.zoomScale}px`,
+        top: `${offset.top + match.y * this.zoomScale}px`,
+        width: `${match.width * this.zoomScale}px`,
+        height: `${match.height * this.zoomScale}px`,
+        pointerEvents: 'none',
+        zIndex: '3',
+      });
+      this.ui.container.appendChild(div);
+    });
+  }
+
+  private _clearSearchMatches(): void {
+    this.ui.container.querySelectorAll('.search-match').forEach(el => el.remove());
+  }
+
+  private _updateFindCount(): void {
+    if (!this._findMatches.length) {
+      this.ui.findCount.textContent = this.ui.findInput.value ? '0 / 0' : '';
+    } else {
+      this.ui.findCount.textContent = `${this._findMatchIndex + 1} / ${this._findMatches.length}`;
+    }
   }
 
   // ── Image handling ───────────────────────────────────────────
@@ -422,6 +545,29 @@ export class PDFEditorApp {
     this.historyManager.execute(cmd);
   }
 
+  private _rotatePage(pageId: string, delta: number): void {
+    if (this.elements.some(e => e.pageId === pageId)) {
+      this.showToast('Tip: existing annotations may shift in export after rotation', 4000);
+    }
+    const cmd = new RotatePageCmd(this.documentModel, pageId, delta, () => {
+      this._thumbnailPanel?.invalidateThumb(pageId);
+      this._onPageStructureChange();
+    });
+    this.historyManager.execute(cmd);
+  }
+
+  /** Transform canvas-space point (top-left origin, scale=1) to PDF content-space point (bottom-left origin).
+   *  W_orig / H_orig are the unrotated page content dimensions.
+   *  totalRot is the effective CCW rotation (source + user) in degrees. */
+  private _transformPoint(px: number, py: number, W: number, H: number, totalRot: number): { x: number; y: number } {
+    switch (((totalRot % 360) + 360) % 360) {
+      case 90:  return { x: W - py, y: H - px };
+      case 180: return { x: W - px, y: H - py };
+      case 270: return { x: py,     y: px };
+      default:  return { x: px,     y: H - py };
+    }
+  }
+
   private async _onPageStructureChange(): Promise<void> {
     await this._renderCurrentPage();
     await this._thumbnailPanel?.render();
@@ -476,6 +622,7 @@ export class PDFEditorApp {
       watermark: { ...this.documentModel.watermark },
       currentPageIndex: this.documentModel.currentPageIndex,
       sourcePdfs,
+      formValues: { ...this._formValues },
     });
   }
 
@@ -504,6 +651,7 @@ export class PDFEditorApp {
         .map(d => ElementFactory.fromJSON(d as Parameters<typeof ElementFactory.fromJSON>[0]))
         .filter(Boolean) as PDFElement[];
       this.elements.push(...restored);
+      this._formValues = state.formValues ?? {};
       this.currentFilename = state.sourcePdfs[0]?.name ?? null;
 
       // Compute initial scale
@@ -560,6 +708,8 @@ export class PDFEditorApp {
     this.documentModel = new DocumentModel();
     this.renderer.setModel(this.documentModel);
     this.elements = [];
+    this._formValues = {};
+    this._formFieldOverlay.clear();
     this.historyManager.clear();
     this.selectedElement = null;
     this.currentFilename = file.name;
@@ -573,6 +723,7 @@ export class PDFEditorApp {
       onNavigate: (index) => this._goToPageIndex(index),
       onDelete: (pageId) => this._deletePage(pageId),
       onReorder: (newOrder) => this._reorderPages(newOrder),
+      onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
     });
 
@@ -614,6 +765,7 @@ export class PDFEditorApp {
     this.drawingHandler.cancel();
     this.mode = mode;
     this.uiController.updateModeButtons(mode);
+    this._formFieldOverlay.setPointerEvents(mode === 'select');
     if (mode === 'addSignature') this.openSignatureModal();
   }
 
@@ -750,6 +902,28 @@ export class PDFEditorApp {
   // ── Navigation ────────────────────────────────────────────────
   private async _renderCurrentPage(): Promise<void> {
     await this.renderer.renderPageAtIndex(this.documentModel.currentPageIndex);
+    await this._renderFormFields();
+  }
+
+  private async _renderFormFields(): Promise<void> {
+    const docPage = this.documentModel.currentPage;
+    if (!docPage) { this._formFieldOverlay.clear(); return; }
+    const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+    const page = await src.doc.getPage(docPage.sourcePageNum);
+    const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+    const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
+    const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
+    const values = this._formValues[docPage.sourcePdfId] ?? {};
+    await this._formFieldOverlay.render(
+      page, viewport, canvasOffset, values,
+      (fieldName, value) => {
+        if (!this._formValues[docPage.sourcePdfId]) this._formValues[docPage.sourcePdfId] = {};
+        this._formValues[docPage.sourcePdfId][fieldName] = value;
+        this._autosave();
+      }
+    );
+    this._formFieldOverlay.setPointerEvents(this.mode === 'select');
   }
 
   async _goToPageIndex(index: number): Promise<void> {
@@ -757,10 +931,15 @@ export class PDFEditorApp {
     if (index === this.documentModel.currentPageIndex) return;
     this.documentModel.currentPageIndex = index;
     this.selectElement(null);
+    this._clearSearchMatches();
+    this._findMatches = [];
+    this._findMatchIndex = -1;
+    if (this.ui.findBar.style.display !== 'none') this.ui.findCount.textContent = '';
     await this._renderCurrentPage();
     this._thumbnailPanel?.updateActive();
     this.updatePageInfo();
     this.renderElements();
+    if (this.ui.findBar.style.display !== 'none' && this.ui.findInput.value) this._search();
   }
 
   async _goToPage(n: number): Promise<void> {
@@ -781,6 +960,8 @@ export class PDFEditorApp {
     await this._renderCurrentPage();
     this._thumbnailPanel?.invalidateAll();
     this.renderElements();
+    // Re-run search at new scale so match overlays reposition correctly
+    if (this.ui.findBar.style.display !== 'none' && this.ui.findInput.value) this._search();
   }
 
   async fitToWidth() {
@@ -805,6 +986,19 @@ export class PDFEditorApp {
         srcDocs.set(id, await PDFDocument.load(src.bytes));
       }
 
+      // Fill and flatten form fields for sources with user-entered values
+      for (const [id, srcDoc] of srcDocs) {
+        const vals = this._formValues[id];
+        if (!vals || !Object.keys(vals).length) continue;
+        try {
+          const form = srcDoc.getForm();
+          for (const [fieldName, value] of Object.entries(vals)) {
+            try { form.getTextField(fieldName).setText(value); } catch { /* field missing */ }
+          }
+          form.flatten();
+        } catch { /* no form fields in this source */ }
+      }
+
       // Pre-copy all needed pages from each source (one copyPages call per source)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const copiedPages = new Map<string, any>();
@@ -823,17 +1017,26 @@ export class PDFEditorApp {
         if (!page) continue;
         pdfDoc.addPage(page);
 
-        const { width, height } = this._getEffectivePageDims(page);
+        // Apply user rotation on top of source rotation
+        const userRot = docPage.rotation ?? 0;
+        const sourceRot = page.getRotation().angle as number;
+        const totalRot = (sourceRot + userRot) % 360;
+        if (userRot) page.setRotation(degrees(totalRot));
+
+        // Original (unrotated) content dims for coordinate transform
+        const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
+        // Visual (effective) dims after rotation — used for watermark centering
+        const { width: w_eff, height: h_eff } = this._getEffectivePageDims(page);
         const pageElements = this.elements.filter(el => el.pageId === docPage.id);
 
         for (const element of pageElements) {
           try {
-            await this._drawElementOnPage(pdfDoc, page, element, height, width, { rgb, StandardFonts });
+            await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot);
           } catch { /* skip malformed element */ }
         }
 
         if (this.documentModel.watermark.enabled) {
-          await this._drawWatermark(page, width, height, { rgb, degrees, pdfDoc, StandardFonts });
+          await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
         }
       }
 
@@ -861,67 +1064,88 @@ export class PDFEditorApp {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, _w: number, libs: { rgb: any; StandardFonts: any }): Promise<void> {
+  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, w: number, libs: { rgb: any; StandardFonts: any }, W_orig = 0, H_orig = 0, totalRot = 0): Promise<void> {
     const { rgb, StandardFonts } = libs;
+    // W_orig/H_orig are the unrotated content dims; fall back to effective dims when totalRot=0
+    const Wo = W_orig || w;
+    const Ho = H_orig || h;
+    const tp = (px: number, py: number) => this._transformPoint(px, py, Wo, Ho, totalRot);
+    const swapDims = ((totalRot % 360) + 360) % 360 === 90 || ((totalRot % 360) + 360) % 360 === 270;
+
     if (element.type === 'text' && (element as TextElement).text) {
       const te = element as TextElement;
       const col = this.hexToRgbValues(te.color);
       const fontName = this._getStandardFont(te.fontFamily, te.bold, te.italic);
       const font = await pdfDoc.embedFont(StandardFonts[fontName as keyof typeof StandardFonts]);
-      page.drawText(te.text, {
-        x: te.x, y: h - te.y - te.fontSize, size: te.fontSize, font, color: rgb(col.r, col.g, col.b),
-      });
+      const anchor = tp(te.x, te.y + te.fontSize);
+      page.drawText(te.text, { x: anchor.x, y: anchor.y, size: te.fontSize, font, color: rgb(col.r, col.g, col.b) });
     } else if (element.type === 'signature') {
       const se = element as SignatureElement;
       const img = await pdfDoc.embedPng(this._dataUrlToBytes(se.data));
-      page.drawImage(img, { x: element.x, y: h - element.y - element.height, width: element.width, height: element.height });
+      const anchor = tp(element.x, element.y + element.height);
+      page.drawImage(img, { x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height });
     } else if (element.type === 'image') {
       const ie = element as ImageElement;
       const pdfImg = await this._embedImage(pdfDoc, ie.src);
-      page.drawImage(pdfImg, { x: element.x, y: h - element.y - element.height, width: element.width, height: element.height });
+      const anchor = tp(element.x, element.y + element.height);
+      page.drawImage(pdfImg, { x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height });
+    } else if (element.type === 'highlight') {
+      const he = element as HighlightElement;
+      const col = this.hexToRgbValues(he.color);
+      const anchor = tp(element.x, element.y + element.height);
+      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, color: rgb(col.r, col.g, col.b), opacity: he.opacity, borderWidth: 0 });
     } else if (element.type === 'shape') {
       const she = element as ShapeElement;
       const col = this.hexToRgbValues(she.strokeColor);
       const shapeColor = rgb(col.r, col.g, col.b);
       const lw = she.strokeWidth;
       switch (she.shapeType) {
-        case 'rect':
-          page.drawRectangle({ x: element.x, y: h - element.y - element.height, width: element.width, height: element.height, borderColor: shapeColor, borderWidth: lw });
+        case 'rect': {
+          const anchor = tp(element.x, element.y + element.height);
+          page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, borderColor: shapeColor, borderWidth: lw });
           break;
-        case 'ellipse':
-          page.drawEllipse({ x: element.x + element.width/2, y: h - element.y - element.height/2, xScale: element.width/2, yScale: element.height/2, borderColor: shapeColor, borderWidth: lw });
+        }
+        case 'ellipse': {
+          const center = tp(element.x + element.width / 2, element.y + element.height / 2);
+          page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, borderColor: shapeColor, borderWidth: lw });
           break;
+        }
         case 'arrow': {
-          const pa = Math.atan2(-(she.y2 - she.y1), she.x2 - she.x1);
+          const pt1 = tp(she.x1, she.y1);
+          const pt2 = tp(she.x2, she.y2);
+          const pa = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
           const headLen = Math.max(8, lw * 4);
-          page.drawLine({ start: { x: she.x1, y: h - she.y1 }, end: { x: she.x2, y: h - she.y2 }, thickness: lw, color: shapeColor });
-          const ex = she.x2, ey = h - she.y2;
-          page.drawLine({ start: { x: ex, y: ey }, end: { x: ex + headLen * Math.cos(pa + Math.PI * 0.75), y: ey + headLen * Math.sin(pa + Math.PI * 0.75) }, thickness: lw, color: shapeColor });
-          page.drawLine({ start: { x: ex, y: ey }, end: { x: ex + headLen * Math.cos(pa - Math.PI * 0.75), y: ey + headLen * Math.sin(pa - Math.PI * 0.75) }, thickness: lw, color: shapeColor });
+          page.drawLine({ start: { x: pt1.x, y: pt1.y }, end: { x: pt2.x, y: pt2.y }, thickness: lw, color: shapeColor });
+          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa + Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa + Math.PI * 0.75) }, thickness: lw, color: shapeColor });
+          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa - Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa - Math.PI * 0.75) }, thickness: lw, color: shapeColor });
           break;
         }
         case 'freehand': {
           if (she.points.length < 2) break;
-          const pts = she.points;
-          let d = `M ${pts[0].x} ${pts[0].y}`;
-          for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x} ${pts[i].y}`;
-          page.drawSvgPath(d, { x: 0, y: h, borderColor: shapeColor, borderWidth: lw, scale: 1 });
+          // Convert to SVG coords: tp() gives PDF (y-up), drawSvgPath maps SVG y-down via origin (0, Ho).
+          // SVG y = Ho - pdf_y ensures SVG (px, Ho-pdf_y) → PDF (px, pdf_y) with origin {x:0,y:Ho}.
+          const tpts = she.points.map(p => { const r = tp(p.x, p.y); return { x: r.x, y: Ho - r.y }; });
+          let d = `M ${tpts[0].x} ${tpts[0].y}`;
+          for (let i = 1; i < tpts.length; i++) d += ` L ${tpts[i].x} ${tpts[i].y}`;
+          page.drawSvgPath(d, { x: 0, y: Ho, borderColor: shapeColor, borderWidth: lw, scale: 1 });
           break;
         }
       }
     }
   }
 
+  // W_orig / H_orig are the unrotated content dimensions — ensures centering is correct
+  // regardless of user-applied page rotation.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _drawWatermark(page: any, w: number, h: number, libs: { rgb: any; degrees: any; pdfDoc: any; StandardFonts: any }): Promise<void> {
+  private async _drawWatermark(page: any, W_orig: number, H_orig: number, libs: { rgb: any; degrees: any; pdfDoc: any; StandardFonts: any }): Promise<void> {
     const { rgb, degrees, pdfDoc, StandardFonts } = libs;
     const wm = this.documentModel.watermark;
     const col = this.hexToRgbValues(wm.color);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const textWidth = font.widthOfTextAtSize(wm.text, wm.fontSize);
     page.drawText(wm.text, {
-      x: w / 2 - textWidth / 2,
-      y: h / 2 - wm.fontSize / 4,
+      x: W_orig / 2 - textWidth / 2,
+      y: H_orig / 2 - wm.fontSize / 4,
       size: wm.fontSize,
       font,
       color: rgb(col.r, col.g, col.b),
