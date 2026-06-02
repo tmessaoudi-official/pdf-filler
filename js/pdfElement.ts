@@ -12,6 +12,7 @@ export interface ElementJSON {
 }
 
 export abstract class PDFElement {
+  static _nextId = 1;
   id: number;
   type: ElementType;
   x: number;
@@ -21,7 +22,7 @@ export abstract class PDFElement {
   pageId: string;
 
   constructor(type: ElementType, x: number, y: number, width: number, height: number, pageId: string) {
-    this.id = Date.now() + Math.random();
+    this.id = PDFElement._nextId++;
     this.type = type;
     this.x = x;
     this.y = y;

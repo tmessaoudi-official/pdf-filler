@@ -660,6 +660,7 @@ export class PDFEditorApp {
         .map(d => ElementFactory.fromJSON(d as Parameters<typeof ElementFactory.fromJSON>[0]))
         .filter(Boolean) as PDFElement[];
       this.elements.push(...restored);
+      ElementFactory.syncIdCounter(this.elements);
       this._formValues = state.formValues ?? {};
       this.currentFilename = state.sourcePdfs[0]?.name ?? null;
 
