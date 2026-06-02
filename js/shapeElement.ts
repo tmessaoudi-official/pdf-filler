@@ -19,8 +19,8 @@ export class ShapeElement extends PDFElement {
   x2: number; y2: number;
   points: Array<{ x: number; y: number }>;
 
-  constructor(shapeType: ShapeType, x: number, y: number, width: number, height: number, page: number, options: ShapeOptions = {}) {
-    super('shape', x, y, width, height, page);
+  constructor(shapeType: ShapeType, x: number, y: number, width: number, height: number, pageId: string, options: ShapeOptions = {}) {
+    super('shape', x, y, width, height, pageId);
     this.shapeType = shapeType;
     this.strokeColor = options.strokeColor ?? '#ef4444';
     this.strokeWidth = options.strokeWidth ?? 2;

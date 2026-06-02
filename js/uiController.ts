@@ -47,6 +47,24 @@ export interface UIRefs {
   helpBtn: HTMLButtonElement;
   helpModal: HTMLElement;
   colorSwatches: HTMLElement;
+  addImageBtn: HTMLButtonElement;
+  addImageInput: HTMLInputElement;
+  watermarkBtn: HTMLButtonElement;
+  watermarkModal: HTMLElement;
+  wmEnabled: HTMLInputElement;
+  wmText: HTMLInputElement;
+  wmColor: HTMLInputElement;
+  wmFontSize: HTMLInputElement;
+  wmFontSizeDisplay: HTMLElement;
+  wmOpacity: HTMLInputElement;
+  wmOpacityDisplay: HTMLElement;
+  wmAngle: HTMLInputElement;
+  wmAngleDisplay: HTMLElement;
+  wmPreviewText: HTMLElement;
+  wmApply: HTMLButtonElement;
+  wmCancel: HTMLButtonElement;
+  pageThumbnailContainer: HTMLElement;
+  addPdfInput: HTMLInputElement;
 }
 
 export class UIController {
@@ -98,6 +116,24 @@ export class UIController {
       helpBtn:          document.getElementById('helpBtn')          as HTMLButtonElement,
       helpModal:        document.getElementById('helpModal')        as HTMLElement,
       colorSwatches:    document.getElementById('colorSwatches')    as HTMLElement,
+      addImageBtn:      document.getElementById('addImageBtn')      as HTMLButtonElement,
+      addImageInput:    document.getElementById('addImageInput')    as HTMLInputElement,
+      watermarkBtn:     document.getElementById('watermarkBtn')     as HTMLButtonElement,
+      watermarkModal:   document.getElementById('watermarkModal')   as HTMLElement,
+      wmEnabled:        document.getElementById('wmEnabled')        as HTMLInputElement,
+      wmText:           document.getElementById('wmText')           as HTMLInputElement,
+      wmColor:          document.getElementById('wmColor')          as HTMLInputElement,
+      wmFontSize:       document.getElementById('wmFontSize')       as HTMLInputElement,
+      wmFontSizeDisplay:document.getElementById('wmFontSizeDisplay')as HTMLElement,
+      wmOpacity:        document.getElementById('wmOpacity')        as HTMLInputElement,
+      wmOpacityDisplay: document.getElementById('wmOpacityDisplay') as HTMLElement,
+      wmAngle:          document.getElementById('wmAngle')          as HTMLInputElement,
+      wmAngleDisplay:   document.getElementById('wmAngleDisplay')   as HTMLElement,
+      wmPreviewText:    document.getElementById('wmPreviewText')    as HTMLElement,
+      wmApply:          document.getElementById('wmApply')          as HTMLButtonElement,
+      wmCancel:         document.getElementById('wmCancel')         as HTMLButtonElement,
+      pageThumbnailContainer: document.getElementById('pageThumbnailContainer') as HTMLElement,
+      addPdfInput:      document.getElementById('addPdfInput')      as HTMLInputElement,
     };
   }
 
@@ -119,6 +155,8 @@ export class UIController {
     r.circleBtn.disabled      = false;
     r.freehandBtn.disabled    = false;
     r.clearAllBtn.disabled    = false;
+    r.addImageBtn.disabled    = false;
+    r.watermarkBtn.disabled   = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -126,13 +164,14 @@ export class UIController {
     r.canvas.style.touchAction = mode.startsWith('draw') ? 'none' : 'pan-x pan-y';
     r.addTextBtn.classList.toggle('active',      mode === 'addText');
     r.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
+    r.addImageBtn.classList.toggle('active',     mode === 'addImage');
     r.arrowBtn.classList.toggle('active',        mode === 'drawArrow');
     r.rectBtn.classList.toggle('active',         mode === 'drawRect');
     r.circleBtn.classList.toggle('active',       mode === 'drawEllipse');
     r.freehandBtn.classList.toggle('active',     mode === 'drawFreehand');
 
     const badges: Record<string, string> = {
-      select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN',
+      select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN', addImage: '🖼 IMAGE',
       drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW'
     };
     r.modeBadge.textContent = badges[mode] || 'SELECT';
