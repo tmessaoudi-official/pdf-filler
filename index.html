@@ -278,6 +278,15 @@
       #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
       /* Compact signature modal */
       .signature-content { padding: 14px; }
+      /* Compact watermark modal */
+      .watermark-content { max-width: 100%; width: 96%; padding: 14px; }
+      /* Find bar: hide hint text, ensure input fills available space */
+      .find-bar { padding: 4px 8px; gap: 4px; }
+      .find-bar input { max-width: none; height: 32px; }
+      .find-hint { display: none; }
+      .find-count { min-width: 36px; font-size: 11px; }
+      /* Form field overlay: larger text + padding for touch */
+      .form-field-overlay { font-size: 14px; padding: 2px 4px; }
     }
     /* ── End mobile ─────────────────────────────────────────── */
 
@@ -446,6 +455,52 @@
     .image-element { background: rgba(37,99,235,0.05); }
     .image-element img { display: block; width: 100%; height: 100%; pointer-events: none; user-select: none; }
 
+    /* ── Find bar ────────────────────────────────────────── */
+    .find-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; flex-shrink: 0;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .find-bar input {
+      flex: 1; max-width: 200px; height: 28px;
+      padding: 0 8px; border: 1px solid #cbd5e1;
+      border-radius: 4px; font-size: 13px; outline: none;
+    }
+    .find-bar input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+    .find-count { font-size: 12px; color: #64748b; min-width: 44px; text-align: center; }
+    .find-hint { font-size: 10px; color: #94a3b8; margin-left: 4px; }
+    .search-match {
+      position: absolute;
+      background: rgba(255,220,0,0.4);
+      border: 1px solid #e5a000;
+      pointer-events: none; z-index: 3;
+    }
+    .search-match.search-match-active {
+      background: rgba(255,140,0,0.6);
+      border-color: #c05000;
+    }
+    .highlight-element { mix-blend-mode: multiply; }
+    .form-field-overlay {
+      position: absolute;
+      background: rgba(255,255,255,0.75);
+      border: 1.5px solid #4a90e2;
+      border-radius: 2px;
+      font-size: 12px;
+      padding: 1px 3px;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+      color: #1a1a1a;
+      outline: none;
+      z-index: 2;
+    }
+    .form-field-overlay:focus {
+      background: rgba(255,255,255,0.95);
+      border-color: #2060d0;
+      box-shadow: 0 0 0 2px rgba(66,133,244,0.3);
+      z-index: 5;
+    }
     /* ── Page thumbnail panel ────────────────────────────── */
     .page-thumb-container {
       border-top: 2px solid #dee2e6;
@@ -497,6 +552,18 @@
       opacity: 0; transition: opacity 0.15s; padding: 0;
     }
     .thumb-item:hover .thumb-delete { opacity: 1; }
+    .thumb-rotate {
+      position: absolute; bottom: 14px;
+      width: 14px; height: 14px; border-radius: 3px;
+      background: rgba(0,0,0,0.55); color: white;
+      border: none; cursor: pointer;
+      font-size: 9px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s; padding: 0;
+    }
+    .thumb-rotate-ccw { left: 1px; }
+    .thumb-rotate-cw  { left: 17px; }
+    .thumb-item:hover .thumb-rotate { opacity: 1; }
     .thumb-add-btn {
       flex-shrink: 0;
       width: 64px; min-height: 80px;
@@ -516,6 +583,10 @@
       .page-thumb-container { padding: 4px 6px; }
       .thumb-item { width: 50px; height: 64px; }
       .thumb-add-btn { width: 50px; min-height: 64px; }
+      /* Rotate + delete: always visible on touch (hover never fires), larger tap area */
+      .thumb-rotate { width: 18px; height: 18px; opacity: 1; font-size: 10px; }
+      .thumb-rotate-cw { left: 21px; }
+      .thumb-delete { width: 20px; height: 20px; font-size: 12px; opacity: 1; }
     }
 
     /* ── Watermark modal ─────────────────────────────────── */
@@ -568,6 +639,8 @@
       <button id="addSignatureBtn" class="btn btn-secondary" disabled title="Sign (S)">✍ Sign</button>
       <button id="addImageBtn" class="btn btn-secondary" disabled title="Add Image (I)">🖼 <span class="btn-label">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
+      <button id="highlightBtn" class="btn btn-secondary" disabled title="Highlight brush (H)">🖊 <span class="btn-label">Highlight</span></button>
+      <button id="findBtn" class="btn btn-icon" disabled title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-shapes">
@@ -633,6 +706,16 @@
       <button id="nextPage" class="btn btn-icon" disabled title="Next page (Ctrl+→)">▶</button>
       <button id="lastPage" class="btn btn-icon" disabled title="Last page">▶▶</button>
     </div>
+  </div>
+  <!-- Find bar — shown via Ctrl+F or 🔍 button -->
+  <div id="findBar" class="find-bar" style="display:none">
+    <input type="text" id="findInput" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
+    <span id="findCount" class="find-count"></span>
+    <button id="findPrev" class="btn btn-icon btn-sm" title="Previous (Shift+Enter)">↑</button>
+    <button id="findNext" class="btn btn-icon btn-sm" title="Next (Enter)">↓</button>
+    <button id="findHighlight" class="btn btn-secondary btn-sm" title="Add as permanent highlight">🖊 Keep</button>
+    <button id="findClose" class="btn btn-icon btn-sm" title="Close (Esc)">×</button>
+    <span class="find-hint">Matches within text runs only</span>
   </div>
   <div class="canvas-container" id="canvasContainer">
     <div id="emptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:18px;pointer-events:none;z-index:1;">

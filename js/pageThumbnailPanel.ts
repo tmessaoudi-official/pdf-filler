@@ -9,6 +9,7 @@ export class PageThumbnailPanel {
   private onNavigate: (index: number) => void;
   private onDelete: (pageId: string) => void;
   private onReorder: (newOrder: string[]) => void;
+  private onRotate: (pageId: string, delta: number) => void;
   private onAddPdf: () => void;
   private _dragSrcIndex: number | null = null;
   private _thumbCache: Map<string, string> = new Map(); // pageId → dataURL
@@ -20,6 +21,7 @@ export class PageThumbnailPanel {
     onNavigate: (index: number) => void;
     onDelete: (pageId: string) => void;
     onReorder: (newOrder: string[]) => void;
+    onRotate: (pageId: string, delta: number) => void;
     onAddPdf: () => void;
   }) {
     this.container = opts.container;
@@ -28,6 +30,7 @@ export class PageThumbnailPanel {
     this.onNavigate = opts.onNavigate;
     this.onDelete = opts.onDelete;
     this.onReorder = opts.onReorder;
+    this.onRotate = opts.onRotate;
     this.onAddPdf = opts.onAddPdf;
 
     this.strip = document.createElement('div');
@@ -82,8 +85,23 @@ export class PageThumbnailPanel {
         this.onDelete(page.id);
       });
 
+      // Rotate CCW (↺) and CW (↻) buttons
+      const rotateCcw = document.createElement('button');
+      rotateCcw.className = 'thumb-rotate thumb-rotate-ccw';
+      rotateCcw.textContent = '↺';
+      rotateCcw.title = 'Rotate CCW';
+      rotateCcw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, 90); });
+
+      const rotateCw = document.createElement('button');
+      rotateCw.className = 'thumb-rotate thumb-rotate-cw';
+      rotateCw.textContent = '↻';
+      rotateCw.title = 'Rotate CW';
+      rotateCw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, -90); });
+
       item.appendChild(img);
       item.appendChild(label);
+      item.appendChild(rotateCcw);
+      item.appendChild(rotateCw);
       item.appendChild(del);
 
       // Navigate on click

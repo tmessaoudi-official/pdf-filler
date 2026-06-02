@@ -2,6 +2,7 @@ import { TextElement } from './textElement';
 import { SignatureElement } from './signatureElement';
 import { ShapeElement } from './shapeElement';
 import { ImageElement } from './imageElement';
+import { HighlightElement } from './highlightElement';
 import type { ShapeType } from './shapeElement';
 import type { PDFElement } from './pdfElement';
 
@@ -35,6 +36,9 @@ export class ElementFactory {
     }
     if (data['type'] === 'image') {
       return new ImageElement(data['x'], data['y'], data['width'], data['height'], pageId, data['src'] || '');
+    }
+    if (data['type'] === 'highlight') {
+      return new HighlightElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] || '#FFFF00', data['opacity'] ?? 0.3);
     }
     return null;
   }

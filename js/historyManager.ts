@@ -146,6 +146,33 @@ export class AddPagesCmd implements Command {
   }
 }
 
+// Rotate a page CCW by delta degrees; undo restores prior rotation exactly
+export class RotatePageCmd implements Command {
+  private prevRotation = 0;
+
+  constructor(
+    private model: DocumentModel,
+    private pageId: string,
+    private delta: number,
+    private onUpdate: () => void,
+  ) {}
+
+  execute() {
+    const page = this.model.pages.find(p => p.id === this.pageId);
+    if (!page) return;
+    this.prevRotation = page.rotation ?? 0;
+    page.rotation = ((this.prevRotation + this.delta) % 360 + 360) % 360;
+    this.onUpdate();
+  }
+
+  undo() {
+    const page = this.model.pages.find(p => p.id === this.pageId);
+    if (!page) return;
+    page.rotation = this.prevRotation;
+    this.onUpdate();
+  }
+}
+
 export class HistoryManager {
   private undoStack: Command[] = [];
   private redoStack: Command[] = [];

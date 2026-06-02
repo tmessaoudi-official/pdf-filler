@@ -8,6 +8,7 @@ export interface SavedState {
   currentPageIndex: number;
   // Source PDF bytes keyed by sourcePdfId
   sourcePdfs: Array<{ id: string; name: string; bytes: Uint8Array }>;
+  formValues?: Record<string, Record<string, string>>;
 }
 
 const DB_NAME = 'pdf-editor';
