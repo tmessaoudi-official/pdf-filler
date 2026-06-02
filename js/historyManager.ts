@@ -11,7 +11,8 @@ export class AddElementCmd implements Command {
   constructor(private elements: PDFElement[], private el: PDFElement) {}
   execute() { this.elements.push(this.el); }
   undo() {
-    const i = this.elements.indexOf(this.el);
+    // Use id-based lookup: SnapshotCmd may replace element instances while preserving ids
+    const i = this.elements.findIndex(e => e.id === this.el.id);
     if (i !== -1) this.elements.splice(i, 1);
   }
 }
@@ -22,7 +23,7 @@ export class RemoveElementCmd implements Command {
     this.index = elements.indexOf(el);
   }
   execute() {
-    const i = this.elements.indexOf(this.el);
+    const i = this.elements.findIndex(e => e.id === this.el.id);
     if (i !== -1) this.elements.splice(i, 1);
   }
   undo() { this.elements.splice(Math.max(0, this.index), 0, this.el); }
@@ -39,12 +40,19 @@ export class ClearAllCmd implements Command {
 
 export class MoveResizeCmd implements Command {
   constructor(
+    private elements: PDFElement[],
     private el: PDFElement,
     private before: Record<string, unknown>,
     private after: Record<string, unknown>
   ) {}
-  execute() { Object.assign(this.el, this.after); }
-  undo()    { Object.assign(this.el, this.before); }
+  execute() {
+    const live = this.elements.find(e => e.id === this.el.id) ?? this.el;
+    Object.assign(live, this.after);
+  }
+  undo() {
+    const live = this.elements.find(e => e.id === this.el.id) ?? this.el;
+    Object.assign(live, this.before);
+  }
 }
 
 // Full-snapshot command for text-edit checkpoints

@@ -507,10 +507,10 @@ export class PDFEditorApp {
     for (const file of Array.from(files)) {
       if (file.type !== 'application/pdf') continue;
       try {
-        const bytes = await file.arrayBuffer();
-        const typedBytes = new Uint8Array(bytes);
+        const typedBytes = new Uint8Array(await file.arrayBuffer());
+        const bytesToStore = typedBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
         const doc = await pdfjsLib.getDocument(typedBytes).promise;
-        const src = this.documentModel.addSourcePdf(doc, typedBytes, file.name);
+        const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
         const cmd = new AddPagesCmd(this.documentModel, src.id, undefined, () => this._onPageStructureChange());
         this.historyManager.execute(cmd);
         addedCount++;
@@ -631,21 +631,25 @@ export class PDFEditorApp {
     if (!state?.sourcePdfs?.length) return;
     try {
       for (const sp of state.sourcePdfs) {
-        const doc = await pdfjsLib.getDocument(sp.bytes).promise;
-        const src = this.documentModel.addSourcePdf(doc, sp.bytes, sp.name);
+        const spBytes = sp.bytes instanceof Uint8Array ? sp.bytes : new Uint8Array(sp.bytes);
+        const bytesToStore = spBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
+        const doc = await pdfjsLib.getDocument(spBytes).promise;
+        const src = this.documentModel.addSourcePdf(doc, bytesToStore, sp.name);
         // Override auto-generated id with the saved one
         this.documentModel.sourcePdfs.delete(src.id);
         src.id = sp.id;
         this.documentModel.sourcePdfs.set(sp.id, src);
       }
-      const firstSrc = this.documentModel.sourcePdfs.get(state.sourcePdfs[0].id);
-      if (firstSrc) this.renderer.pdfDoc = firstSrc.doc;
-
       this.documentModel.pages = state.pages ?? [];
       this.documentModel.watermark = state.watermark ?? this.documentModel.watermark;
       this.documentModel.currentPageIndex = Math.max(0, Math.min(
         state.currentPageIndex ?? 0, this.documentModel.pages.length - 1
       ));
+      // Set renderer.pdfDoc to the current page's source (not necessarily the first source)
+      const currentSrc = this.documentModel.sourcePdfs.get(
+        this.documentModel.currentPage?.sourcePdfId ?? ''
+      );
+      if (currentSrc) this.renderer.pdfDoc = currentSrc.doc;
 
       const restored = (state.elements ?? [])
         .map(d => ElementFactory.fromJSON(d as Parameters<typeof ElementFactory.fromJSON>[0]))
@@ -701,8 +705,9 @@ export class PDFEditorApp {
       alert('Please select a valid PDF file');
       return;
     }
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const doc = await pdfjsLib.getDocument(bytes).promise;
+    const rawBytes = new Uint8Array(await file.arrayBuffer());
+    const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
+    const doc = await pdfjsLib.getDocument(rawBytes).promise;
 
     // Reset state for new document
     this.documentModel = new DocumentModel();
@@ -727,7 +732,7 @@ export class PDFEditorApp {
       onAddPdf: () => this.ui.addPdfInput.click(),
     });
 
-    const src = this.documentModel.addSourcePdf(doc, bytes, file.name);
+    const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
     this.documentModel.addPagesFrom(src.id);
     this.renderer.pdfDoc = doc;
 
@@ -954,6 +959,7 @@ export class PDFEditorApp {
   }
 
   async applyZoom(newScale: number): Promise<void> {
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
     this.zoomScale = Math.max(0.25, Math.min(3.0, newScale));
     this.renderer.setScale(this.zoomScale);
     this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
