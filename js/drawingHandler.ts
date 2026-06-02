@@ -116,13 +116,14 @@ export class DrawingHandler {
     const rect = this.app.ui.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left) / this.app.zoomScale;
     const endY = (e.clientY - rect.top)  / this.app.zoomScale;
-    const col  = this.app.ui.shapeColor.value;
-    const sw   = parseInt(this.app.ui.shapeWidth.value) || 2;
-    const opts = { strokeColor: col, strokeWidth: sw };
-    const start = this._drawStart;
+    const col    = this.app.ui.shapeColor.value;
+    const sw     = parseInt(this.app.ui.shapeWidth.value) || 2;
+    const opts   = { strokeColor: col, strokeWidth: sw };
+    const start  = this._drawStart;
+    const pageId = this.app.documentModel.currentPage?.id ?? '';
     let shape: ShapeElement | null = null;
 
-    if (!start) { this._drawPoints = []; return; }
+    if (!start || !pageId) { this._drawPoints = []; return; }
 
     if (this.app.mode === 'drawArrow') {
       const x = Math.min(start.x, endX);
@@ -130,7 +131,7 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      shape = new ShapeElement('arrow', x, y, w, h, this.app.renderer.currentPage, {
+      shape = new ShapeElement('arrow', x, y, w, h, pageId, {
         ...opts, x1: start.x, y1: start.y, x2: endX, y2: endY
       });
 
@@ -141,7 +142,7 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, this.app.renderer.currentPage, opts);
+      shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, pageId, opts);
 
     } else if (this.app.mode === 'drawFreehand') {
       this._drawPoints.push({ x: endX, y: endY });
@@ -151,7 +152,7 @@ export class DrawingHandler {
       const x = Math.min(...xs), y = Math.min(...ys);
       const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      shape = new ShapeElement('freehand', x, y, w, h, this.app.renderer.currentPage,
+      shape = new ShapeElement('freehand', x, y, w, h, pageId,
         { ...opts, points: [...this._drawPoints] });
     }
 

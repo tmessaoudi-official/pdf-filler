@@ -442,6 +442,108 @@
       justify-content: flex-end;
       margin-top: 10px;
     }
+    /* ── Image element ───────────────────────────────────── */
+    .image-element { background: rgba(37,99,235,0.05); }
+    .image-element img { display: block; width: 100%; height: 100%; pointer-events: none; user-select: none; }
+
+    /* ── Page thumbnail panel ────────────────────────────── */
+    .page-thumb-container {
+      border-top: 2px solid #dee2e6;
+      background: #f0f4f8;
+      padding: 6px 8px;
+      flex-shrink: 0;
+    }
+    .page-thumb-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      align-items: center;
+      padding-bottom: 2px;
+      min-height: 90px;
+    }
+    .page-thumb-strip::-webkit-scrollbar { height: 5px; }
+    .page-thumb-strip::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 3px; }
+    .page-thumb-strip::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    .thumb-item {
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      border: 2px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 64px;
+      height: 80px;
+    }
+    .thumb-item:hover { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+    .thumb-item.thumb-active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.3); }
+    .thumb-item.thumb-dragging { opacity: 0.45; }
+    .thumb-item.thumb-over { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.3); }
+    .thumb-img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+    .thumb-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      text-align: center; font-size: 9px; font-weight: 700;
+      color: white; background: rgba(0,0,0,0.45);
+      padding: 1px 0; pointer-events: none;
+    }
+    .thumb-delete {
+      position: absolute; top: 1px; right: 1px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #ef4444; color: white;
+      border: none; cursor: pointer;
+      font-size: 11px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s; padding: 0;
+    }
+    .thumb-item:hover .thumb-delete { opacity: 1; }
+    .thumb-add-btn {
+      flex-shrink: 0;
+      width: 64px; min-height: 80px;
+      border: 2px dashed #94a3b8;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: 11px; color: #64748b;
+      gap: 3px; transition: border-color 0.15s, color 0.15s;
+    }
+    .thumb-add-btn:hover { border-color: #2563eb; color: #2563eb; }
+    .thumb-add-btn span:first-child { font-size: 22px; line-height: 1; }
+    .thumb-add-label { font-size: 10px; font-weight: 600; }
+    @media (max-width: 640px) {
+      .page-thumb-container { padding: 4px 6px; }
+      .thumb-item { width: 50px; height: 64px; }
+      .thumb-add-btn { width: 50px; min-height: 64px; }
+    }
+
+    /* ── Watermark modal ─────────────────────────────────── */
+    .watermark-modal {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .watermark-modal.active { display: flex; }
+    .watermark-content {
+      background: white; border-radius: 8px; padding: 20px;
+      max-width: 420px; width: 90%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .watermark-content h3 { margin: 0 0 14px; font-size: 16px; }
+    .wm-field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .wm-field label { font-size: 13px; font-weight: 600; color: #475569; display: flex; align-items: center; gap: 8px; }
+    .wm-input { padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; }
+    .wm-field input[type="range"] { width: 100%; }
+    .wm-preview {
+      height: 80px; background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; margin-bottom: 12px;
+    }
+    .wm-preview-text {
+      font-size: 28px; font-weight: 700; color: #888;
+      transform-origin: center; pointer-events: none; user-select: none;
+    }
+    .wm-actions { display: flex; gap: 10px; justify-content: flex-end; }
   </style>
 </head>
 <body>
@@ -464,6 +566,8 @@
     <div class="toolbar-group" id="tbg-edit">
       <button id="addTextBtn" class="btn btn-secondary" disabled title="Add Text (T)">T Text</button>
       <button id="addSignatureBtn" class="btn btn-secondary" disabled title="Sign (S)">✍ Sign</button>
+      <button id="addImageBtn" class="btn btn-secondary" disabled title="Add Image (I)">🖼 <span class="btn-label">Image</span></button>
+      <input type="file" id="addImageInput" accept="image/*">
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-shapes">
@@ -475,9 +579,11 @@
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-actions">
       <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ <span class="btn-label">Download</span></button>
+      <button id="watermarkBtn" class="btn btn-icon" disabled title="Watermark settings">≋</button>
       <button id="clearAllBtn" class="btn btn-icon" disabled title="Clear all annotations">✕</button>
       <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
       <button id="helpBtn" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
+      <input type="file" id="addPdfInput" accept="application/pdf" multiple>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
@@ -534,6 +640,7 @@
     </div>
     <canvas id="pdfCanvas"></canvas>
   </div>
+  <div id="pageThumbnailContainer" class="page-thumb-container" style="display:none"></div>
 </div>
 
 <div class="help-modal" id="helpModal">
@@ -559,6 +666,41 @@
       <tr><td>Ctrl+← / Ctrl+→</td><td>Previous / next page</td></tr>
       <tr><td>?</td><td>Show this panel</td></tr>
     </table>
+  </div>
+</div>
+
+<div class="watermark-modal" id="watermarkModal">
+  <div class="watermark-content">
+    <h3>Watermark Settings</h3>
+    <div class="wm-field">
+      <label><input type="checkbox" id="wmEnabled"> Enable watermark on all pages</label>
+    </div>
+    <div class="wm-field">
+      <label>Text</label>
+      <input type="text" id="wmText" value="WATERMARK" class="wm-input" placeholder="Watermark text">
+    </div>
+    <div class="wm-field">
+      <label>Color <input type="color" id="wmColor" value="#888888"></label>
+    </div>
+    <div class="wm-field">
+      <label>Font size: <span id="wmFontSizeDisplay">60</span>px</label>
+      <input type="range" id="wmFontSize" min="12" max="200" value="60">
+    </div>
+    <div class="wm-field">
+      <label>Opacity: <span id="wmOpacityDisplay">25</span>%</label>
+      <input type="range" id="wmOpacity" min="1" max="100" value="25">
+    </div>
+    <div class="wm-field">
+      <label>Angle: <span id="wmAngleDisplay">-45</span>°</label>
+      <input type="range" id="wmAngle" min="-180" max="180" value="-45">
+    </div>
+    <div class="wm-preview">
+      <span id="wmPreviewText" class="wm-preview-text">WATERMARK</span>
+    </div>
+    <div class="wm-actions">
+      <button id="wmCancel" class="btn btn-secondary">Cancel</button>
+      <button id="wmApply" class="btn btn-success">Apply</button>
+    </div>
   </div>
 </div>
 

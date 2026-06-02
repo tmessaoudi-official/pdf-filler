@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import type { DocumentModel } from './documentModel';
 
 // Use Vite's ?url import to copy the worker to dist/ and get its hashed URL
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -10,20 +11,29 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 export class PDFRenderer {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
+  /** Legacy compat: first loaded PDF doc (used for computeFitScale and initial state) */
   pdfDoc: PDFDocumentProxy | null = null;
-  currentPage = 1;
   scale = 1.0;
   private isRendering = false;
-  private pendingPage: number | null = null;
+  private pendingPage: { doc: PDFDocumentProxy; pageNum: number } | null = null;
   private _pendingResolve: (() => void) | null = null;
+  private _model: DocumentModel | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   }
 
+  setModel(model: DocumentModel): void {
+    this._model = model;
+  }
+
+  get currentPage(): number {
+    return (this._model?.currentPageIndex ?? 0) + 1;
+  }
+
   get pageCount(): number {
-    return this.pdfDoc ? this.pdfDoc.numPages : 0;
+    return this._model?.pageCount ?? (this.pdfDoc ? this.pdfDoc.numPages : 0);
   }
 
   setScale(scale: number): void {
@@ -31,79 +41,94 @@ export class PDFRenderer {
   }
 
   computeFitScale(containerWidth: number): Promise<number> {
-    if (!this.pdfDoc) return Promise.resolve(1.0);
-    return this.pdfDoc.getPage(this.currentPage).then((page: PDFPageProxy) => {
+    const doc = this.pdfDoc;
+    if (!doc) return Promise.resolve(1.0);
+    return doc.getPage(1).then((page: PDFPageProxy) => {
       const vp = page.getViewport({ scale: 1 });
       const availableWidth = containerWidth - 40;
       return Math.max(0.25, availableWidth / vp.width);
     });
   }
 
-  async loadPDF(fileData: ArrayBuffer): Promise<void> {
+  async loadPDF(fileData: ArrayBuffer): Promise<PDFDocumentProxy> {
     const typedArray = new Uint8Array(fileData);
-    this.pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
-    this.currentPage = 1;
-    await this.renderPage(this.currentPage);
+    const doc = await pdfjsLib.getDocument(typedArray).promise;
+    this.pdfDoc = doc;
+    return doc;
   }
 
-  async renderPage(pageNum: number): Promise<void> {
+  /** Render the page at documentModel.currentPageIndex */
+  async renderCurrentPage(): Promise<void> {
+    const model = this._model;
+    if (!model || !model.currentPage) return;
+    const docPage = model.currentPage;
+    const src = model.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+    await this._renderPdfPage(src.doc, docPage.sourcePageNum);
+  }
+
+  async renderPageAtIndex(index: number): Promise<void> {
+    const model = this._model;
+    if (!model) {
+      // Fallback for legacy call without model
+      if (this.pdfDoc) await this._renderPdfPage(this.pdfDoc, index + 1);
+      return;
+    }
+    const docPage = model.pages[index];
+    if (!docPage) return;
+    const src = model.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+    await this._renderPdfPage(src.doc, docPage.sourcePageNum);
+  }
+
+  /** Render a specific page from a specific pdf.js document */
+  private async _renderPdfPage(doc: PDFDocumentProxy, pageNum: number): Promise<void> {
     if (this.isRendering) {
       return new Promise<void>((resolve) => {
-        this.pendingPage = pageNum;
+        this.pendingPage = { doc, pageNum };
         this._pendingResolve = resolve;
       });
     }
-    if (!this.pdfDoc) return;
     this.isRendering = true;
-    const page = await this.pdfDoc.getPage(pageNum);
+    const page = await doc.getPage(pageNum);
     const viewport = page.getViewport({ scale: this.scale });
     this.canvas.height = viewport.height;
     this.canvas.width = viewport.width;
     await page.render({ canvasContext: this.ctx, viewport }).promise;
     this.isRendering = false;
     if (this.pendingPage !== null) {
-      const pending = this.pendingPage;
+      const { doc: pendingDoc, pageNum: pending } = this.pendingPage;
       const pendingResolve = this._pendingResolve;
       this.pendingPage = null;
       this._pendingResolve = null;
-      await this.renderPage(pending);
+      await this._renderPdfPage(pendingDoc, pending);
       if (pendingResolve) pendingResolve();
     }
   }
 
-  async nextPage(): Promise<boolean> {
-    if (this.pdfDoc && this.currentPage < this.pdfDoc.numPages) {
-      this.currentPage++;
-      await this.renderPage(this.currentPage);
-      return true;
-    }
-    return false;
-  }
+  /** Generate a thumbnail data URL for a page at a given document index */
+  async generateThumbnail(docIndex: number, thumbScale = 0.15): Promise<string> {
+    const model = this._model;
+    if (!model) return '';
+    const docPage = model.pages[docIndex];
+    if (!docPage) return '';
+    const src = model.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return '';
 
-  async prevPage(): Promise<boolean> {
-    if (this.currentPage > 1) {
-      this.currentPage--;
-      await this.renderPage(this.currentPage);
-      return true;
-    }
-    return false;
-  }
-
-  async goToPage(pageNum: number): Promise<boolean> {
-    if (!this.pdfDoc) return false;
-    const n = Math.max(1, Math.min(this.pdfDoc.numPages, pageNum));
-    if (n !== this.currentPage) {
-      this.currentPage = n;
-      await this.renderPage(this.currentPage);
-      return true;
-    }
-    return false;
+    const page = await src.doc.getPage(docPage.sourcePageNum);
+    const vp = page.getViewport({ scale: thumbScale });
+    const canvas = document.createElement('canvas');
+    canvas.width = vp.width;
+    canvas.height = vp.height;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    return canvas.toDataURL('image/jpeg', 0.7);
   }
 
   getPageInfo(): { current: number; total: number } {
     return {
       current: this.currentPage,
-      total: this.pdfDoc ? this.pdfDoc.numPages : 0,
+      total: this.pageCount,
     };
   }
 }

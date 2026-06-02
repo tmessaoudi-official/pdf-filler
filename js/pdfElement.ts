@@ -1,4 +1,4 @@
-export type ElementType = 'text' | 'signature' | 'shape';
+export type ElementType = 'text' | 'signature' | 'shape' | 'image';
 
 export interface ElementJSON {
   id: number;
@@ -7,7 +7,7 @@ export interface ElementJSON {
   y: number;
   width: number;
   height: number;
-  page: number;
+  pageId: string;
   [key: string]: unknown;
 }
 
@@ -18,16 +18,16 @@ export abstract class PDFElement {
   y: number;
   width: number;
   height: number;
-  page: number;
+  pageId: string;
 
-  constructor(type: ElementType, x: number, y: number, width: number, height: number, page: number) {
+  constructor(type: ElementType, x: number, y: number, width: number, height: number, pageId: string) {
     this.id = Date.now() + Math.random();
     this.type = type;
     this.x = x;
     this.y = y;
     this.width = width;
     this.height = height;
-    this.page = page;
+    this.pageId = pageId;
   }
 
   createControls(): HTMLDivElement {
@@ -54,7 +54,7 @@ export abstract class PDFElement {
   abstract render(container: HTMLElement, canvasOffset: { left: number; top: number }, scale: number): HTMLDivElement;
 
   toJSON(): ElementJSON {
-    return { id: this.id, type: this.type, x: this.x, y: this.y, width: this.width, height: this.height, page: this.page };
+    return { id: this.id, type: this.type, x: this.x, y: this.y, width: this.width, height: this.height, pageId: this.pageId };
   }
 }
 

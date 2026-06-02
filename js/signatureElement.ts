@@ -4,8 +4,8 @@ import type { ElementJSON } from './pdfElement';
 export class SignatureElement extends PDFElement {
   data: string;
 
-  constructor(x: number, y: number, page: number, signatureData: string, options: { width?: number; height?: number } = {}) {
-    super('signature', x, y, options.width ?? 200, options.height ?? 80, page);
+  constructor(x: number, y: number, pageId: string, signatureData: string, options: { width?: number; height?: number } = {}) {
+    super('signature', x, y, options.width ?? 200, options.height ?? 80, pageId);
     this.data = signatureData;
   }
 

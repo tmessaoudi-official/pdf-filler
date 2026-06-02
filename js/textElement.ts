@@ -21,8 +21,8 @@ export class TextElement extends PDFElement {
   italic: boolean;
   multiline: boolean;
 
-  constructor(x: number, y: number, page: number, options: TextOptions = {}) {
-    super('text', x, y, options.width ?? 200, options.height ?? 30, page);
+  constructor(x: number, y: number, pageId: string, options: TextOptions = {}) {
+    super('text', x, y, options.width ?? 200, options.height ?? 30, pageId);
     this.fontSize = options.fontSize ?? 14;
     this.color = options.color ?? '#000000';
     this.fontFamily = options.fontFamily ?? 'Arial';

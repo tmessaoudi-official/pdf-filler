@@ -1,6 +1,8 @@
+import * as pdfjsLib from 'pdfjs-dist';
 import { PDFRenderer } from './pdfRenderer';
 import { TextElement } from './textElement';
 import { SignatureElement } from './signatureElement';
+import { ImageElement } from './imageElement';
 import { SignaturePad } from './signaturePad';
 import { InteractionHandler } from './interactionHandler';
 import { ShapeElement } from './shapeElement';
@@ -9,12 +11,19 @@ import { ElementFactory } from './elementFactory';
 import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
-import { HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd } from './historyManager';
+import {
+  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd,
+  DeletePageCmd, ReorderPagesCmd, AddPagesCmd,
+} from './historyManager';
+import { DocumentModel } from './documentModel';
+import { PageThumbnailPanel } from './pageThumbnailPanel';
+import { saveState, loadState, clearState } from './storage';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
+  documentModel!: DocumentModel;
   elements: PDFElement[] = [];
   interactionHandler!: InteractionHandler;
   signaturePad!: SignaturePad;
@@ -28,11 +37,16 @@ export class PDFEditorApp {
   currentSignature: string | null = null;
   uiController!: UIController;
   drawingHandler!: DrawingHandler;
+  private _thumbnailPanel: PageThumbnailPanel | null = null;
+  private _pendingImageSrc: string | null = null;
+  private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
   constructor() {
+    this.documentModel = new DocumentModel();
     this.renderer = new PDFRenderer(document.getElementById('pdfCanvas') as HTMLCanvasElement);
+    this.renderer.setModel(this.documentModel);
     this.elements = [];
     this.uiController = new UIController();
     this.interactionHandler = new InteractionHandler(this);
@@ -49,33 +63,47 @@ export class PDFEditorApp {
     this.currentFilename = null;
     this.currentSignature = null;
     this.setupEventListeners();
+    this._initThumbnailPanel();
+    this._restoreSession();
+  }
+
+  private _initThumbnailPanel(): void {
+    this._thumbnailPanel = new PageThumbnailPanel({
+      container: this.ui.pageThumbnailContainer,
+      renderer: this.renderer,
+      model: this.documentModel,
+      onNavigate: (index) => this._goToPageIndex(index),
+      onDelete: (pageId) => this._deletePage(pageId),
+      onReorder: (newOrder) => this._reorderPages(newOrder),
+      onAddPdf: () => this.ui.addPdfInput.click(),
+    });
   }
 
   setupEventListeners() {
     this.ui.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
-    this.ui.addTextBtn.addEventListener('click', () => this.setMode('addText'));
-    this.ui.addSignatureBtn.addEventListener('click', () => this.setMode('addSignature'));
+    this.ui.addPdfInput.addEventListener('change', (e) => this._handleAddPdfUpload(e));
+    this.ui.addTextBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addText'); });
+    this.ui.addSignatureBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addSignature'); });
+    this.ui.addImageBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.ui.addImageInput.click(); });
+    this.ui.addImageInput.addEventListener('change', (e) => this._handleImageFileSelect(e));
     this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
-    document.getElementById('clearSignature')!.addEventListener('click', () => {
-      this.signaturePad.clear();
-    });
-    document.getElementById('cancelSignature')!.addEventListener('click', () => {
-      this.closeSignatureModal();
-    });
-    document.getElementById('saveSignature')!.addEventListener('click', () => {
-      this.saveSignature();
-    });
+    document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
+    document.getElementById('cancelSignature')!.addEventListener('click', () => this.closeSignatureModal());
+    document.getElementById('saveSignature')!.addEventListener('click', () => this.saveSignature());
     /* eslint-enable @typescript-eslint/no-non-null-assertion */
+
     this.ui.sigLineWidthInput.addEventListener('change', (e) => {
       this.signaturePad.setLineWidth(parseInt((e.target as HTMLInputElement).value));
     });
     this.ui.sigColorInput.addEventListener('change', (e) => {
       this.signaturePad.setColor((e.target as HTMLInputElement).value);
     });
+
     document.addEventListener('pointermove', (e) => {
       this.interactionHandler.handlePointerMove(e);
       this.drawingHandler.handlePointerMove(e);
@@ -88,10 +116,9 @@ export class PDFEditorApp {
       this.interactionHandler.handlePointerCancel(e);
       this.drawingHandler.handlePointerCancel(e);
     });
-    this.ui.zoomInBtn.addEventListener('click', () =>
-      this.applyZoom(this.zoomScale + 0.1));
-    this.ui.zoomOutBtn.addEventListener('click', () =>
-      this.applyZoom(this.zoomScale - 0.1));
+
+    this.ui.zoomInBtn.addEventListener('click',  () => this.applyZoom(this.zoomScale + 0.1));
+    this.ui.zoomOutBtn.addEventListener('click', () => this.applyZoom(this.zoomScale - 0.1));
     this.ui.fitBtn.addEventListener('click', () => this.fitToWidth());
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
@@ -100,7 +127,6 @@ export class PDFEditorApp {
     this.ui.rectBtn.addEventListener('click',     () => this.setMode('drawRect'));
     this.ui.circleBtn.addEventListener('click',   () => this.setMode('drawEllipse'));
     this.ui.freehandBtn.addEventListener('click', () => this.setMode('drawFreehand'));
-
     this.ui.canvas.addEventListener('pointerdown', (e) => this.drawingHandler.handlePointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
@@ -109,6 +135,7 @@ export class PDFEditorApp {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
+
     this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
       swatch.addEventListener('click', () => {
         if (this.ui.textColorInput.disabled) return;
@@ -116,9 +143,9 @@ export class PDFEditorApp {
         this.ui.textColorInput.dispatchEvent(new Event('change'));
       });
     });
+
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
-    this.ui.lastPage.addEventListener('click', () =>
-      this._goToPage(this.renderer.pdfDoc?.numPages || 1));
+    this.ui.lastPage.addEventListener('click',  () => this._goToPage(this.documentModel.pageCount));
 
     this.ui.pageInput.addEventListener('change', (e) => {
       this._goToPage(parseInt((e.target as HTMLInputElement).value) || 1);
@@ -139,113 +166,88 @@ export class PDFEditorApp {
     this.ui.fontFamily.addEventListener('change', (e) => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       (this.selectedElement as TextElement).fontFamily = (e.target as HTMLInputElement).value;
-      this.renderElements();
-      this._autosave();
+      this.renderElements(); this._autosave();
     });
-
     this.ui.boldBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       (this.selectedElement as TextElement).bold = !(this.selectedElement as TextElement).bold;
       this.ui.boldBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).bold);
-      this.renderElements();
-      this._autosave();
+      this.renderElements(); this._autosave();
     });
-
     this.ui.italicBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       (this.selectedElement as TextElement).italic = !(this.selectedElement as TextElement).italic;
       this.ui.italicBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).italic);
-      this.renderElements();
-      this._autosave();
+      this.renderElements(); this._autosave();
     });
-
     this.ui.fontSizeInput.addEventListener('change', (e) => {
       const size = Math.max(8, Math.min(72, parseInt((e.target as HTMLInputElement).value) || 14));
       if (this.selectedElement && this.selectedElement.type === 'text') {
         (this.selectedElement as TextElement).fontSize = size;
-        this.renderElements();
-        this._autosave();
+        this.renderElements(); this._autosave();
       }
     });
-
     this.ui.textColorInput.addEventListener('change', (e) => {
       if (this.selectedElement && this.selectedElement.type === 'text') {
         (this.selectedElement as TextElement).color = (e.target as HTMLInputElement).value;
-        this.renderElements();
-        this._autosave();
+        this.renderElements(); this._autosave();
       }
     });
-
     this.ui.fontSizeDownBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       const newSize = Math.max(8, (this.selectedElement as TextElement).fontSize - 2);
       (this.selectedElement as TextElement).fontSize = newSize;
       this.ui.fontSizeInput.value = String(newSize);
-      this.renderElements();
-      this._autosave();
+      this.renderElements(); this._autosave();
     });
-
     this.ui.fontSizeUpBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       const newSize = Math.min(72, (this.selectedElement as TextElement).fontSize + 2);
       (this.selectedElement as TextElement).fontSize = newSize;
       this.ui.fontSizeInput.value = String(newSize);
-      this.renderElements();
-      this._autosave();
+      this.renderElements(); this._autosave();
     });
-
     this.ui.shapeColor.addEventListener('input', (e) => {
       if (this.selectedElement?.type === 'shape') {
         (this.selectedElement as ShapeElement).strokeColor = (e.target as HTMLInputElement).value;
-        this.renderElements();
-        this._autosave();
+        this.renderElements(); this._autosave();
       }
     });
-
     this.ui.shapeWidth.addEventListener('change', (e) => {
       if (this.selectedElement?.type === 'shape') {
         (this.selectedElement as ShapeElement).strokeWidth = parseInt((e.target as HTMLInputElement).value) || 2;
-        this.renderElements();
-        this._autosave();
+        this.renderElements(); this._autosave();
       }
     });
+
+    // Watermark modal
+    this.ui.watermarkBtn.addEventListener('click', () => this._openWatermarkModal());
+    this.ui.wmCancel.addEventListener('click', () => this._closeWatermarkModal());
+    this.ui.watermarkModal.addEventListener('click', (e) => { if (e.target === this.ui.watermarkModal) this._closeWatermarkModal(); });
+    this.ui.wmApply.addEventListener('click', () => this._applyWatermark());
+    this._setupWatermarkPreviewListeners();
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
+        if (this.ui.watermarkModal.classList.contains('active')) { this._closeWatermarkModal(); return; }
         this.setMode('select');
         this.selectElement(null);
         (document.activeElement as HTMLElement)?.blur();
         return;
       }
-
       if (e.target instanceof Element && e.target.matches('input, textarea, select')) return;
-
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
-          case 'z':
-            e.preventDefault();
-            if (e.shiftKey) this.redo(); else this.undo();
-            break;
-          case 'y':
-            e.preventDefault();
-            this.redo();
-            break;
-          case 'arrowright':
-            e.preventDefault();
-            this.nextPage();
-            break;
-          case 'arrowleft':
-            e.preventDefault();
-            this.prevPage();
-            break;
+          case 'z': e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); break;
+          case 'y': e.preventDefault(); this.redo(); break;
+          case 'arrowright': e.preventDefault(); this.nextPage(); break;
+          case 'arrowleft':  e.preventDefault(); this.prevPage(); break;
         }
         return;
       }
-
       switch (e.key) {
-        case 'Delete':
-        case 'Backspace':
+        case 'Delete': case 'Backspace':
           if (this.selectedElement) {
             e.preventDefault();
             this.removeElement(this.selectedElement.id);
@@ -253,31 +255,15 @@ export class PDFEditorApp {
             this._updateFormattingToolbar();
           }
           break;
-        case 't': case 'T':
-          if (this.renderer.pdfDoc) this.setMode('addText');
-          break;
-        case 's': case 'S':
-          if (this.renderer.pdfDoc) this.setMode('addSignature');
-          break;
-        case 'a': case 'A':
-          if (this.renderer.pdfDoc) this.setMode('drawArrow');
-          break;
-        case 'r': case 'R':
-          if (this.renderer.pdfDoc) this.setMode('drawRect');
-          break;
-        case 'c': case 'C':
-          if (this.renderer.pdfDoc) this.setMode('drawEllipse');
-          break;
-        case 'd': case 'D':
-          if (this.renderer.pdfDoc) this.setMode('drawFreehand');
-          break;
-        case '?':
-          this._toggleHelp();
-          break;
-        case 'ArrowUp':
-        case 'ArrowDown':
-        case 'ArrowLeft':
-        case 'ArrowRight':
+        case 't': case 'T': if (this.documentModel.pageCount) this.setMode('addText'); break;
+        case 's': case 'S': if (this.documentModel.pageCount) this.setMode('addSignature'); break;
+        case 'i': case 'I': if (this.documentModel.pageCount) this.ui.addImageInput.click(); break;
+        case 'a': case 'A': if (this.documentModel.pageCount) this.setMode('drawArrow'); break;
+        case 'r': case 'R': if (this.documentModel.pageCount) this.setMode('drawRect'); break;
+        case 'c': case 'C': if (this.documentModel.pageCount) this.setMode('drawEllipse'); break;
+        case 'd': case 'D': if (this.documentModel.pageCount) this.setMode('drawFreehand'); break;
+        case '?': this._toggleHelp(); break;
+        case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight':
           if (this.selectedElement) {
             e.preventDefault();
             const step = e.shiftKey ? 10 : 1;
@@ -290,14 +276,171 @@ export class PDFEditorApp {
           break;
       }
     });
-
     this.ui.canvas.style.touchAction = 'pan-x pan-y';
   }
 
+  // ── Watermark ────────────────────────────────────────────────
+  private _setupWatermarkPreviewListeners(): void {
+    const update = () => this._updateWatermarkPreview();
+    this.ui.wmText.addEventListener('input', update);
+    this.ui.wmColor.addEventListener('input', update);
+    this.ui.wmFontSize.addEventListener('input', () => {
+      this.ui.wmFontSizeDisplay.textContent = this.ui.wmFontSize.value;
+      update();
+    });
+    this.ui.wmOpacity.addEventListener('input', () => {
+      this.ui.wmOpacityDisplay.textContent = this.ui.wmOpacity.value;
+      update();
+    });
+    this.ui.wmAngle.addEventListener('input', () => {
+      this.ui.wmAngleDisplay.textContent = this.ui.wmAngle.value;
+      update();
+    });
+  }
+
+  private _updateWatermarkPreview(): void {
+    const t = this.ui.wmPreviewText;
+    t.textContent = this.ui.wmText.value || 'WATERMARK';
+    t.style.color = this.ui.wmColor.value;
+    t.style.opacity = String(parseInt(this.ui.wmOpacity.value) / 100);
+    t.style.fontSize = Math.min(28, parseInt(this.ui.wmFontSize.value) / 3) + 'px';
+    t.style.transform = `rotate(${this.ui.wmAngle.value}deg)`;
+  }
+
+  private _openWatermarkModal(): void {
+    const wm = this.documentModel.watermark;
+    this.ui.wmEnabled.checked = wm.enabled;
+    this.ui.wmText.value = wm.text;
+    this.ui.wmColor.value = wm.color;
+    this.ui.wmFontSize.value = String(wm.fontSize);
+    this.ui.wmFontSizeDisplay.textContent = String(wm.fontSize);
+    const opPct = Math.round(wm.opacity * 100);
+    this.ui.wmOpacity.value = String(opPct);
+    this.ui.wmOpacityDisplay.textContent = String(opPct);
+    this.ui.wmAngle.value = String(wm.angle);
+    this.ui.wmAngleDisplay.textContent = String(wm.angle);
+    this._updateWatermarkPreview();
+    this.ui.watermarkModal.classList.add('active');
+  }
+
+  private _closeWatermarkModal(): void {
+    this.ui.watermarkModal.classList.remove('active');
+  }
+
+  private _applyWatermark(): void {
+    this.documentModel.watermark = {
+      enabled: this.ui.wmEnabled.checked,
+      text: this.ui.wmText.value || 'WATERMARK',
+      color: this.ui.wmColor.value,
+      fontSize: parseInt(this.ui.wmFontSize.value) || 60,
+      opacity: parseInt(this.ui.wmOpacity.value) / 100,
+      angle: parseInt(this.ui.wmAngle.value),
+    };
+    this._closeWatermarkModal();
+    this._autosave();
+    const status = this.documentModel.watermark.enabled ? 'Watermark enabled' : 'Watermark disabled';
+    this.showToast(status);
+  }
+
+  // ── Image handling ───────────────────────────────────────────
+  private _handleImageFileSelect(e: Event): void {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    (e.target as HTMLInputElement).value = '';
+    if (!file || !this.documentModel.currentPage) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string;
+      if (!src) return;
+      this._pendingImageSrc = src;
+      this.setMode('addImage');
+      this.showToast('Click on the PDF to place the image');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  addImageAtPosition(e: MouseEvent): void {
+    const src = this._pendingImageSrc;
+    const pageId = this.documentModel.currentPage?.id;
+    if (!src || !pageId) return;
+    this._pendingImageSrc = null;
+
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top) / this.zoomScale;
+    const imgEl = new ImageElement(x - 100, y - 75, 200, 150, pageId, src);
+    this.historyManager.execute(new AddElementCmd(this.elements, imgEl));
+    this._autosave();
+    this.setMode('select');
+    this.renderElements();
+  }
+
+  // ── PDF page management ───────────────────────────────────────
+  private async _handleAddPdfUpload(e: Event): Promise<void> {
+    const files = (e.target as HTMLInputElement).files;
+    (e.target as HTMLInputElement).value = '';
+    if (!files?.length) return;
+
+    let addedCount = 0;
+    for (const file of Array.from(files)) {
+      if (file.type !== 'application/pdf') continue;
+      try {
+        const bytes = await file.arrayBuffer();
+        const typedBytes = new Uint8Array(bytes);
+        const doc = await pdfjsLib.getDocument(typedBytes).promise;
+        const src = this.documentModel.addSourcePdf(doc, typedBytes, file.name);
+        const cmd = new AddPagesCmd(this.documentModel, src.id, undefined, () => this._onPageStructureChange());
+        this.historyManager.execute(cmd);
+        addedCount++;
+      } catch {
+        this.showToast(`Failed to load "${file.name}" — skipping`, 4000);
+      }
+    }
+    if (addedCount > 0) {
+      this.showToast(`Added ${addedCount} PDF file${addedCount > 1 ? 's' : ''}`);
+    }
+  }
+
+  private _deletePage(pageId: string): void {
+    if (this.documentModel.pageCount <= 1) {
+      this.showToast('Cannot delete the only page');
+      return;
+    }
+    const src = this.documentModel.sourcePdfs.get(
+      this.documentModel.pages.find(p => p.id === pageId)?.sourcePdfId ?? ''
+    );
+    const cmd = new DeletePageCmd(
+      this.documentModel, this.elements, pageId,
+      () => this._onPageStructureChange(),
+      src,
+    );
+    this.historyManager.execute(cmd);
+  }
+
+  private _reorderPages(newOrder: string[]): void {
+    const before = this.documentModel.pages.map(p => p.id);
+    const cmd = new ReorderPagesCmd(this.documentModel, before, newOrder, () => this._onPageStructureChange());
+    this.historyManager.execute(cmd);
+  }
+
+  private async _onPageStructureChange(): Promise<void> {
+    await this._renderCurrentPage();
+    await this._thumbnailPanel?.render();
+    this._thumbnailPanel?.updateActive();
+    this.selectElement(null);
+    this.updatePageInfo();
+    this.renderElements();
+    this._autosave();
+  }
+
+  // ── Undo / Redo ───────────────────────────────────────────────
   undo() {
     if (this.historyManager.undo()) {
       this.selectedElement = null;
-      this.renderElements();
+      this._renderCurrentPage().then(() => {
+        this.renderElements();
+        this._thumbnailPanel?.updateActive();
+        this.updatePageInfo();
+      }).catch(() => {});
       this._updateFormattingToolbar();
       this._autosave();
     }
@@ -306,38 +449,87 @@ export class PDFEditorApp {
   redo() {
     if (this.historyManager.redo()) {
       this.selectedElement = null;
-      this.renderElements();
+      this._renderCurrentPage().then(() => {
+        this.renderElements();
+        this._thumbnailPanel?.updateActive();
+        this.updatePageInfo();
+      }).catch(() => {});
       this._updateFormattingToolbar();
       this._autosave();
     }
   }
 
+  // ── Autosave (IndexedDB) ──────────────────────────────────────
   _autosave() {
-    if (!this.currentFilename) return;
-    const key = `pdf-fill-sign:${this.currentFilename}`;
-    const data = this.elements.map(el => el.toJSON());
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch { /* ignore */ }
+    clearTimeout(this._autosaveTimer ?? undefined);
+    this._autosaveTimer = setTimeout(() => this._doAutosave(), 800);
   }
 
-  _loadSaved() {
-    if (!this.currentFilename) return;
-    const key = `pdf-fill-sign:${this.currentFilename}`;
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
+  private async _doAutosave(): Promise<void> {
+    if (!this.documentModel.pageCount) return;
+    const sourcePdfs = Array.from(this.documentModel.sourcePdfs.values()).map(s => ({
+      id: s.id, name: s.name, bytes: s.bytes,
+    }));
+    await saveState({
+      elements: this.elements.map(el => el.toJSON()),
+      pages: [...this.documentModel.pages],
+      watermark: { ...this.documentModel.watermark },
+      currentPageIndex: this.documentModel.currentPageIndex,
+      sourcePdfs,
+    });
+  }
+
+  private async _restoreSession(): Promise<void> {
+    const state = await loadState();
+    if (!state?.sourcePdfs?.length) return;
     try {
-      const data = JSON.parse(raw);
-      if (!data.length) return;
-      this.importState(JSON.stringify({ elements: data }));
-      this.showToast(`Restored ${data.length} element${data.length > 1 ? 's' : ''} from last session`);
-    } catch { /* ignore */ }
+      for (const sp of state.sourcePdfs) {
+        const doc = await pdfjsLib.getDocument(sp.bytes).promise;
+        const src = this.documentModel.addSourcePdf(doc, sp.bytes, sp.name);
+        // Override auto-generated id with the saved one
+        this.documentModel.sourcePdfs.delete(src.id);
+        src.id = sp.id;
+        this.documentModel.sourcePdfs.set(sp.id, src);
+      }
+      const firstSrc = this.documentModel.sourcePdfs.get(state.sourcePdfs[0].id);
+      if (firstSrc) this.renderer.pdfDoc = firstSrc.doc;
+
+      this.documentModel.pages = state.pages ?? [];
+      this.documentModel.watermark = state.watermark ?? this.documentModel.watermark;
+      this.documentModel.currentPageIndex = Math.max(0, Math.min(
+        state.currentPageIndex ?? 0, this.documentModel.pages.length - 1
+      ));
+
+      const restored = (state.elements ?? [])
+        .map(d => ElementFactory.fromJSON(d as Parameters<typeof ElementFactory.fromJSON>[0]))
+        .filter(Boolean) as PDFElement[];
+      this.elements.push(...restored);
+      this.currentFilename = state.sourcePdfs[0]?.name ?? null;
+
+      // Compute initial scale
+      const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
+      const isMobile = window.innerWidth <= 640;
+      this.zoomScale = isMobile ? Math.max(fitScale, 0.65) : fitScale;
+      this.renderer.setScale(this.zoomScale);
+      this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
+
+      await this._renderCurrentPage();
+      this.enableUI();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      document.getElementById('emptyState')!.style.display = 'none';
+      this.ui.clearSaveBtn.disabled = false;
+      this.ui.pageThumbnailContainer.style.display = '';
+      await this._thumbnailPanel?.render();
+      this.updatePageInfo();
+      this.renderElements();
+      this.showToast('Session restored');
+    } catch {
+      // ignore — corrupted session
+    }
   }
 
   _clearSave() {
-    if (!this.currentFilename) return;
-    localStorage.removeItem(`pdf-fill-sign:${this.currentFilename}`);
-    this.showToast('Saved session cleared');
+    clearState().then(() => this.showToast('Saved session cleared'));
   }
 
   clearAll() {
@@ -351,32 +543,55 @@ export class PDFEditorApp {
   }
 
   _toggleHelp(show?: boolean) { this.uiController.toggleHelp(show); }
-
   showToast(msg: string, duration = 3000) { this.uiController.showToast(msg, duration); }
 
+  // ── File upload ───────────────────────────────────────────────
   async handleFileUpload(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
+    (e.target as HTMLInputElement).value = '';
     if (!file || file.type !== 'application/pdf') {
       alert('Please select a valid PDF file');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      await this.renderer.loadPDF(((event.target as FileReader).result as ArrayBuffer));
-      this.elements = [];
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      document.getElementById("emptyState")!.style.display = 'none';
-      const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
-      const isMobile = window.innerWidth <= 640;
-      await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
-      this.enableUI();
-      this.currentFilename = file.name;
-      this.ui.clearSaveBtn.disabled = false;
-      this._loadSaved();
-      this.updatePageInfo();
-      this.renderElements();
-    };
-    reader.readAsArrayBuffer(file);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjsLib.getDocument(bytes).promise;
+
+    // Reset state for new document
+    this.documentModel = new DocumentModel();
+    this.renderer.setModel(this.documentModel);
+    this.elements = [];
+    this.historyManager.clear();
+    this.selectedElement = null;
+    this.currentFilename = file.name;
+
+    // Re-init thumbnail panel with new model
+    this.ui.pageThumbnailContainer.innerHTML = '';
+    this._thumbnailPanel = new PageThumbnailPanel({
+      container: this.ui.pageThumbnailContainer,
+      renderer: this.renderer,
+      model: this.documentModel,
+      onNavigate: (index) => this._goToPageIndex(index),
+      onDelete: (pageId) => this._deletePage(pageId),
+      onReorder: (newOrder) => this._reorderPages(newOrder),
+      onAddPdf: () => this.ui.addPdfInput.click(),
+    });
+
+    const src = this.documentModel.addSourcePdf(doc, bytes, file.name);
+    this.documentModel.addPagesFrom(src.id);
+    this.renderer.pdfDoc = doc;
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    document.getElementById('emptyState')!.style.display = 'none';
+    const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
+    const isMobile = window.innerWidth <= 640;
+    await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
+    this.enableUI();
+    this.ui.clearSaveBtn.disabled = false;
+    this.ui.pageThumbnailContainer.style.display = '';
+    await this._thumbnailPanel.render();
+    this.updatePageInfo();
+    this.renderElements();
+    this._autosave();
   }
 
   enableUI() { this.uiController.enableUI(); }
@@ -396,17 +611,13 @@ export class PDFEditorApp {
   }
 
   setMode(mode: ToolMode) {
-    // Don't clean here — setMode('select') is called right after placing a text element
-    // and would delete it before the user types. Cleaning happens in selectElement() instead.
     this.drawingHandler.cancel();
     this.mode = mode;
     this.uiController.updateModeButtons(mode);
     if (mode === 'addSignature') this.openSignatureModal();
   }
 
-  _isShapeMode() {
-    return this.mode.startsWith('draw');
-  }
+  _isShapeMode() { return this.mode.startsWith('draw'); }
 
   openSignatureModal() {
     this.ui.signatureModal.classList.add('active');
@@ -430,10 +641,7 @@ export class PDFEditorApp {
   }
 
   selectElement(element: PDFElement | null) {
-    if (this.selectedElement === element) {
-      this._updateFormattingToolbar();
-      return;
-    }
+    if (this.selectedElement === element) { this._updateFormattingToolbar(); return; }
     this._cleanEmptyTextElements();
     this.selectedElement = element;
     this.renderElements();
@@ -454,20 +662,21 @@ export class PDFEditorApp {
       this.mode = 'select';
       this.ui.addSignatureBtn.classList.remove('active');
       this.currentSignature = null;
+    } else if (this.mode === 'addImage' && this._pendingImageSrc) {
+      this.addImageAtPosition(e);
     } else {
       this.selectElement(null);
     }
   }
 
   addTextAtPosition(e: MouseEvent) {
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const options = {
-      fontSize: parseInt(this.ui.fontSizeInput.value),
-      color: this.ui.textColorInput.value
-    };
-    const textElement = new TextElement(x, y, this.renderer.currentPage, options);
+    const options = { fontSize: parseInt(this.ui.fontSizeInput.value), color: this.ui.textColorInput.value };
+    const textElement = new TextElement(x, y, pageId, options);
     textElement.x -= textElement.width / 2;
     textElement.y -= textElement.height / 2;
     this.historyManager.execute(new AddElementCmd(this.elements, textElement));
@@ -483,10 +692,12 @@ export class PDFEditorApp {
   }
 
   addSignatureAtPosition(e: MouseEvent) {
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const sigElement = new SignatureElement(x, y, this.renderer.currentPage, this.currentSignature ?? '');
+    const sigElement = new SignatureElement(x, y, pageId, this.currentSignature ?? '');
     sigElement.x -= sigElement.width / 2;
     sigElement.y -= sigElement.height / 2;
     this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
@@ -508,43 +719,26 @@ export class PDFEditorApp {
 
   renderElements() {
     this.ui.container.querySelectorAll('.pdf-element').forEach(el => el.remove());
-    const canvasOffset = {
-      left: this.ui.canvas.offsetLeft,
-      top: this.ui.canvas.offsetTop
-    };
-    const currentPageElements = this.elements.filter(
-      el => el.page === this.renderer.currentPage
-    );
+    const currentPageId = this.documentModel.currentPage?.id;
+    if (!currentPageId) return;
+    const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
+    const currentPageElements = this.elements.filter(el => el.pageId === currentPageId);
     currentPageElements.forEach(element => {
       const div = element.render(this.ui.container, canvasOffset, this.zoomScale);
-      if (this.selectedElement && this.selectedElement.id === element.id) {
-        div.classList.add('selected');
-      }
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.selectElement(element);
-      });
-      div.addEventListener('pointerdown', (e) => {
-        this.interactionHandler.handlePointerDown(e, element, div);
-      });
+      if (this.selectedElement && this.selectedElement.id === element.id) div.classList.add('selected');
+      div.addEventListener('click', (e) => { e.stopPropagation(); this.selectElement(element); });
+      div.addEventListener('pointerdown', (e) => { this.interactionHandler.handlePointerDown(e, element, div); });
       if (element.type === 'text') {
         const input = div.querySelector('input, textarea');
         if (input) {
           const isSelected = this.selectedElement && this.selectedElement.id === element.id;
           if (!isSelected) (input as HTMLElement).style.pointerEvents = 'none';
           input.addEventListener('input', () => {
-            if (!this._pendingTextCmd) {
-              this._pendingTextCmd = new SnapshotCmd(this.elements);
-            }
+            if (!this._pendingTextCmd) this._pendingTextCmd = new SnapshotCmd(this.elements);
             clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
               const cmd = this._pendingTextCmd;
-              if (cmd) {
-                cmd.captureAfter();
-                this.historyManager.record(cmd);
-                this._pendingTextCmd = null;
-                this._autosave();
-              }
+              if (cmd) { cmd.captureAfter(); this.historyManager.record(cmd); this._pendingTextCmd = null; this._autosave(); }
             }, 500);
           });
         }
@@ -553,34 +747,39 @@ export class PDFEditorApp {
     });
   }
 
-  async _goToPage(n: number) {
-    if (!this.renderer.pdfDoc) return;
-    const changed = await this.renderer.goToPage(n);
-    if (changed) {
-      this.selectElement(null);
-      this.updatePageInfo();
-      this.renderElements();
-    }
+  // ── Navigation ────────────────────────────────────────────────
+  private async _renderCurrentPage(): Promise<void> {
+    await this.renderer.renderPageAtIndex(this.documentModel.currentPageIndex);
   }
 
-  async prevPage() {
-    await this._goToPage(this.renderer.currentPage - 1);
+  async _goToPageIndex(index: number): Promise<void> {
+    if (index < 0 || index >= this.documentModel.pageCount) return;
+    if (index === this.documentModel.currentPageIndex) return;
+    this.documentModel.currentPageIndex = index;
+    this.selectElement(null);
+    await this._renderCurrentPage();
+    this._thumbnailPanel?.updateActive();
+    this.updatePageInfo();
+    this.renderElements();
   }
 
-  async nextPage() {
-    await this._goToPage(this.renderer.currentPage + 1);
+  async _goToPage(n: number): Promise<void> {
+    await this._goToPageIndex(n - 1);
   }
+
+  async prevPage() { await this._goToPageIndex(this.documentModel.currentPageIndex - 1); }
+  async nextPage() { await this._goToPageIndex(this.documentModel.currentPageIndex + 1); }
 
   updatePageInfo() {
-    const info = this.renderer.getPageInfo();
-    this.uiController.updatePageInfo(info.current, info.total);
+    this.uiController.updatePageInfo(this.documentModel.currentPageIndex + 1, this.documentModel.pageCount);
   }
 
   async applyZoom(newScale: number): Promise<void> {
     this.zoomScale = Math.max(0.25, Math.min(3.0, newScale));
     this.renderer.setScale(this.zoomScale);
     this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
-    await this.renderer.renderPage(this.renderer.currentPage);
+    await this._renderCurrentPage();
+    this._thumbnailPanel?.invalidateAll();
     this.renderElements();
   }
 
@@ -589,130 +788,52 @@ export class PDFEditorApp {
     await this.applyZoom(scale);
   }
 
+  // ── Export (vector copyPages) ─────────────────────────────────
   async downloadPDF() {
-    if (!this.renderer.pdfDoc) return;
+    if (!this.documentModel.pageCount) return;
     this._cleanEmptyTextElements();
     this.showToast('Generating PDF…', 60000);
-    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
-    const pdfDoc = await PDFDocument.create();
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
     this.ui.container.style.opacity = '0.4';
     try {
-      for (let pageNum = 1; pageNum <= this.renderer.pdfDoc.numPages; pageNum++) {
-        await this.renderer.renderPage(pageNum);
+      const pdfDoc = await PDFDocument.create();
 
-        const origPage = await this.renderer.pdfDoc.getPage(pageNum);
-        const origVp = origPage.getViewport({ scale: 1 });
+      // Load each source PDF once
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const srcDocs = new Map<string, any>();
+      for (const [id, src] of this.documentModel.sourcePdfs) {
+        srcDocs.set(id, await PDFDocument.load(src.bytes));
+      }
 
-        const pageImage = await pdfDoc.embedPng(this.ui.canvas.toDataURL());
-        const page = pdfDoc.addPage([origVp.width, origVp.height]);
-        page.drawImage(pageImage, {
-          x: 0,
-          y: 0,
-          width: origVp.width,
-          height: origVp.height
-        });
+      // Pre-copy all needed pages from each source (one copyPages call per source)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const copiedPages = new Map<string, any>();
+      for (const [id, srcDoc] of srcDocs) {
+        const indices = [...new Set(
+          this.documentModel.pages.filter(p => p.sourcePdfId === id).map(p => p.sourcePageNum - 1)
+        )].sort((a, b) => a - b);
+        const pages = await pdfDoc.copyPages(srcDoc, indices);
+        indices.forEach((idx: number, i: number) => copiedPages.set(`${id}:${idx}`, pages[i]));
+      }
 
-        const pageElements = this.elements.filter(el => el.page === pageNum);
+      // Add pages in document order and draw overlays
+      for (const docPage of this.documentModel.pages) {
+        const key = `${docPage.sourcePdfId}:${docPage.sourcePageNum - 1}`;
+        const page = copiedPages.get(key);
+        if (!page) continue;
+        pdfDoc.addPage(page);
+
+        const { width, height } = this._getEffectivePageDims(page);
+        const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+
         for (const element of pageElements) {
-          if (element.type === 'text' && (element as TextElement).text) {
-            const te = element as TextElement;
-            const { r, g, b } = this.hexToRgbValues(te.color);
-            const fontName = this._getStandardFont(
-              te.fontFamily, te.bold, te.italic
-            );
-            const font = await pdfDoc.embedFont(StandardFonts[fontName as keyof typeof StandardFonts]);
-            page.drawText(te.text, {
-              x: te.x,
-                y: origVp.height - te.y - te.fontSize,
-              size: te.fontSize,
-              font,
-              color: rgb(r, g, b)
-            });
-          } else if (element.type === 'signature') {
-            const se = element as SignatureElement;
-            const sigImage = await pdfDoc.embedPng(se.data);
-            page.drawImage(sigImage, {
-              x: element.x,
-              y: origVp.height - element.y - element.height,
-              width: element.width,
-              height: element.height
-            });
-          } else if (element.type === 'shape') {
-            const she = element as ShapeElement;
-            const { r, g, b } = this.hexToRgbValues(she.strokeColor);
-            const shapeColor = rgb(r, g, b);
-            const lw = she.strokeWidth;
+          try {
+            await this._drawElementOnPage(pdfDoc, page, element, height, width, { rgb, StandardFonts });
+          } catch { /* skip malformed element */ }
+        }
 
-            switch (she.shapeType) {
-              case 'rect':
-                page.drawRectangle({
-                  x: element.x,
-                  y: origVp.height - element.y - element.height,
-                  width: element.width,
-                  height: element.height,
-                  borderColor: shapeColor,
-                  borderWidth: lw
-                });
-                break;
-
-              case 'ellipse':
-                page.drawEllipse({
-                  x: element.x + element.width / 2,
-                  y: origVp.height - element.y - element.height / 2,
-                  xScale: element.width / 2,
-                  yScale: element.height / 2,
-                  borderColor: shapeColor,
-                  borderWidth: lw
-                });
-                break;
-
-              case 'arrow': {
-                page.drawLine({
-                  start: { x: she.x1, y: origVp.height - she.y1 },
-                  end:   { x: she.x2, y: origVp.height - she.y2 },
-                  thickness: lw,
-                  color: shapeColor
-                });
-                const headLen = Math.max(8, lw * 4);
-                const pdfAngle = Math.atan2(
-                  -(she.y2 - she.y1),
-                   (she.x2 - she.x1)
-                );
-                const ex = she.x2;
-                const ey = origVp.height - she.y2;
-                page.drawLine({
-                  start: { x: ex, y: ey },
-                  end:   { x: ex + headLen * Math.cos(pdfAngle + Math.PI * 0.75),
-                           y: ey + headLen * Math.sin(pdfAngle + Math.PI * 0.75) },
-                  thickness: lw, color: shapeColor
-                });
-                page.drawLine({
-                  start: { x: ex, y: ey },
-                  end:   { x: ex + headLen * Math.cos(pdfAngle - Math.PI * 0.75),
-                           y: ey + headLen * Math.sin(pdfAngle - Math.PI * 0.75) },
-                  thickness: lw, color: shapeColor
-                });
-                break;
-              }
-
-              case 'freehand': {
-                if (she.points.length < 2) break;
-                const pts = she.points;
-                let d = `M ${pts[0].x} ${pts[0].y}`;
-                for (let i = 1; i < pts.length; i++) {
-                  d += ` L ${pts[i].x} ${pts[i].y}`;
-                }
-                page.drawSvgPath(d, {
-                  x: 0,
-                  y: origVp.height,
-                  borderColor: shapeColor,
-                  borderWidth: lw,
-                  scale: 1
-                });
-                break;
-              }
-            }
-          }
+        if (this.documentModel.watermark.enabled) {
+          await this._drawWatermark(page, width, height, { rgb, degrees, pdfDoc, StandardFonts });
         }
       }
 
@@ -722,53 +843,136 @@ export class PDFEditorApp {
       const link = document.createElement('a');
       link.href = url;
       const baseName = (this.currentFilename || 'document').replace(/\.pdf$/i, '');
-      link.download = baseName + '-signed.pdf';
+      link.download = baseName + '-edited.pdf';
       link.click();
       this.showToast('PDF downloaded!');
       URL.revokeObjectURL(url);
     } finally {
       this.ui.container.style.opacity = '1';
-      await this.renderer.renderPage(this.renderer.currentPage);
+      await this._renderCurrentPage();
       this.renderElements();
     }
   }
 
+  private _getEffectivePageDims(page: { getSize(): { width: number; height: number }; getRotation(): { angle: number } }): { width: number; height: number } {
+    const { width, height } = page.getSize();
+    const angle = page.getRotation().angle;
+    return (angle === 90 || angle === 270) ? { width: height, height: width } : { width, height };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, _w: number, libs: { rgb: any; StandardFonts: any }): Promise<void> {
+    const { rgb, StandardFonts } = libs;
+    if (element.type === 'text' && (element as TextElement).text) {
+      const te = element as TextElement;
+      const col = this.hexToRgbValues(te.color);
+      const fontName = this._getStandardFont(te.fontFamily, te.bold, te.italic);
+      const font = await pdfDoc.embedFont(StandardFonts[fontName as keyof typeof StandardFonts]);
+      page.drawText(te.text, {
+        x: te.x, y: h - te.y - te.fontSize, size: te.fontSize, font, color: rgb(col.r, col.g, col.b),
+      });
+    } else if (element.type === 'signature') {
+      const se = element as SignatureElement;
+      const img = await pdfDoc.embedPng(this._dataUrlToBytes(se.data));
+      page.drawImage(img, { x: element.x, y: h - element.y - element.height, width: element.width, height: element.height });
+    } else if (element.type === 'image') {
+      const ie = element as ImageElement;
+      const pdfImg = await this._embedImage(pdfDoc, ie.src);
+      page.drawImage(pdfImg, { x: element.x, y: h - element.y - element.height, width: element.width, height: element.height });
+    } else if (element.type === 'shape') {
+      const she = element as ShapeElement;
+      const col = this.hexToRgbValues(she.strokeColor);
+      const shapeColor = rgb(col.r, col.g, col.b);
+      const lw = she.strokeWidth;
+      switch (she.shapeType) {
+        case 'rect':
+          page.drawRectangle({ x: element.x, y: h - element.y - element.height, width: element.width, height: element.height, borderColor: shapeColor, borderWidth: lw });
+          break;
+        case 'ellipse':
+          page.drawEllipse({ x: element.x + element.width/2, y: h - element.y - element.height/2, xScale: element.width/2, yScale: element.height/2, borderColor: shapeColor, borderWidth: lw });
+          break;
+        case 'arrow': {
+          const pa = Math.atan2(-(she.y2 - she.y1), she.x2 - she.x1);
+          const headLen = Math.max(8, lw * 4);
+          page.drawLine({ start: { x: she.x1, y: h - she.y1 }, end: { x: she.x2, y: h - she.y2 }, thickness: lw, color: shapeColor });
+          const ex = she.x2, ey = h - she.y2;
+          page.drawLine({ start: { x: ex, y: ey }, end: { x: ex + headLen * Math.cos(pa + Math.PI * 0.75), y: ey + headLen * Math.sin(pa + Math.PI * 0.75) }, thickness: lw, color: shapeColor });
+          page.drawLine({ start: { x: ex, y: ey }, end: { x: ex + headLen * Math.cos(pa - Math.PI * 0.75), y: ey + headLen * Math.sin(pa - Math.PI * 0.75) }, thickness: lw, color: shapeColor });
+          break;
+        }
+        case 'freehand': {
+          if (she.points.length < 2) break;
+          const pts = she.points;
+          let d = `M ${pts[0].x} ${pts[0].y}`;
+          for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x} ${pts[i].y}`;
+          page.drawSvgPath(d, { x: 0, y: h, borderColor: shapeColor, borderWidth: lw, scale: 1 });
+          break;
+        }
+      }
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _drawWatermark(page: any, w: number, h: number, libs: { rgb: any; degrees: any; pdfDoc: any; StandardFonts: any }): Promise<void> {
+    const { rgb, degrees, pdfDoc, StandardFonts } = libs;
+    const wm = this.documentModel.watermark;
+    const col = this.hexToRgbValues(wm.color);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const textWidth = font.widthOfTextAtSize(wm.text, wm.fontSize);
+    page.drawText(wm.text, {
+      x: w / 2 - textWidth / 2,
+      y: h / 2 - wm.fontSize / 4,
+      size: wm.fontSize,
+      font,
+      color: rgb(col.r, col.g, col.b),
+      opacity: wm.opacity,
+      rotate: degrees(wm.angle),
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async _embedImage(pdfDoc: any, src: string): Promise<any> {
+    if (src.startsWith('data:image/jpeg') || src.startsWith('data:image/jpg')) {
+      return pdfDoc.embedJpg(this._dataUrlToBytes(src));
+    }
+    // PNG or WEBP/other — canvas re-encode to PNG
+    return new Promise<unknown>((resolve, reject) => {
+      const img = new Image();
+      img.onload = async () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        (c.getContext('2d') as CanvasRenderingContext2D).drawImage(img, 0, 0);
+        const pngBytes = this._dataUrlToBytes(c.toDataURL('image/png'));
+        resolve(await pdfDoc.embedPng(pngBytes));
+      };
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  private _dataUrlToBytes(dataUrl: string): Uint8Array {
+    const base64 = dataUrl.split(',')[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
   _getStandardFont(fontFamily: string, bold: boolean, italic: boolean): string {
     const map: Record<string, Record<string, string>> = {
-      'Arial':           { '': 'Helvetica',       'b': 'HelveticaBold', 'i': 'HelveticaOblique',     'bi': 'HelveticaBoldOblique' },
-      'Helvetica':       { '': 'Helvetica',       'b': 'HelveticaBold', 'i': 'HelveticaOblique',     'bi': 'HelveticaBoldOblique' },
-      'Times New Roman': { '': 'TimesRoman',      'b': 'TimesBold',     'i': 'TimesItalic',          'bi': 'TimesBoldItalic' },
-      'Courier New':     { '': 'Courier',         'b': 'CourierBold',   'i': 'CourierOblique',       'bi': 'CourierBoldOblique' },
-      'Courier':         { '': 'Courier',         'b': 'CourierBold',   'i': 'CourierOblique',       'bi': 'CourierBoldOblique' },
+      'Arial':           { '': 'Helvetica',  'b': 'HelveticaBold', 'i': 'HelveticaOblique',  'bi': 'HelveticaBoldOblique' },
+      'Helvetica':       { '': 'Helvetica',  'b': 'HelveticaBold', 'i': 'HelveticaOblique',  'bi': 'HelveticaBoldOblique' },
+      'Times New Roman': { '': 'TimesRoman', 'b': 'TimesBold',     'i': 'TimesItalic',       'bi': 'TimesBoldItalic' },
+      'Courier New':     { '': 'Courier',    'b': 'CourierBold',   'i': 'CourierOblique',    'bi': 'CourierBoldOblique' },
+      'Courier':         { '': 'Courier',    'b': 'CourierBold',   'i': 'CourierOblique',    'bi': 'CourierBoldOblique' },
     };
     const variant = (bold ? 'b' : '') + (italic ? 'i' : '');
-    return (map[fontFamily] && map[fontFamily][variant]) || 'Helvetica';
+    return (map[fontFamily]?.[variant]) || 'Helvetica';
   }
 
   hexToRgbValues(hex: string): { r: number; g: number; b: number } {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return { r: 0, g: 0, b: 0 };
-    return {
-      r: parseInt(result[1], 16) / 255,
-      g: parseInt(result[2], 16) / 255,
-      b: parseInt(result[3], 16) / 255
-    };
-  }
-
-  exportState() {
-    return JSON.stringify({
-      elements: this.elements.map(el => el.toJSON()),
-      currentPage: this.renderer.currentPage
-    });
-  }
-
-  importState(stateJSON: string) {
-    const state = JSON.parse(stateJSON);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const restored = (state.elements as Array<Record<string, any>>)
-      .map((data) => ElementFactory.fromJSON(data))
-      .filter(Boolean) as PDFElement[];
-    this.elements.splice(0, this.elements.length, ...restored);
-    this.renderElements();
+    return { r: parseInt(result[1], 16) / 255, g: parseInt(result[2], 16) / 255, b: parseInt(result[3], 16) / 255 };
   }
 }
