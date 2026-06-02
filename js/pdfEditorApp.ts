@@ -89,6 +89,7 @@ export class PDFEditorApp {
       onReorder: (newOrder) => this._reorderPages(newOrder),
       onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
+      onDownload: (index) => this.downloadPage(index),
     });
   }
 
@@ -117,6 +118,19 @@ export class PDFEditorApp {
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+
+    // Handle element delete via bubbled CustomEvent from PDFElement.createControls()
+    this.ui.container.addEventListener('element:delete', (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      this.removeElement(id);
+      this.selectElement(null);
+      this._updateFormattingToolbar();
+    });
+
+    // Handle autosave requests bubbled from CommentElement
+    this.ui.container.addEventListener('element:autosave', () => {
+      this._autosave();
+    });
 
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
@@ -736,6 +750,7 @@ export class PDFEditorApp {
       onReorder: (newOrder) => this._reorderPages(newOrder),
       onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
+      onDownload: (index) => this.downloadPage(index),
     });
 
     const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
