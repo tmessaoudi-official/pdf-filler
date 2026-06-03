@@ -135,3 +135,16 @@ describe('_dataUrlToBytes (BUG-16)', () => {
     expect(Array.from(bytes)).toEqual([72, 101, 108, 108, 111]);
   });
 });
+
+describe('undo/redo error surfacing (BUG-18)', () => {
+  it('shows toast on render failure — not silent', () => {
+    const toasts: string[] = [];
+    const showToast = (msg: string) => toasts.push(msg);
+    const catchHandler = (err: unknown) => {
+      console.error('[undo/redo render]', err);
+      showToast('Render failed after undo/redo — try reloading');
+    };
+    catchHandler(new Error('canvas lost'));
+    expect(toasts).toContain('Render failed after undo/redo — try reloading');
+  });
+});

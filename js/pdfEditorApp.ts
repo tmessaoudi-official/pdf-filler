@@ -53,6 +53,7 @@ export class PDFEditorApp {
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
   private _isLoading = false;
+  private _pageUpdatePending = false;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -593,13 +594,19 @@ export class PDFEditorApp {
   }
 
   private async _onPageStructureChange(): Promise<void> {
-    await this._renderCurrentPage();
-    await this._thumbnailPanel?.render();
-    this._thumbnailPanel?.updateActive();
-    this.selectElement(null);
-    this.updatePageInfo();
-    this.renderElements();
-    this._autosave();
+    if (this._pageUpdatePending) return;
+    this._pageUpdatePending = true;
+    try {
+      await this._renderCurrentPage();
+      await this._thumbnailPanel?.render();
+      this._thumbnailPanel?.updateActive();
+      this.selectElement(null);
+      this.updatePageInfo();
+      this.renderElements();
+      this._autosave();
+    } finally {
+      this._pageUpdatePending = false;
+    }
   }
 
   // ── Undo / Redo ───────────────────────────────────────────────
@@ -620,7 +627,10 @@ export class PDFEditorApp {
         this.renderElements();
         this._thumbnailPanel?.updateActive();
         this.updatePageInfo();
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        console.error('[undo render]', err);
+        this.showToast('Render failed after undo — try reloading', 4000);
+      });
       this._updateFormattingToolbar();
       this._autosave();
     }
@@ -634,7 +644,10 @@ export class PDFEditorApp {
         this.renderElements();
         this._thumbnailPanel?.updateActive();
         this.updatePageInfo();
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        console.error('[redo render]', err);
+        this.showToast('Render failed after redo — try reloading', 4000);
+      });
       this._updateFormattingToolbar();
       this._autosave();
     }
