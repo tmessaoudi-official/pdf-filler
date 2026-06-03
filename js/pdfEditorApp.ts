@@ -23,7 +23,6 @@ import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
 import { CommentElement } from './commentElement';
-import { RedactionElement } from './redactionElement';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction';
 
@@ -111,7 +110,10 @@ export class PDFEditorApp {
     this.ui.findHighlight.addEventListener('click', () => this._highlightCurrentMatch());
     this.ui.findClose.addEventListener('click', () => this._closeFindBar());
     this.ui.findInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? this._prevMatch() : this._nextMatch(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) this._prevMatch(); else this._nextMatch();
+      }
       if (e.key === 'Escape') { e.preventDefault(); this._closeFindBar(); }
     });
     this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());

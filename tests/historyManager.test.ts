@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd,
+  HistoryManager, AddElementCmd, ClearAllCmd,
 } from '../js/historyManager';
 import { TextElement } from '../js/textElement';
 

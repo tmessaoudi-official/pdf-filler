@@ -25,7 +25,6 @@ export class TextSearchHandler {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async buildIndex(page: any, pageId: string): Promise<void> {
     if (this._cache.has(pageId)) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = await page.getTextContent();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const items = content.items.filter((item: any) => typeof item.str === 'string' && item.str.length > 0) as RawTextItem[];
