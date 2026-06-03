@@ -1,10 +1,10 @@
 # Contributing to PDF Fill & Sign
 
-Thank you for taking the time to contribute!
+Thank you for contributing!
 
 ## Before You Start
 
-- **Open an issue first** for significant changes (new features, architectural decisions). This prevents wasted effort if the direction doesn't align.
+- **Open an issue first** for significant changes (new features, architectural decisions).
 - For small bug fixes or typo corrections, a PR is welcome directly.
 
 ## Development Setup
@@ -12,38 +12,63 @@ Thank you for taking the time to contribute!
 ```bash
 git clone https://github.com/tmessaoudi-official/pdf-filler.git
 cd pdf-filler
-python3 -m http.server 8080
-# Open http://localhost:8080
+npm install
+npm run dev
+# Open http://localhost:5173/pdf-filler/
 ```
 
-No build step — pure HTML/CSS/JS with ES modules.
+**Requirements:** Node.js 20+ and npm.
+
+## Build
+
+```bash
+npm run build    # outputs to dist/
+npm run preview  # preview the production build locally
+```
+
+## Quality Checks
+
+All of these must pass before merging:
+
+```bash
+npm run type-check   # TypeScript type checking (tsc --noEmit)
+npm run lint         # ESLint
+npm run test         # Vitest unit + integration tests
+```
+
+These run automatically in CI (GitHub Actions) on every push to `master`.
+
+## Tech Stack
+
+- **TypeScript 5** — all source in `js/`
+- **Vite 5** — bundler and dev server; `vite.config.ts` controls PWA, base path, build
+- **pdfjs-dist** — PDF rendering (npm package, not CDN)
+- **pdf-lib** — PDF generation for export (dynamic import at export time)
+- **Vitest** — unit tests in `tests/`
+- **VitePWA** — service worker + manifest generation
 
 ## Making Changes
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature-name`
-3. Make your changes
-4. Test manually: upload a PDF, try every tool (text, signature, shapes, zoom, download)
-5. Test on a mobile viewport (Chrome DevTools device emulation)
-6. Commit with a clear message: `feat:`, `fix:`, `chore:`, `docs:` prefix
-7. Open a pull request against `master`
+1. Fork and create a feature branch: `git checkout -b fix/issue-description`
+2. Write tests first for any bug fix or behaviour change (`tests/*.test.ts`)
+3. Implement the fix
+4. Run `npm run type-check && npm run lint && npm run test`
+5. Test manually: upload a PDF, try every tool, zoom in/out, download
+6. Test on a mobile viewport (Chrome DevTools device emulation ≥ 390px)
+7. Commit with conventional prefix: `fix:`, `feat:`, `chore:`, `docs:`
+8. Open a PR against `master`
 
-## Code Style
+## Project Structure
 
-- Vanilla JS — no frameworks, no bundlers
-- ES modules (`import`/`export`) throughout
-- Module version suffix (`?v=N`) must be bumped when any JS file changes
-- No external dependencies beyond pdf.js (CDN) and pdf-lib (CDN dynamic import)
-- Keep each class in its own file (`js/elementName.js`)
-
-## What Makes a Good PR
-
-- One concern per PR (don't mix unrelated fixes)
-- Screenshots or a short screen recording for UI changes
-- Mobile tested (Chrome DevTools ≥ 390px viewport)
-- No console errors introduced
+```
+js/               TypeScript source modules (one class per file)
+tests/            Vitest tests
+docs/             Plans and reference docs
+index.html        Single-page application entry point
+vite.config.ts    Build config (base: '/pdf-filler/', PWA, manifest)
+.github/          CI workflow (build → test → deploy to GitHub Pages)
+```
 
 ## Reporting Bugs
 
-Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
-Include your browser, device, and a PDF that reproduces the issue if possible.
+Open a GitHub issue. Include your browser, device, and if possible a PDF that reproduces the issue.
