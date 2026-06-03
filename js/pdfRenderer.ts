@@ -41,12 +41,24 @@ export class PDFRenderer {
   }
 
   computeFitScale(containerWidth: number): Promise<number> {
+    const model = this._model;
+    if (model?.currentPage) {
+      const docPage = model.currentPage;
+      const src = model.sourcePdfs.get(docPage.sourcePdfId);
+      if (src) {
+        return src.doc.getPage(docPage.sourcePageNum).then((page: PDFPageProxy) => {
+          const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+          const vp = page.getViewport({ scale: 1, rotation: effectiveRotation });
+          return Math.max(0.25, (containerWidth - 40) / vp.width);
+        });
+      }
+    }
+    // Legacy fallback
     const doc = this.pdfDoc;
     if (!doc) return Promise.resolve(1.0);
     return doc.getPage(1).then((page: PDFPageProxy) => {
       const vp = page.getViewport({ scale: 1 });
-      const availableWidth = containerWidth - 40;
-      return Math.max(0.25, availableWidth / vp.width);
+      return Math.max(0.25, (containerWidth - 40) / vp.width);
     });
   }
 
