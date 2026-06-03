@@ -795,7 +795,7 @@ export class PDFEditorApp {
     const keep = this.elements.filter(e => {
       if (!(e.type === 'text' && !(e as TextElement).text)) return true;
       const input = document.querySelector(`[data-id="${e.id}"] input, [data-id="${e.id}"] textarea`);
-      return input && input === focused;
+      return input ? input === focused : true;
     });
     if (keep.length < before) {
       this.elements.splice(0, this.elements.length, ...keep);
@@ -892,7 +892,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, textElement));
     this._autosave();
     this.renderElements();
-    this.selectElement(textElement);
+    // Focus BEFORE selectElement so _cleanEmptyTextElements sees activeElement === input
     const inputEl = this.ui.container.querySelector(
       `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
     ) as HTMLInputElement | null;
@@ -900,6 +900,7 @@ export class PDFEditorApp {
       (inputEl as HTMLElement).style.pointerEvents = 'auto';
       inputEl.focus();
     }
+    this.selectElement(textElement);
   }
 
   addSignatureAtPosition(e: MouseEvent) {

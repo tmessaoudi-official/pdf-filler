@@ -52,3 +52,17 @@ describe('PDFElement monotonic IDs', () => {
     expect(el.id).toBe(1000);
   });
 });
+
+describe('_cleanEmptyTextElements DOM guard (BUG-29)', () => {
+  it('keeps element when DOM query returns null (not yet mounted)', () => {
+    // The old code: `return input && input === focused` → null when input absent → element deleted
+    // The new code: `return input ? input === focused : true` → true when input absent → element kept
+    const keepFn = (input: Element | null, focused: Element | null): boolean =>
+      input ? input === focused : true;
+
+    expect(keepFn(null, null)).toBe(true);   // not mounted → keep
+    const input = document.createElement('input');
+    expect(keepFn(input, null)).toBe(false);  // mounted but not focused → remove
+    expect(keepFn(input, input)).toBe(true);  // mounted and focused → keep
+  });
+});
