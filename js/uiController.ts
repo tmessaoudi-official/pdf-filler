@@ -240,7 +240,7 @@ export class UIController {
       r.italicBtn.classList.remove('btn-active-fmt');
     }
 
-    const shapeActive = isShape || mode.startsWith('draw');
+    const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight');
     r.shapeColor.disabled = !shapeActive;
     r.shapeWidth.disabled = !shapeActive;
     if (isShape) {

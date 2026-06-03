@@ -869,7 +869,7 @@ export class PDFEditorApp {
 
   closeSignatureModal() {
     this.ui.signatureModal.classList.remove('active');
-    this.mode = 'select';
+    this.setMode('select');
     this.ui.addSignatureBtn.classList.remove('active');
   }
 
