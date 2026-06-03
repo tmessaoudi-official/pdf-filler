@@ -16,7 +16,7 @@ import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
-  DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
+  MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
 } from './historyManager';
 import { DocumentModel } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
@@ -216,45 +216,66 @@ export class PDFEditorApp {
 
     this.ui.fontFamily.addEventListener('change', (e) => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      (this.selectedElement as TextElement).fontFamily = (e.target as HTMLInputElement).value;
+      const te = this.selectedElement as TextElement;
+      const before = { fontFamily: te.fontFamily };
+      te.fontFamily = (e.target as HTMLInputElement).value;
+      this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { fontFamily: te.fontFamily }));
       this.renderElements(); this._autosave();
     });
     this.ui.boldBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      (this.selectedElement as TextElement).bold = !(this.selectedElement as TextElement).bold;
-      this.ui.boldBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).bold);
+      const te = this.selectedElement as TextElement;
+      const before = { bold: te.bold };
+      te.bold = !te.bold;
+      this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { bold: te.bold }));
+      this.ui.boldBtn.classList.toggle('btn-active-fmt', te.bold);
       this.renderElements(); this._autosave();
     });
     this.ui.italicBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      (this.selectedElement as TextElement).italic = !(this.selectedElement as TextElement).italic;
-      this.ui.italicBtn.classList.toggle('btn-active-fmt', (this.selectedElement as TextElement).italic);
+      const te = this.selectedElement as TextElement;
+      const before = { italic: te.italic };
+      te.italic = !te.italic;
+      this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { italic: te.italic }));
+      this.ui.italicBtn.classList.toggle('btn-active-fmt', te.italic);
       this.renderElements(); this._autosave();
     });
     this.ui.fontSizeInput.addEventListener('change', (e) => {
       const size = Math.max(8, Math.min(72, parseInt((e.target as HTMLInputElement).value) || 14));
       if (this.selectedElement && this.selectedElement.type === 'text') {
-        (this.selectedElement as TextElement).fontSize = size;
+        const te = this.selectedElement as TextElement;
+        const before = { fontSize: te.fontSize };
+        te.fontSize = size;
+        this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { fontSize: size }));
         this.renderElements(); this._autosave();
       }
     });
     this.ui.textColorInput.addEventListener('change', (e) => {
       if (this.selectedElement && this.selectedElement.type === 'text') {
-        (this.selectedElement as TextElement).color = (e.target as HTMLInputElement).value;
+        const te = this.selectedElement as TextElement;
+        const before = { color: te.color };
+        te.color = (e.target as HTMLInputElement).value;
+        this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { color: te.color }));
         this.renderElements(); this._autosave();
       }
     });
     this.ui.fontSizeDownBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      const newSize = Math.max(8, (this.selectedElement as TextElement).fontSize - 2);
-      (this.selectedElement as TextElement).fontSize = newSize;
+      const te = this.selectedElement as TextElement;
+      const before = { fontSize: te.fontSize };
+      const newSize = Math.max(8, te.fontSize - 2);
+      te.fontSize = newSize;
+      this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { fontSize: newSize }));
       this.ui.fontSizeInput.value = String(newSize);
       this.renderElements(); this._autosave();
     });
     this.ui.fontSizeUpBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
-      const newSize = Math.min(72, (this.selectedElement as TextElement).fontSize + 2);
-      (this.selectedElement as TextElement).fontSize = newSize;
+      const te = this.selectedElement as TextElement;
+      const before = { fontSize: te.fontSize };
+      const newSize = Math.min(72, te.fontSize + 2);
+      te.fontSize = newSize;
+      this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { fontSize: newSize }));
       this.ui.fontSizeInput.value = String(newSize);
       this.renderElements(); this._autosave();
     });

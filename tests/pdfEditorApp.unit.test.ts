@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PDFElement } from '../js/pdfElement';
 import { TextElement } from '../js/textElement';
 import { ElementFactory } from '../js/elementFactory';
+import { HistoryManager, AddElementCmd, MoveResizeCmd } from '../js/historyManager';
 
 describe('PDFElement monotonic IDs', () => {
   beforeEach(() => {
@@ -264,5 +265,28 @@ describe('keyboard nudge geometry (BUG-24)', () => {
       expect(calcDx).toBe(dx);
       expect(calcDy).toBe(dy);
     }
+  });
+});
+
+describe('text formatting undo (BUG-25)', () => {
+  beforeEach(() => { PDFElement._nextId = 1; });
+
+  it('bold toggle is undoable via MoveResizeCmd', () => {
+    const elements: PDFElement[] = [];
+    const mgr = new HistoryManager(50, vi.fn());
+    const te = new TextElement(0, 0, 'p1');
+    mgr.execute(new AddElementCmd(elements, te));
+
+    // Simulate what the fixed handler does
+    const before = { bold: te.bold };
+    te.bold = !te.bold;
+    const after = { bold: te.bold };
+    mgr.record(new MoveResizeCmd(elements, te, before, after));
+
+    expect(te.bold).toBe(true);
+    mgr.undo();
+    expect(te.bold).toBe(false);
+    mgr.redo();
+    expect(te.bold).toBe(true);
   });
 });
