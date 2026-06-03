@@ -97,18 +97,23 @@ export class PDFRenderer {
   private async _renderPdfPage(doc: PDFDocumentProxy, pageNum: number, userRotation = 0): Promise<void> {
     if (this.isRendering) {
       return new Promise<void>((resolve) => {
+        // Resolve any previously queued Promise before overwriting (BUG-08 fix)
+        if (this._pendingResolve) this._pendingResolve();
         this.pendingPage = { doc, pageNum, userRotation };
         this._pendingResolve = resolve;
       });
     }
     this.isRendering = true;
-    const page = await doc.getPage(pageNum);
-    const effectiveRotation = (page.rotate + userRotation) % 360;
-    const viewport = page.getViewport({ scale: this.scale, rotation: effectiveRotation });
-    this.canvas.height = viewport.height;
-    this.canvas.width = viewport.width;
-    await page.render({ canvasContext: this.ctx, viewport }).promise;
-    this.isRendering = false;
+    try {
+      const page = await doc.getPage(pageNum);
+      const effectiveRotation = (page.rotate + userRotation) % 360;
+      const viewport = page.getViewport({ scale: this.scale, rotation: effectiveRotation });
+      this.canvas.height = viewport.height;
+      this.canvas.width = viewport.width;
+      await page.render({ canvasContext: this.ctx, viewport }).promise;
+    } finally {
+      this.isRendering = false;  // BUG-05 fix: always release lock
+    }
     if (this.pendingPage !== null) {
       const { doc: pendingDoc, pageNum: pending, userRotation: pendingRot } = this.pendingPage;
       const pendingResolve = this._pendingResolve;
