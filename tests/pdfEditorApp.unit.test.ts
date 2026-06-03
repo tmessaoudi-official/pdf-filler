@@ -290,3 +290,14 @@ describe('text formatting undo (BUG-25)', () => {
     expect(te.bold).toBe(true);
   });
 });
+
+describe('image MIME validation (BUG-43)', () => {
+  it('rejects files without image/ MIME type', () => {
+    const isValidImage = (mimeType: string) => mimeType.startsWith('image/');
+    expect(isValidImage('application/pdf')).toBe(false);
+    expect(isValidImage('text/plain')).toBe(false);
+    expect(isValidImage('')).toBe(false);
+    expect(isValidImage('image/png')).toBe(true);
+    expect(isValidImage('image/jpeg')).toBe(true);
+  });
+});

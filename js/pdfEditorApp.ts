@@ -533,6 +533,10 @@ export class PDFEditorApp {
     const file = (e.target as HTMLInputElement).files?.[0];
     (e.target as HTMLInputElement).value = '';
     if (!file || !this.documentModel.currentPage) return;
+    if (!file.type.startsWith('image/')) {
+      this.showToast('Please select an image file (PNG, JPEG, GIF, or WebP)');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const src = ev.target?.result as string;
