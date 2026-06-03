@@ -82,6 +82,27 @@ export class SnapshotCmd implements Command {
   }
 }
 
+export class TextEditCmd implements Command {
+  constructor(
+    private elements: PDFElement[],
+    private elementId: number,
+    private before: string,
+    private after: string,
+  ) {}
+
+  execute(): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const el = this.elements.find(e => e.id === this.elementId) as any;
+    if (el) el.text = this.after;
+  }
+
+  undo(): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const el = this.elements.find(e => e.id === this.elementId) as any;
+    if (el) el.text = this.before;
+  }
+}
+
 // Snapshot before/after page order for reorder undo
 export class ReorderPagesCmd implements Command {
   constructor(

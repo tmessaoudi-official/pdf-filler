@@ -12,6 +12,7 @@ export interface ElementJSON {
 }
 
 export abstract class PDFElement {
+  static _nextId = 1;
   id: number;
   type: ElementType;
   x: number;
@@ -21,7 +22,7 @@ export abstract class PDFElement {
   pageId: string;
 
   constructor(type: ElementType, x: number, y: number, width: number, height: number, pageId: string) {
-    this.id = Date.now() + Math.random();
+    this.id = PDFElement._nextId++;
     this.type = type;
     this.x = x;
     this.y = y;
@@ -39,7 +40,13 @@ export abstract class PDFElement {
     deleteBtn.title = 'Delete';
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      window.app.removeElement(this.id);
+      deleteBtn.dispatchEvent(
+        new CustomEvent<{ id: number }>('element:delete', {
+          bubbles: true,
+          composed: true,
+          detail: { id: this.id },
+        })
+      );
     });
     controls.appendChild(deleteBtn);
     return controls;
@@ -58,9 +65,3 @@ export abstract class PDFElement {
   }
 }
 
-// Augment global Window so window.app is known
-declare global {
-  interface Window {
-    app: import('./pdfEditorApp').PDFEditorApp;
-  }
-}

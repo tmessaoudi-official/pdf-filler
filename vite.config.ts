@@ -10,6 +10,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      manifestFilename: 'manifest.json',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
         // pdf.js + pdf-lib chunks can be >2MB — raise the precache limit

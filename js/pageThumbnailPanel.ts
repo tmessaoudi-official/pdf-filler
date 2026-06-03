@@ -11,6 +11,7 @@ export class PageThumbnailPanel {
   private onReorder: (newOrder: string[]) => void;
   private onRotate: (pageId: string, delta: number) => void;
   private onAddPdf: () => void;
+  private onDownload: (index: number) => void;
   private _dragSrcIndex: number | null = null;
   private _thumbCache: Map<string, string> = new Map(); // pageId → dataURL
 
@@ -23,6 +24,7 @@ export class PageThumbnailPanel {
     onReorder: (newOrder: string[]) => void;
     onRotate: (pageId: string, delta: number) => void;
     onAddPdf: () => void;
+    onDownload: (index: number) => void;
   }) {
     this.container = opts.container;
     this.renderer = opts.renderer;
@@ -32,6 +34,7 @@ export class PageThumbnailPanel {
     this.onReorder = opts.onReorder;
     this.onRotate = opts.onRotate;
     this.onAddPdf = opts.onAddPdf;
+    this.onDownload = opts.onDownload;
 
     this.strip = document.createElement('div');
     this.strip.className = 'page-thumb-strip';
@@ -103,7 +106,7 @@ export class PageThumbnailPanel {
       dlBtn.className = 'thumb-dl';
       dlBtn.textContent = '⬇';
       dlBtn.title = `Download page ${i + 1}`;
-      dlBtn.addEventListener('click', (e) => { e.stopPropagation(); window.app.downloadPage(i); });
+      dlBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownload(i); });
 
       item.appendChild(img);
       item.appendChild(label);

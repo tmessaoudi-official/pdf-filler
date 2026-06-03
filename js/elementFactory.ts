@@ -6,7 +6,7 @@ import { HighlightElement } from './highlightElement';
 import { CommentElement } from './commentElement';
 import { RedactionElement } from './redactionElement';
 import type { ShapeType } from './shapeElement';
-import type { PDFElement } from './pdfElement';
+import { PDFElement } from './pdfElement';
 
 export class ElementFactory {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,5 +64,11 @@ export class ElementFactory {
       return el;
     }
     return null;
+  }
+
+  static syncIdCounter(elements: PDFElement[]): void {
+    if (!elements.length) return;
+    const maxId = Math.max(...elements.map(e => Math.floor(e.id)));
+    if (maxId >= PDFElement._nextId) PDFElement._nextId = maxId + 1;
   }
 }

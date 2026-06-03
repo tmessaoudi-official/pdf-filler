@@ -15,7 +15,7 @@ import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
 import {
-  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd,
+  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
 } from './historyManager';
 import { DocumentModel } from './documentModel';
@@ -23,7 +23,6 @@ import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
 import { CommentElement } from './commentElement';
-import { RedactionElement } from './redactionElement';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction';
 
@@ -38,7 +37,8 @@ export class PDFEditorApp {
   selectedElement: PDFElement | null = null;
   historyManager!: HistoryManager;
   _textChangeTimer: ReturnType<typeof setTimeout> | null = null;
-  _pendingTextCmd: SnapshotCmd | null = null;
+  private _pendingTextBefore: string | null = null;
+  private _pendingTextElementId: number | null = null;
   currentFilename: string | null = null;
   currentSignature: string | null = null;
   uiController!: UIController;
@@ -51,6 +51,7 @@ export class PDFEditorApp {
   private _findMatchIndex = -1;
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
+  private _warnedUnsupportedFields = false;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -71,7 +72,6 @@ export class PDFEditorApp {
       this.uiController.updateUndoRedoBtns(canUndo, canRedo);
     });
     this._textChangeTimer = null;
-    this._pendingTextCmd = null;
     this.currentFilename = null;
     this.currentSignature = null;
     this.setupEventListeners();
@@ -89,6 +89,7 @@ export class PDFEditorApp {
       onReorder: (newOrder) => this._reorderPages(newOrder),
       onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
+      onDownload: (index) => this.downloadPage(index),
     });
   }
 
@@ -110,13 +111,29 @@ export class PDFEditorApp {
     this.ui.findHighlight.addEventListener('click', () => this._highlightCurrentMatch());
     this.ui.findClose.addEventListener('click', () => this._closeFindBar());
     this.ui.findInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? this._prevMatch() : this._nextMatch(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) this._prevMatch(); else this._nextMatch();
+      }
       if (e.key === 'Escape') { e.preventDefault(); this._closeFindBar(); }
     });
     this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+
+    // Handle element delete via bubbled CustomEvent from PDFElement.createControls()
+    this.ui.container.addEventListener('element:delete', (e: Event) => {
+      const { id } = (e as CustomEvent<{ id: number }>).detail;
+      this.removeElement(id);
+      this.selectElement(null);
+      this._updateFormattingToolbar();
+    });
+
+    // Handle autosave requests bubbled from CommentElement
+    this.ui.container.addEventListener('element:autosave', () => {
+      this._autosave();
+    });
 
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
@@ -500,6 +517,7 @@ export class PDFEditorApp {
     this._autosave();
     this.setMode('select');
     this.renderElements();
+    this.selectElement(imgEl);
   }
 
   // ── PDF page management ───────────────────────────────────────
@@ -584,7 +602,17 @@ export class PDFEditorApp {
   }
 
   // ── Undo / Redo ───────────────────────────────────────────────
+  private _cancelPendingTextEdit(): void {
+    if (this._textChangeTimer !== null) {
+      clearTimeout(this._textChangeTimer);
+      this._textChangeTimer = null;
+      this._pendingTextBefore = null;
+      this._pendingTextElementId = null;
+    }
+  }
+
   undo() {
+    this._cancelPendingTextEdit();
     if (this.historyManager.undo()) {
       this.selectedElement = null;
       this._renderCurrentPage().then(() => {
@@ -598,6 +626,7 @@ export class PDFEditorApp {
   }
 
   redo() {
+    this._cancelPendingTextEdit();
     if (this.historyManager.redo()) {
       this.selectedElement = null;
       this._renderCurrentPage().then(() => {
@@ -660,6 +689,7 @@ export class PDFEditorApp {
         .map(d => ElementFactory.fromJSON(d as Parameters<typeof ElementFactory.fromJSON>[0]))
         .filter(Boolean) as PDFElement[];
       this.elements.push(...restored);
+      ElementFactory.syncIdCounter(this.elements);
       this._formValues = state.formValues ?? {};
       this.currentFilename = state.sourcePdfs[0]?.name ?? null;
 
@@ -719,6 +749,7 @@ export class PDFEditorApp {
     this.renderer.setModel(this.documentModel);
     this.elements = [];
     this._formValues = {};
+    this._warnedUnsupportedFields = false;
     this._formFieldOverlay.clear();
     this.historyManager.clear();
     this.selectedElement = null;
@@ -735,6 +766,7 @@ export class PDFEditorApp {
       onReorder: (newOrder) => this._reorderPages(newOrder),
       onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
+      onDownload: (index) => this.downloadPage(index),
     });
 
     const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
@@ -844,6 +876,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, el));
     this._autosave();
     this.renderElements();
+    this.selectElement(el);
   }
 
   addTextAtPosition(e: MouseEvent) {
@@ -859,6 +892,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, textElement));
     this._autosave();
     this.renderElements();
+    this.selectElement(textElement);
     const inputEl = this.ui.container.querySelector(
       `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
     ) as HTMLInputElement | null;
@@ -880,6 +914,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
     this._autosave();
     this.renderElements();
+    this.selectElement(sigElement);
   }
 
   removeElement(id: number) {
@@ -911,11 +946,23 @@ export class PDFEditorApp {
           const isSelected = this.selectedElement && this.selectedElement.id === element.id;
           if (!isSelected) (input as HTMLElement).style.pointerEvents = 'none';
           input.addEventListener('input', () => {
-            if (!this._pendingTextCmd) this._pendingTextCmd = new SnapshotCmd(this.elements);
+            const textEl = element as TextElement;
+            if (this._pendingTextElementId !== element.id) {
+              this._pendingTextBefore = textEl.text;
+              this._pendingTextElementId = element.id;
+            }
+            textEl.text = (input as HTMLInputElement | HTMLTextAreaElement).value;
             clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
-              const cmd = this._pendingTextCmd;
-              if (cmd) { cmd.captureAfter(); this.historyManager.record(cmd); this._pendingTextCmd = null; this._autosave(); }
+              const before = this._pendingTextBefore;
+              const id = this._pendingTextElementId;
+              this._pendingTextBefore = null;
+              this._pendingTextElementId = null;
+              this._textChangeTimer = null;
+              if (id !== null && before !== null && before !== textEl.text) {
+                this.historyManager.record(new TextEditCmd(this.elements, id, before, textEl.text));
+              }
+              this._autosave();
             }, 500);
           });
         }
@@ -940,7 +987,7 @@ export class PDFEditorApp {
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
     const values = this._formValues[docPage.sourcePdfId] ?? {};
-    await this._formFieldOverlay.render(
+    const { unsupportedCount } = await this._formFieldOverlay.render(
       page, viewport, canvasOffset, values,
       (fieldName, value) => {
         if (!this._formValues[docPage.sourcePdfId]) this._formValues[docPage.sourcePdfId] = {};
@@ -948,6 +995,14 @@ export class PDFEditorApp {
         this._autosave();
       }
     );
+
+    if (unsupportedCount > 0 && !this._warnedUnsupportedFields) {
+      this._warnedUnsupportedFields = true;
+      this.showToast(
+        `This PDF has ${unsupportedCount} checkbox/dropdown field${unsupportedCount > 1 ? 's' : ''} — only text fields are supported`,
+        5000,
+      );
+    }
     this._formFieldOverlay.setPointerEvents(this.mode === 'select');
   }
 
@@ -995,6 +1050,89 @@ export class PDFEditorApp {
     await this.applyZoom(scale);
   }
 
+  /**
+   * Export a page as a rasterized PNG image embedded in a new pdf-lib page.
+   * Called when the page has redaction elements — rasterization permanently
+   * removes the text layer so redacted content cannot be extracted.
+   */
+  private async _rasterizePageWithRedactions(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    srcDoc: any,
+    docPage: import('./documentModel').DocumentPage,
+    elements: PDFElement[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pdfDoc: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    libs: { rgb: any; StandardFonts: any; degrees: any },
+  ): Promise<void> {
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    void rgb; void StandardFonts; // used via libs param below
+
+    // 1. Build a temp single-page PDF with all NON-redaction elements drawn in
+    const tempDoc = await PDFDocument.create();
+    const [tempPage] = await tempDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
+    tempDoc.addPage(tempPage);
+
+    const userRot  = docPage.rotation ?? 0;
+    const srcRot   = tempPage.getRotation().angle as number;
+    const totalRot = (srcRot + userRot) % 360;
+    if (userRot) tempPage.setRotation(degrees(totalRot));
+
+    const { width: W_orig, height: H_orig } = tempPage.getSize() as { width: number; height: number };
+    const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(tempPage);
+
+    const nonRedactions = elements.filter(e => e.type !== 'redaction');
+    for (const el of nonRedactions) {
+      try {
+        await this._drawElementOnPage(tempDoc, tempPage, el, h_eff, w_eff, libs, W_orig, H_orig, totalRot);
+      } catch { /* skip malformed */ }
+    }
+
+    if (this.documentModel.watermark.enabled) {
+      await this._drawWatermark(tempPage, W_orig, H_orig, {
+        rgb: libs.rgb, degrees, pdfDoc: tempDoc, StandardFonts: libs.StandardFonts,
+      });
+    }
+
+    // 2. Rasterize via pdf.js at 2× scale
+    const tempBytes  = await tempDoc.save({ useObjectStreams: false });
+    const renderDoc  = await pdfjsLib.getDocument(tempBytes).promise;
+    const renderPage = await renderDoc.getPage(1);
+    const SCALE = 2;
+    const effectiveRotation = (renderPage.rotate + userRot) % 360;
+    const vp = renderPage.getViewport({ scale: SCALE, rotation: effectiveRotation });
+
+    const offscreen    = document.createElement('canvas');
+    offscreen.width    = Math.round(vp.width);
+    offscreen.height   = Math.round(vp.height);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const ctx          = offscreen.getContext('2d')!;
+    await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
+
+    // 3. Paint redaction boxes onto the canvas (permanently covers content)
+    ctx.fillStyle = '#000000';
+    for (const el of elements.filter(e => e.type === 'redaction')) {
+      ctx.fillRect(
+        Math.round(el.x * SCALE),
+        Math.round(el.y * SCALE),
+        Math.round(el.width  * SCALE),
+        Math.round(el.height * SCALE),
+      );
+    }
+
+    // 4. Embed rasterized PNG into the destination document as a new page
+    const pngBytes = await new Promise<Uint8Array>((resolve, reject) => {
+      offscreen.toBlob((blob) => {
+        if (!blob) { reject(new Error('canvas toBlob failed')); return; }
+        blob.arrayBuffer().then(ab => resolve(new Uint8Array(ab)));
+      }, 'image/png');
+    });
+
+    const pngImg  = await pdfDoc.embedPng(pngBytes);
+    const newPage = pdfDoc.addPage([w_eff, h_eff]);
+    newPage.drawImage(pngImg, { x: 0, y: 0, width: w_eff, height: h_eff });
+  }
+
   // ── Export (vector copyPages) ─────────────────────────────────
   async downloadPDF() {
     if (!this.documentModel.pageCount) return;
@@ -1038,6 +1176,17 @@ export class PDFEditorApp {
 
       // Add pages in document order and draw overlays
       for (const docPage of this.documentModel.pages) {
+        const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+        const hasRedaction = pageElements.some(el => el.type === 'redaction');
+
+        if (hasRedaction) {
+          const srcDoc = srcDocs.get(docPage.sourcePdfId);
+          if (srcDoc) {
+            await this._rasterizePageWithRedactions(srcDoc, docPage, pageElements, pdfDoc, { rgb, StandardFonts, degrees });
+          }
+          continue; // skip the normal vector export for this page
+        }
+
         const key = `${docPage.sourcePdfId}:${docPage.sourcePageNum - 1}`;
         const page = copiedPages.get(key);
         if (!page) continue;
@@ -1053,12 +1202,17 @@ export class PDFEditorApp {
         const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
         // Visual (effective) dims after rotation — used for watermark centering
         const { width: w_eff, height: h_eff } = this._getEffectivePageDims(page);
-        const pageElements = this.elements.filter(el => el.pageId === docPage.id);
 
+        const exportErrors: string[] = [];
         for (const element of pageElements) {
           try {
             await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot);
-          } catch { /* skip malformed element */ }
+          } catch {
+            exportErrors.push(`${element.type} (id ${element.id})`);
+          }
+        }
+        if (exportErrors.length > 0) {
+          this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
         }
 
         if (this.documentModel.watermark.enabled) {
@@ -1066,7 +1220,7 @@ export class PDFEditorApp {
         }
       }
 
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1093,27 +1247,38 @@ export class PDFEditorApp {
     try {
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
       if (!srcEntry) return;
-      const srcDoc  = await PDFDocument.load(srcEntry.bytes);
-      const pdfDoc  = await PDFDocument.create();
-      const [page]  = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
-      pdfDoc.addPage(page);
-
-      const userRot  = docPage.rotation ?? 0;
-      const srcRot   = page.getRotation().angle as number;
-      const totalRot = (srcRot + userRot) % 360;
-      if (userRot) page.setRotation(degrees(totalRot));
-
-      const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
-      const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+      const srcDocLib = await PDFDocument.load(srcEntry.bytes);
+      const pdfDoc    = await PDFDocument.create();
       const pageElements = this.elements.filter(el => el.pageId === docPage.id);
-      for (const element of pageElements) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
-      }
-      if (this.documentModel.watermark.enabled) {
-        await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+      const hasRedaction = pageElements.some(el => el.type === 'redaction');
+
+      if (hasRedaction) {
+        await this._rasterizePageWithRedactions(srcDocLib, docPage, pageElements, pdfDoc, { rgb, StandardFonts, degrees });
+      } else {
+        const [page] = await pdfDoc.copyPages(srcDocLib, [docPage.sourcePageNum - 1]);
+        pdfDoc.addPage(page);
+
+        const userRot  = docPage.rotation ?? 0;
+        const srcRot   = page.getRotation().angle as number;
+        const totalRot = (srcRot + userRot) % 360;
+        if (userRot) page.setRotation(degrees(totalRot));
+
+        const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
+        const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+        const exportErrors: string[] = [];
+        for (const element of pageElements) {
+          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+          catch { exportErrors.push(`${element.type} (id ${element.id})`); }
+        }
+        if (exportErrors.length > 0) {
+          this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
+        }
+        if (this.documentModel.watermark.enabled) {
+          await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+        }
       }
 
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1139,7 +1304,11 @@ export class PDFEditorApp {
       // Build a single-page PDF with all elements drawn in
       const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
-      if (!srcEntry) return;
+      if (!srcEntry) {
+        this.showToast('Export failed — source PDF not found');
+        this.ui.container.style.opacity = '1';
+        return;
+      }
       const srcDoc = await PDFDocument.load(srcEntry.bytes);
       const pdfDoc = await PDFDocument.create();
       const [page] = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
@@ -1152,15 +1321,20 @@ export class PDFEditorApp {
       const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
       const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
 
+      const imgExportErrors: string[] = [];
       for (const element of this.elements.filter(el => el.pageId === docPage.id)) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+        catch { imgExportErrors.push(`${element.type} (id ${element.id})`); }
+      }
+      if (imgExportErrors.length > 0) {
+        this.showToast(`⚠ ${imgExportErrors.length} element(s) failed to render: ${imgExportErrors.join(', ')}`, 6000);
       }
       if (this.documentModel.watermark.enabled) {
         await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
       }
 
       // Rasterize via pdf.js at 2× scale
-      const pdfBytes  = await pdfDoc.save();
+      const pdfBytes  = await pdfDoc.save({ useObjectStreams: false });
       const renderDoc = await pdfjsLib.getDocument(pdfBytes).promise;
       const renderPage = await renderDoc.getPage(1);
       const SCALE = 2;
