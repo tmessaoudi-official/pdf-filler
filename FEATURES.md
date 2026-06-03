@@ -119,8 +119,6 @@ Every placed element has:
 
 **Trigger**: **T Text** button or keyboard `T`.
 
-> ⚠️ **P0 Bug**: Text placement is currently broken. Clicking the canvas creates a text element but `selectElement()` is called before `inputEl.focus()`, causing `_cleanEmptyTextElements()` to immediately remove the element (empty text, input not focused). **No text can be placed.** Fix: reorder lines in `addTextAtPosition()` — focus the input before calling `selectElement()`. See `js/pdfEditorApp.ts:addTextAtPosition`.
-
 **Placement**: Click anywhere on the PDF canvas. A text input appears centred on the click point.
 
 **Properties** (all changeable while element is selected):
@@ -364,7 +362,7 @@ UI opacity is reduced to 0.4 during generation to indicate processing.
 
 ## 17. Export — Single Page PDF (Split)
 
-**Trigger**: **⬇** button on individual page thumbnails.
+**Trigger**: **📄** (Export Page) button in toolbar row 1 (exports the current page), or the **⬇** button on any individual page thumbnail.
 
 Exports the selected page (with its annotations and watermark if enabled) as a standalone PDF. Filename: `<original-name>-page<N>.pdf`.
 

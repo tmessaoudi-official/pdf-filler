@@ -48,7 +48,26 @@ export class CommentElement extends PDFElement {
       alignItems: 'center',
       gap: '4px',
     });
-    header.textContent = '💬 Note';
+    const label = document.createElement('span');
+    label.textContent = '💬 Note';
+    label.style.flex = '1';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.title = 'Delete';
+    Object.assign(delBtn.style, {
+      background: 'none', border: 'none', cursor: 'pointer',
+      color: 'rgba(0,0,0,0.5)', fontWeight: 'bold', fontSize: '13px',
+      lineHeight: '1', padding: '0 2px', flexShrink: '0',
+    });
+    delBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      delBtn.dispatchEvent(new CustomEvent<{ id: number }>('element:delete', {
+        bubbles: true, composed: true, detail: { id: this.id },
+      }));
+    });
+    header.appendChild(label);
+    header.appendChild(delBtn);
 
     const textarea = document.createElement('textarea');
     Object.assign(textarea.style, {
@@ -73,7 +92,6 @@ export class CommentElement extends PDFElement {
 
     wrapper.appendChild(header);
     wrapper.appendChild(textarea);
-    wrapper.appendChild(this.createControls());
     wrapper.appendChild(this.createResizeHandle());
     container.appendChild(wrapper);
     return wrapper;

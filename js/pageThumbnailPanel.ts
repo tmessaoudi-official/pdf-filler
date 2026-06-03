@@ -105,7 +105,7 @@ export class PageThumbnailPanel {
       const dlBtn = document.createElement('button');
       dlBtn.className = 'thumb-dl';
       dlBtn.textContent = '⬇';
-      dlBtn.title = `Download page ${i + 1}`;
+      dlBtn.title = `Export page ${i + 1} as PDF`;
       dlBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownload(i); });
 
       item.appendChild(img);

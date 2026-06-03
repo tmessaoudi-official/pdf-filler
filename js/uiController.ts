@@ -77,6 +77,7 @@ export interface UIRefs {
   commentBtn: HTMLButtonElement;
   redactBtn: HTMLButtonElement;
   exportImgBtn: HTMLButtonElement;
+  exportPageBtn: HTMLButtonElement;
 }
 
 export class UIController {
@@ -158,6 +159,7 @@ export class UIController {
       commentBtn:       document.getElementById('commentBtn')       as HTMLButtonElement,
       redactBtn:        document.getElementById('redactBtn')        as HTMLButtonElement,
       exportImgBtn:     document.getElementById('exportImgBtn')     as HTMLButtonElement,
+      exportPageBtn:    document.getElementById('exportPageBtn')    as HTMLButtonElement,
     };
   }
 
@@ -186,6 +188,7 @@ export class UIController {
     r.commentBtn.disabled     = false;
     r.redactBtn.disabled      = false;
     r.exportImgBtn.disabled   = false;
+    r.exportPageBtn.disabled  = false;
   }
 
   updateModeButtons(mode: ToolMode): void {

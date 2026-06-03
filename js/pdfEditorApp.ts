@@ -109,6 +109,7 @@ export class PDFEditorApp {
     this.ui.commentBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addComment'); });
     this.ui.redactBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawRedaction'); });
     this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
+    this.ui.exportPageBtn.addEventListener('click', () => { if (this.documentModel.currentPage) this.downloadPage(this.documentModel.currentPageIndex); });
     this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
     this.ui.findInput.addEventListener('input', () => {
       clearTimeout(this._searchDebounceTimer ?? undefined);
@@ -567,13 +568,13 @@ export class PDFEditorApp {
 
   // ── PDF page management ───────────────────────────────────────
   private async _handleAddPdfUpload(e: Event): Promise<void> {
-    const files = (e.target as HTMLInputElement).files;
+    const files = Array.from((e.target as HTMLInputElement).files ?? []);
     (e.target as HTMLInputElement).value = '';
     this._textSearch.clearCache();
-    if (!files?.length) return;
+    if (!files.length) return;
 
     let addedCount = 0;
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       if (file.type !== 'application/pdf') continue;
       try {
         const typedBytes = new Uint8Array(await file.arrayBuffer());
@@ -1576,15 +1577,21 @@ export class PDFEditorApp {
     const col = this.hexToRgbValues(wm.color);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const textWidth = font.widthOfTextAtSize(wm.text, wm.fontSize);
-    page.drawText(wm.text, {
-      x: W_orig / 2 - textWidth / 2,
-      y: H_orig / 2 - wm.fontSize / 4,
-      size: wm.fontSize,
-      font,
-      color: rgb(col.r, col.g, col.b),
-      opacity: wm.opacity,
-      rotate: degrees(wm.angle),
-    });
+    const stepX = Math.max(textWidth + wm.fontSize * 1.5, W_orig / 3);
+    const stepY = Math.max(wm.fontSize * 3, H_orig / 3);
+    for (let y = -(stepY / 2); y < H_orig + stepY; y += stepY) {
+      for (let x = -(stepX / 2); x < W_orig + stepX; x += stepX) {
+        page.drawText(wm.text, {
+          x: x - textWidth / 2,
+          y,
+          size: wm.fontSize,
+          font,
+          color: rgb(col.r, col.g, col.b),
+          opacity: wm.opacity,
+          rotate: degrees(wm.angle),
+        });
+      }
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
