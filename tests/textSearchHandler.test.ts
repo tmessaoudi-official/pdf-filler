@@ -40,3 +40,30 @@ describe('TextSearchHandler LRU cache', () => {
     expect(handler.search('page 1', 'page-1', vp, 1)).toHaveLength(0);
   });
 });
+
+describe('TextSearchHandler word-level highlights', () => {
+  it('match width is narrower than full item width', async () => {
+    const handler = new TextSearchHandler();
+    const text = 'Test content for search: Hello World';
+    await handler.buildIndex(makePage(text), 'p1');
+
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const matches = handler.search('search', 'p1', vp, 1);
+    expect(matches).toHaveLength(1);
+
+    const itemWidth = text.length * 7; // as in makePage stub
+    expect(matches[0].width).toBeLessThan(itemWidth * 0.5);
+  });
+
+  it('match x is offset from item start for mid-string match', async () => {
+    const handler = new TextSearchHandler();
+    const text = 'AAAAAABBBBBBBBBBB'; // match "BBB" is in the second half
+    await handler.buildIndex(makePage(text), 'p2');
+
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const matches = handler.search('bbb', 'p2', vp, 1);
+    expect(matches).toHaveLength(1);
+    // The match should start at x > item start (which is 50 in the stub)
+    expect(matches[0].x).toBeGreaterThan(50);
+  });
+});
