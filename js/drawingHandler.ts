@@ -26,7 +26,7 @@ export class DrawingHandler {
   }
 
   handlePointerDown(e: PointerEvent): void {
-    if (!this.app.renderer.pdfDoc) return;
+    if (!this.app.documentModel.currentPage) return;
 
     this._pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -98,7 +98,7 @@ export class DrawingHandler {
     this._pinchPointers.delete(e.pointerId);
 
     if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._pinchPointers.size < 2) {
-      const finalDist = this._lastPinchDist || this._pinchStartDist;
+      const finalDist = this._lastPinchDist ?? this._pinchStartDist;
       const newScale = this._pinchStartZoom * finalDist / this._pinchStartDist;
       this.app.ui.canvas.style.transform       = '';
       this.app.ui.canvas.style.transformOrigin = '';
@@ -199,24 +199,16 @@ export class DrawingHandler {
 
   handlePointerCancel(e: PointerEvent): void {
     this._pinchPointers.delete(e.pointerId);
+    // BUG-32: clear ALL pointer state to prevent stale entry triggering pinch on next touch
+    this._pinchPointers.clear();
     this.cancel();
 
-    if (this._pinchPointers.size === 0) {
-      this.app.ui.canvas.style.transform       = '';
-      this.app.ui.canvas.style.transformOrigin = '';
-
-      if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._lastPinchDist !== null) {
-        const newScale = this._pinchStartZoom * this._lastPinchDist / this._pinchStartDist;
-        this._pinchStartDist  = null;
-        this._pinchStartZoom  = null;
-        this._lastPinchDist   = null;
-        this.app.applyZoom(newScale);
-      } else {
-        this._pinchStartDist  = null;
-        this._pinchStartZoom  = null;
-        this._lastPinchDist   = null;
-      }
-    }
+    this.app.ui.canvas.style.transform       = '';
+    this.app.ui.canvas.style.transformOrigin = '';
+    // Reset pinch state without applying zoom (pointer was cancelled, not lifted normally)
+    this._pinchStartDist  = null;
+    this._pinchStartZoom  = null;
+    this._lastPinchDist   = null;
   }
 
   private _updatePreview(curX: number, curY: number): void {

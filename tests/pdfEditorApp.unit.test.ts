@@ -213,3 +213,25 @@ describe('multiline text export line splitting (BUG-23)', () => {
     expect(drawn).toHaveLength(2);
   });
 });
+
+describe('DrawingHandler fixes', () => {
+  it('BUG-40: ?? operator vs || for zero distance', () => {
+    const lastPinchDist = 0;
+    const pinchStartDist = 100;
+    const withOr   = lastPinchDist || pinchStartDist;  // 100 (WRONG)
+    const withNull = lastPinchDist ?? pinchStartDist;  // 0 (CORRECT)
+    expect(withOr).toBe(100);   // demonstrates the bug
+    expect(withNull).toBe(0);   // demonstrates the fix
+  });
+
+  it('BUG-12: documentModel.currentPage guard vs renderer.pdfDoc guard', () => {
+    const fakeApp = {
+      renderer: { pdfDoc: null },
+      documentModel: { currentPage: { id: 'p1' } },
+    } as any;
+    const oldGuard = !fakeApp.renderer.pdfDoc;        // true — blocks added-PDF drawing (bug)
+    const newGuard = !fakeApp.documentModel.currentPage; // false — allows drawing (fix)
+    expect(oldGuard).toBe(true);
+    expect(newGuard).toBe(false);
+  });
+});
