@@ -51,6 +51,13 @@ describe('PDFElement monotonic IDs', () => {
     expect(Number.isInteger(el.id)).toBe(true);
     expect(el.id).toBe(1000);
   });
+
+  it('syncIdCounter handles 100,000 elements without RangeError', () => {
+    PDFElement._nextId = 1;
+    const bigArray = Array.from({ length: 100_000 }, (_, i) => ({ id: i + 1 } as any));
+    expect(() => ElementFactory.syncIdCounter(bigArray)).not.toThrow();
+    expect(PDFElement._nextId).toBe(100_001);
+  });
 });
 
 describe('_cleanEmptyTextElements DOM guard (BUG-29)', () => {

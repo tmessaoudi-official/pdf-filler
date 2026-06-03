@@ -68,7 +68,7 @@ export class ElementFactory {
 
   static syncIdCounter(elements: PDFElement[]): void {
     if (!elements.length) return;
-    const maxId = Math.max(...elements.map(e => Math.floor(e.id)));
+    const maxId = elements.reduce((max, e) => Math.max(max, Math.floor(e.id)), 0);
     if (maxId >= PDFElement._nextId) PDFElement._nextId = maxId + 1;
   }
 }
