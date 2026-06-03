@@ -1100,10 +1100,16 @@ export class PDFEditorApp {
     const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(tempPage);
 
     const nonRedactions = elements.filter(e => e.type !== 'redaction');
+    const rasterErrors: string[] = [];
     for (const el of nonRedactions) {
       try {
         await this._drawElementOnPage(tempDoc, tempPage, el, h_eff, w_eff, libs, W_orig, H_orig, totalRot);
-      } catch { /* skip malformed */ }
+      } catch {
+        rasterErrors.push(`${el.type} (id ${el.id})`);
+      }
+    }
+    if (rasterErrors.length > 0) {
+      this.showToast(`⚠ ${rasterErrors.length} element(s) skipped in redacted page: ${rasterErrors.join(', ')}`, 6000);
     }
 
     if (this.documentModel.watermark.enabled) {
@@ -1248,6 +1254,9 @@ export class PDFEditorApp {
       link.click();
       this.showToast('PDF downloaded!');
       URL.revokeObjectURL(url);
+    } catch (err) {
+      this.showToast('PDF export failed — ' + (err instanceof Error ? err.message.slice(0, 80) : String(err)));
+      console.error('[downloadPDF]', err);
     } finally {
       this.ui.container.style.opacity = '1';
       await this._renderCurrentPage();
@@ -1306,6 +1315,9 @@ export class PDFEditorApp {
       link.click();
       this.showToast(`Page ${pageIdx + 1} downloaded!`);
       URL.revokeObjectURL(url);
+    } catch (err) {
+      this.showToast('Page export failed — ' + (err instanceof Error ? err.message.slice(0, 80) : String(err)));
+      console.error('[downloadPage]', err);
     } finally {
       this.ui.container.style.opacity = '1';
     }
