@@ -1452,8 +1452,12 @@ export class PDFEditorApp {
       const col = this.hexToRgbValues(te.color);
       const fontName = this._getStandardFont(te.fontFamily, te.bold, te.italic);
       const font = await pdfDoc.embedFont(StandardFonts[fontName as keyof typeof StandardFonts]);
-      const anchor = tp(te.x, te.y + te.fontSize);
-      page.drawText(te.text, { x: anchor.x, y: anchor.y, size: te.fontSize, font, color: rgb(col.r, col.g, col.b) });
+      const lineHeight = te.fontSize * 1.2;
+      te.text.split('\n').forEach((line, i) => {
+        if (!line) return;
+        const anchor = tp(te.x, te.y + te.fontSize + i * lineHeight);
+        page.drawText(line, { x: anchor.x, y: anchor.y, size: te.fontSize, font, color: rgb(col.r, col.g, col.b) });
+      });
     } else if (element.type === 'signature') {
       const se = element as SignatureElement;
       const img = await pdfDoc.embedPng(this._dataUrlToBytes(se.data));

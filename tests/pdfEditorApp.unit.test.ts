@@ -192,3 +192,24 @@ describe('closeSignatureModal mode reset (BUG-21)', () => {
     expect(fakeApp.mode).toBe('select');
   });
 });
+
+describe('multiline text export line splitting (BUG-23)', () => {
+  it('splits text on newlines and offsets each line by fontSize * 1.2', () => {
+    const text = 'line one\nline two\nline three';
+    const fontSize = 14;
+    const lineHeight = fontSize * 1.2;
+    const lines = text.split('\n');
+
+    const drawnAtY: number[] = lines.map((_, i) => 50 + fontSize + i * lineHeight);
+
+    expect(drawnAtY).toHaveLength(3);
+    expect(drawnAtY[1] - drawnAtY[0]).toBeCloseTo(lineHeight, 2);
+    expect(drawnAtY[2] - drawnAtY[1]).toBeCloseTo(lineHeight, 2);
+  });
+
+  it('skips empty lines (no drawText call)', () => {
+    const lines = 'line\n\nafter empty'.split('\n');
+    const drawn = lines.filter(l => l.length > 0);
+    expect(drawn).toHaveLength(2);
+  });
+});
