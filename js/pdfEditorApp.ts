@@ -901,6 +901,11 @@ export class PDFEditorApp {
       inputEl.focus();
     }
     this.selectElement(textElement);
+    // selectElement calls renderElements() which recreates DOM — re-query and re-focus
+    const freshInput = this.ui.container.querySelector(
+      `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
+    ) as HTMLInputElement | null;
+    freshInput?.focus();
   }
 
   addSignatureAtPosition(e: MouseEvent) {

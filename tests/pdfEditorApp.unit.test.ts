@@ -54,15 +54,21 @@ describe('PDFElement monotonic IDs', () => {
 });
 
 describe('_cleanEmptyTextElements DOM guard (BUG-29)', () => {
-  it('keeps element when DOM query returns null (not yet mounted)', () => {
-    // The old code: `return input && input === focused` → null when input absent → element deleted
-    // The new code: `return input ? input === focused : true` → true when input absent → element kept
-    const keepFn = (input: Element | null, focused: Element | null): boolean =>
-      input ? input === focused : true;
+  it('ternary `input ? input === focused : true` keeps unmounted element', () => {
+    // Null input (not yet in DOM) must return true (keep), not falsy (delete)
+    // Old: `null && null === null` = null (falsy) → delete. Bug.
+    // New: `null ? ... : true` = true → keep. Fix.
+    const oldBehavior = (input: Element | null, focused: Element | null) => input && input === focused;
+    const newBehavior = (input: Element | null, focused: Element | null) => input ? input === focused : true;
 
-    expect(keepFn(null, null)).toBe(true);   // not mounted → keep
+    // The bug: old returns null (falsy) for unmounted input
+    expect(oldBehavior(null, null)).toBeFalsy();   // old: deletes unmounted element (bug)
+    expect(newBehavior(null, null)).toBe(true);    // new: keeps unmounted element (fix)
+
+    // Both agree when input is mounted
     const input = document.createElement('input');
-    expect(keepFn(input, null)).toBe(false);  // mounted but not focused → remove
-    expect(keepFn(input, input)).toBe(true);  // mounted and focused → keep
+    expect(oldBehavior(input, null)).toBe(false);  // mounted unfocused → remove (same)
+    expect(newBehavior(input, null)).toBe(false);  // mounted unfocused → remove (same)
+    expect(newBehavior(input, input)).toBe(true);  // mounted focused → keep (same)
   });
 });
