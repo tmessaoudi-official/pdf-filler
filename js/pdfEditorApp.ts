@@ -15,7 +15,7 @@ import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
 import {
-  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, SnapshotCmd,
+  HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
 } from './historyManager';
 import { DocumentModel } from './documentModel';
@@ -37,7 +37,8 @@ export class PDFEditorApp {
   selectedElement: PDFElement | null = null;
   historyManager!: HistoryManager;
   _textChangeTimer: ReturnType<typeof setTimeout> | null = null;
-  _pendingTextCmd: SnapshotCmd | null = null;
+  private _pendingTextBefore: string | null = null;
+  private _pendingTextElementId: number | null = null;
   currentFilename: string | null = null;
   currentSignature: string | null = null;
   uiController!: UIController;
@@ -70,7 +71,6 @@ export class PDFEditorApp {
       this.uiController.updateUndoRedoBtns(canUndo, canRedo);
     });
     this._textChangeTimer = null;
-    this._pendingTextCmd = null;
     this.currentFilename = null;
     this.currentSignature = null;
     this.setupEventListeners();
@@ -516,6 +516,7 @@ export class PDFEditorApp {
     this._autosave();
     this.setMode('select');
     this.renderElements();
+    this.selectElement(imgEl);
   }
 
   // ── PDF page management ───────────────────────────────────────
@@ -600,7 +601,17 @@ export class PDFEditorApp {
   }
 
   // ── Undo / Redo ───────────────────────────────────────────────
+  private _cancelPendingTextEdit(): void {
+    if (this._textChangeTimer !== null) {
+      clearTimeout(this._textChangeTimer);
+      this._textChangeTimer = null;
+      this._pendingTextBefore = null;
+      this._pendingTextElementId = null;
+    }
+  }
+
   undo() {
+    this._cancelPendingTextEdit();
     if (this.historyManager.undo()) {
       this.selectedElement = null;
       this._renderCurrentPage().then(() => {
@@ -614,6 +625,7 @@ export class PDFEditorApp {
   }
 
   redo() {
+    this._cancelPendingTextEdit();
     if (this.historyManager.redo()) {
       this.selectedElement = null;
       this._renderCurrentPage().then(() => {
@@ -862,6 +874,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, el));
     this._autosave();
     this.renderElements();
+    this.selectElement(el);
   }
 
   addTextAtPosition(e: MouseEvent) {
@@ -877,6 +890,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, textElement));
     this._autosave();
     this.renderElements();
+    this.selectElement(textElement);
     const inputEl = this.ui.container.querySelector(
       `[data-id='${textElement.id}'] input, [data-id='${textElement.id}'] textarea`
     ) as HTMLInputElement | null;
@@ -898,6 +912,7 @@ export class PDFEditorApp {
     this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
     this._autosave();
     this.renderElements();
+    this.selectElement(sigElement);
   }
 
   removeElement(id: number) {
@@ -929,11 +944,23 @@ export class PDFEditorApp {
           const isSelected = this.selectedElement && this.selectedElement.id === element.id;
           if (!isSelected) (input as HTMLElement).style.pointerEvents = 'none';
           input.addEventListener('input', () => {
-            if (!this._pendingTextCmd) this._pendingTextCmd = new SnapshotCmd(this.elements);
+            const textEl = element as TextElement;
+            if (this._pendingTextElementId !== element.id) {
+              this._pendingTextBefore = textEl.text;
+              this._pendingTextElementId = element.id;
+            }
+            textEl.text = (input as HTMLInputElement | HTMLTextAreaElement).value;
             clearTimeout(this._textChangeTimer ?? undefined);
             this._textChangeTimer = setTimeout(() => {
-              const cmd = this._pendingTextCmd;
-              if (cmd) { cmd.captureAfter(); this.historyManager.record(cmd); this._pendingTextCmd = null; this._autosave(); }
+              const before = this._pendingTextBefore;
+              const id = this._pendingTextElementId;
+              this._pendingTextBefore = null;
+              this._pendingTextElementId = null;
+              this._textChangeTimer = null;
+              if (id !== null && before !== null && before !== textEl.text) {
+                this.historyManager.record(new TextEditCmd(this.elements, id, before, textEl.text));
+              }
+              this._autosave();
             }, 500);
           });
         }
