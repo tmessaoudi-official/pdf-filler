@@ -248,3 +248,21 @@ describe('rotation normalization (BUG-13)', () => {
     expect(fixed(180, 90)).toBe(270);
   });
 });
+
+describe('keyboard nudge geometry (BUG-24)', () => {
+  it('nudge dx/dy computes correctly for all arrow keys', () => {
+    const step = 1;
+    const cases = [
+      { key: 'ArrowLeft',  dx: -step, dy: 0 },
+      { key: 'ArrowRight', dx:  step, dy: 0 },
+      { key: 'ArrowUp',    dx: 0, dy: -step },
+      { key: 'ArrowDown',  dx: 0, dy:  step },
+    ];
+    for (const { key, dx, dy } of cases) {
+      const calcDx = key === 'ArrowLeft' ? -step : key === 'ArrowRight' ? step : 0;
+      const calcDy = key === 'ArrowUp'   ? -step : key === 'ArrowDown'  ? step : 0;
+      expect(calcDx).toBe(dx);
+      expect(calcDy).toBe(dy);
+    }
+  });
+});

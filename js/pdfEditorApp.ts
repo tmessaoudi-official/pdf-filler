@@ -321,10 +321,17 @@ export class PDFEditorApp {
           if (this.selectedElement) {
             e.preventDefault();
             const step = e.shiftKey ? 10 : 1;
-            if (e.key === 'ArrowUp')    this.selectedElement.y -= step;
-            if (e.key === 'ArrowDown')  this.selectedElement.y += step;
-            if (e.key === 'ArrowLeft')  this.selectedElement.x -= step;
-            if (e.key === 'ArrowRight') this.selectedElement.x += step;
+            const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+            const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0;
+            this.selectedElement.x += dx;
+            this.selectedElement.y += dy;
+            // Arrow: translate endpoint geometry
+            const el = this.selectedElement as ShapeElement;
+            if (el.x1 !== undefined) { el.x1 += dx; el.x2 += dx; el.y1 += dy; el.y2 += dy; }
+            // Freehand: translate all path points
+            if (Array.isArray(el.points) && el.points.length) {
+              el.points = el.points.map((p: {x: number, y: number}) => ({ x: p.x + dx, y: p.y + dy }));
+            }
             this.renderElements();
           }
           break;
