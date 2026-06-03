@@ -21,10 +21,22 @@ function applyTransform(p: [number, number], m: number[]): [number, number] {
 export class TextSearchHandler {
   // Cache raw text items per pageId (viewport-independent)
   private _cache = new Map<string, RawTextItem[]>();
+  private static readonly MAX_CACHE_SIZE = 20;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async buildIndex(page: any, pageId: string): Promise<void> {
-    if (this._cache.has(pageId)) return;
+    if (this._cache.has(pageId)) {
+      // LRU promotion: move to end of Map insertion order
+      const items = this._cache.get(pageId)!;
+      this._cache.delete(pageId);
+      this._cache.set(pageId, items);
+      return;
+    }
+    // Evict oldest entry if at capacity
+    if (this._cache.size >= TextSearchHandler.MAX_CACHE_SIZE) {
+      const oldestKey = this._cache.keys().next().value as string;
+      this._cache.delete(oldestKey);
+    }
     const content = await page.getTextContent();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const items = content.items.filter((item: any) => typeof item.str === 'string' && item.str.length > 0) as RawTextItem[];
