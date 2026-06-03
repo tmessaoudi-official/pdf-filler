@@ -51,6 +51,7 @@ export class PDFEditorApp {
   private _findMatchIndex = -1;
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
+  private _warnedUnsupportedFields = false;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -748,6 +749,7 @@ export class PDFEditorApp {
     this.renderer.setModel(this.documentModel);
     this.elements = [];
     this._formValues = {};
+    this._warnedUnsupportedFields = false;
     this._formFieldOverlay.clear();
     this.historyManager.clear();
     this.selectedElement = null;
@@ -985,7 +987,7 @@ export class PDFEditorApp {
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
     const values = this._formValues[docPage.sourcePdfId] ?? {};
-    await this._formFieldOverlay.render(
+    const { unsupportedCount } = await this._formFieldOverlay.render(
       page, viewport, canvasOffset, values,
       (fieldName, value) => {
         if (!this._formValues[docPage.sourcePdfId]) this._formValues[docPage.sourcePdfId] = {};
@@ -993,6 +995,14 @@ export class PDFEditorApp {
         this._autosave();
       }
     );
+
+    if (unsupportedCount > 0 && !this._warnedUnsupportedFields) {
+      this._warnedUnsupportedFields = true;
+      this.showToast(
+        `This PDF has ${unsupportedCount} checkbox/dropdown field${unsupportedCount > 1 ? 's' : ''} — only text fields are supported`,
+        5000,
+      );
+    }
     this._formFieldOverlay.setPointerEvents(this.mode === 'select');
   }
 

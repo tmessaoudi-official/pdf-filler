@@ -14,11 +14,14 @@ export class FormFieldOverlay {
     canvasOffset: { left: number; top: number },
     values: Record<string, string>,
     onValueChange: (fieldName: string, value: string) => void,
-  ): Promise<void> {
+  ): Promise<{ unsupportedCount: number }> {
     this.clear();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const annotations: any[] = await page.getAnnotations();
     const fields = annotations.filter(a => a.subtype === 'Widget' && a.fieldType === 'Tx');
+    const unsupported = annotations.filter(
+      (a: any) => a.subtype === 'Widget' && a.fieldType !== 'Tx'
+    );
 
     for (const field of fields) {
       const vr: number[] = viewport.convertToViewportRectangle(field.rect as number[]);
@@ -47,6 +50,7 @@ export class FormFieldOverlay {
       this._container.appendChild(input);
       this._inputs.push(input);
     }
+    return { unsupportedCount: unsupported.length };
   }
 
   clear(): void {
