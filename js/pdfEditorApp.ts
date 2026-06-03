@@ -1523,6 +1523,7 @@ export class PDFEditorApp {
 
   private _dataUrlToBytes(dataUrl: string): Uint8Array {
     const base64 = dataUrl.split(',')[1];
+    if (!base64) throw new Error('Invalid data URL: no base64 payload');
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

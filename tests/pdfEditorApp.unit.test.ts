@@ -112,3 +112,26 @@ describe('handleFileUpload error handling (BUG-03 + BUG-09)', () => {
     });
   });
 });
+
+describe('_dataUrlToBytes (BUG-16)', () => {
+  function dataUrlToBytes(dataUrl: string): Uint8Array {
+    const base64 = dataUrl.split(',')[1];
+    if (!base64) throw new Error('Invalid data URL: no base64 payload');
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  it('throws on missing base64 payload', () => {
+    expect(() => dataUrlToBytes('data:,')).toThrow('Invalid data URL');
+    expect(() => dataUrlToBytes('')).toThrow('Invalid data URL');
+    expect(() => dataUrlToBytes('not-a-data-url')).toThrow('Invalid data URL');
+  });
+
+  it('decodes valid data URL correctly', () => {
+    // data:text/plain;base64,SGVsbG8= = "Hello"
+    const bytes = dataUrlToBytes('data:text/plain;base64,SGVsbG8=');
+    expect(Array.from(bytes)).toEqual([72, 101, 108, 108, 111]);
+  });
+});
