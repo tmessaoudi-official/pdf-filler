@@ -1450,7 +1450,8 @@ export class PDFEditorApp {
       const offscreen = document.createElement('canvas');
       offscreen.width  = Math.round(vp.width);
       offscreen.height = Math.round(vp.height);
-      const ctx = offscreen.getContext('2d')!;
+      const ctx = offscreen.getContext('2d');
+      if (!ctx) { this.showToast('Canvas unavailable — cannot export image'); return; }
       await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
 
       offscreen.toBlob((blob) => {

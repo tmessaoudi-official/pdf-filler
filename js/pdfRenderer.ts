@@ -21,7 +21,9 @@ export class PDFRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context unavailable — browser may be in privacy mode');
+    this.ctx = ctx;
   }
 
   setModel(model: DocumentModel): void {
@@ -142,7 +144,8 @@ export class PDFRenderer {
     const canvas = document.createElement('canvas');
     canvas.width = vp.width;
     canvas.height = vp.height;
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
     await page.render({ canvasContext: ctx, viewport: vp }).promise;
     return canvas.toDataURL('image/jpeg', 0.7);
   }
