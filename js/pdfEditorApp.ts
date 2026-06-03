@@ -54,6 +54,7 @@ export class PDFEditorApp {
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
+  private _formFieldGen = 0;
   private _isLoading = false;
   private _pageUpdatePending = false;
 
@@ -1065,11 +1066,13 @@ export class PDFEditorApp {
   }
 
   private async _renderFormFields(): Promise<void> {
+    const myGen = ++this._formFieldGen;
     const docPage = this.documentModel.currentPage;
     if (!docPage) { this._formFieldOverlay.clear(); return; }
     const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     const page = await src.doc.getPage(docPage.sourcePageNum);
+    if (myGen !== this._formFieldGen) return;  // stale — newer navigation started
     const effectiveRotation = ((page.rotate + (docPage.rotation ?? 0)) % 360 + 360) % 360;
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
@@ -1082,6 +1085,7 @@ export class PDFEditorApp {
         this._autosave();
       }
     );
+    if (myGen !== this._formFieldGen) return;  // stale after second await
 
     if (unsupportedCount > 0 && !this._warnedUnsupportedFields) {
       this._warnedUnsupportedFields = true;
