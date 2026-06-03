@@ -714,6 +714,11 @@ export class PDFEditorApp {
       this.renderer.setScale(this.zoomScale);
       this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
 
+      // BUG-38: guard against empty pages after restore
+      if (!this.documentModel.pages.length || !this.documentModel.currentPage) {
+        throw new Error('No valid pages in saved session');
+      }
+
       await this._renderCurrentPage();
       this.enableUI();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -724,8 +729,14 @@ export class PDFEditorApp {
       this.updatePageInfo();
       this.renderElements();
       this.showToast('Session restored');
-    } catch {
-      // ignore — corrupted session
+    } catch (err) {
+      // BUG-19: reset to clean state on partial restore failure
+      console.warn('[_restoreSession] failed, resetting to clean state', err);
+      this.documentModel = new DocumentModel();
+      this.renderer.setModel(this.documentModel);
+      this.elements = [];
+      this._thumbnailPanel = null;
+      this.showToast('Previous session could not be restored — starting fresh');
     }
   }
 
