@@ -1050,6 +1050,89 @@ export class PDFEditorApp {
     await this.applyZoom(scale);
   }
 
+  /**
+   * Export a page as a rasterized PNG image embedded in a new pdf-lib page.
+   * Called when the page has redaction elements — rasterization permanently
+   * removes the text layer so redacted content cannot be extracted.
+   */
+  private async _rasterizePageWithRedactions(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    srcDoc: any,
+    docPage: import('./documentModel').DocumentPage,
+    elements: PDFElement[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pdfDoc: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    libs: { rgb: any; StandardFonts: any; degrees: any },
+  ): Promise<void> {
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    void rgb; void StandardFonts; // used via libs param below
+
+    // 1. Build a temp single-page PDF with all NON-redaction elements drawn in
+    const tempDoc = await PDFDocument.create();
+    const [tempPage] = await tempDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
+    tempDoc.addPage(tempPage);
+
+    const userRot  = docPage.rotation ?? 0;
+    const srcRot   = tempPage.getRotation().angle as number;
+    const totalRot = (srcRot + userRot) % 360;
+    if (userRot) tempPage.setRotation(degrees(totalRot));
+
+    const { width: W_orig, height: H_orig } = tempPage.getSize() as { width: number; height: number };
+    const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(tempPage);
+
+    const nonRedactions = elements.filter(e => e.type !== 'redaction');
+    for (const el of nonRedactions) {
+      try {
+        await this._drawElementOnPage(tempDoc, tempPage, el, h_eff, w_eff, libs, W_orig, H_orig, totalRot);
+      } catch { /* skip malformed */ }
+    }
+
+    if (this.documentModel.watermark.enabled) {
+      await this._drawWatermark(tempPage, W_orig, H_orig, {
+        rgb: libs.rgb, degrees, pdfDoc: tempDoc, StandardFonts: libs.StandardFonts,
+      });
+    }
+
+    // 2. Rasterize via pdf.js at 2× scale
+    const tempBytes  = await tempDoc.save({ useObjectStreams: false });
+    const renderDoc  = await pdfjsLib.getDocument(tempBytes).promise;
+    const renderPage = await renderDoc.getPage(1);
+    const SCALE = 2;
+    const effectiveRotation = (renderPage.rotate + userRot) % 360;
+    const vp = renderPage.getViewport({ scale: SCALE, rotation: effectiveRotation });
+
+    const offscreen    = document.createElement('canvas');
+    offscreen.width    = Math.round(vp.width);
+    offscreen.height   = Math.round(vp.height);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const ctx          = offscreen.getContext('2d')!;
+    await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
+
+    // 3. Paint redaction boxes onto the canvas (permanently covers content)
+    ctx.fillStyle = '#000000';
+    for (const el of elements.filter(e => e.type === 'redaction')) {
+      ctx.fillRect(
+        Math.round(el.x * SCALE),
+        Math.round(el.y * SCALE),
+        Math.round(el.width  * SCALE),
+        Math.round(el.height * SCALE),
+      );
+    }
+
+    // 4. Embed rasterized PNG into the destination document as a new page
+    const pngBytes = await new Promise<Uint8Array>((resolve, reject) => {
+      offscreen.toBlob((blob) => {
+        if (!blob) { reject(new Error('canvas toBlob failed')); return; }
+        blob.arrayBuffer().then(ab => resolve(new Uint8Array(ab)));
+      }, 'image/png');
+    });
+
+    const pngImg  = await pdfDoc.embedPng(pngBytes);
+    const newPage = pdfDoc.addPage([w_eff, h_eff]);
+    newPage.drawImage(pngImg, { x: 0, y: 0, width: w_eff, height: h_eff });
+  }
+
   // ── Export (vector copyPages) ─────────────────────────────────
   async downloadPDF() {
     if (!this.documentModel.pageCount) return;
@@ -1093,6 +1176,17 @@ export class PDFEditorApp {
 
       // Add pages in document order and draw overlays
       for (const docPage of this.documentModel.pages) {
+        const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+        const hasRedaction = pageElements.some(el => el.type === 'redaction');
+
+        if (hasRedaction) {
+          const srcDoc = srcDocs.get(docPage.sourcePdfId);
+          if (srcDoc) {
+            await this._rasterizePageWithRedactions(srcDoc, docPage, pageElements, pdfDoc, { rgb, StandardFonts, degrees });
+          }
+          continue; // skip the normal vector export for this page
+        }
+
         const key = `${docPage.sourcePdfId}:${docPage.sourcePageNum - 1}`;
         const page = copiedPages.get(key);
         if (!page) continue;
@@ -1108,7 +1202,6 @@ export class PDFEditorApp {
         const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
         // Visual (effective) dims after rotation — used for watermark centering
         const { width: w_eff, height: h_eff } = this._getEffectivePageDims(page);
-        const pageElements = this.elements.filter(el => el.pageId === docPage.id);
 
         const exportErrors: string[] = [];
         for (const element of pageElements) {
@@ -1154,29 +1247,35 @@ export class PDFEditorApp {
     try {
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
       if (!srcEntry) return;
-      const srcDoc  = await PDFDocument.load(srcEntry.bytes);
-      const pdfDoc  = await PDFDocument.create();
-      const [page]  = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
-      pdfDoc.addPage(page);
-
-      const userRot  = docPage.rotation ?? 0;
-      const srcRot   = page.getRotation().angle as number;
-      const totalRot = (srcRot + userRot) % 360;
-      if (userRot) page.setRotation(degrees(totalRot));
-
-      const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
-      const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+      const srcDocLib = await PDFDocument.load(srcEntry.bytes);
+      const pdfDoc    = await PDFDocument.create();
       const pageElements = this.elements.filter(el => el.pageId === docPage.id);
-      const exportErrors: string[] = [];
-      for (const element of pageElements) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
-        catch { exportErrors.push(`${element.type} (id ${element.id})`); }
-      }
-      if (exportErrors.length > 0) {
-        this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
-      }
-      if (this.documentModel.watermark.enabled) {
-        await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+      const hasRedaction = pageElements.some(el => el.type === 'redaction');
+
+      if (hasRedaction) {
+        await this._rasterizePageWithRedactions(srcDocLib, docPage, pageElements, pdfDoc, { rgb, StandardFonts, degrees });
+      } else {
+        const [page] = await pdfDoc.copyPages(srcDocLib, [docPage.sourcePageNum - 1]);
+        pdfDoc.addPage(page);
+
+        const userRot  = docPage.rotation ?? 0;
+        const srcRot   = page.getRotation().angle as number;
+        const totalRot = (srcRot + userRot) % 360;
+        if (userRot) page.setRotation(degrees(totalRot));
+
+        const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
+        const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+        const exportErrors: string[] = [];
+        for (const element of pageElements) {
+          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+          catch { exportErrors.push(`${element.type} (id ${element.id})`); }
+        }
+        if (exportErrors.length > 0) {
+          this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
+        }
+        if (this.documentModel.watermark.enabled) {
+          await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+        }
       }
 
       const pdfBytes = await pdfDoc.save();
