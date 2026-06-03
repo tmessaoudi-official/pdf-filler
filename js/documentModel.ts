@@ -85,8 +85,12 @@ export class DocumentModel {
 
   reorderPages(newOrder: string[]): void {
     const map = new Map(this.pages.map(p => [p.id, p]));
+    // Keep only entries in newOrder that exist in current pages
     const reordered = newOrder.map(id => map.get(id)).filter(Boolean) as DocumentPage[];
-    if (reordered.length !== this.pages.length) return;
+    // Ensure all current pages are present in result
+    const reorderedIds = new Set(reordered.map(p => p.id));
+    const allPresent = this.pages.every(p => reorderedIds.has(p.id));
+    if (!allPresent || reordered.length !== this.pages.length) return;
     const currentId = this.currentPage?.id;
     this.pages = reordered;
     if (currentId) {

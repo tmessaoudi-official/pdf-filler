@@ -565,6 +565,7 @@ export class PDFEditorApp {
   private async _handleAddPdfUpload(e: Event): Promise<void> {
     const files = (e.target as HTMLInputElement).files;
     (e.target as HTMLInputElement).value = '';
+    this._textSearch.clearCache();
     if (!files?.length) return;
 
     let addedCount = 0;
