@@ -1201,8 +1201,8 @@ export class PDFEditorApp {
     const renderDoc  = await pdfjsLib.getDocument(tempBytes).promise;
     const renderPage = await renderDoc.getPage(1);
     const SCALE = 2;
-    const effectiveRotation = ((renderPage.rotate + userRot) % 360 + 360) % 360;
-    const vp = renderPage.getViewport({ scale: SCALE, rotation: effectiveRotation });
+    // Rotation is already baked into the temp PDF via setRotation() above — do not re-apply.
+    const vp = renderPage.getViewport({ scale: SCALE });
 
     const offscreen    = document.createElement('canvas');
     offscreen.width    = Math.round(vp.width);
@@ -1465,6 +1465,9 @@ export class PDFEditorApp {
         this.showToast(`Page ${pageIdx + 1} exported as PNG!`);
         URL.revokeObjectURL(url);
       }, 'image/png');
+    } catch (err) {
+      this.showToast('Image export failed — ' + (err instanceof Error ? err.message.slice(0, 80) : String(err)));
+      console.error('[downloadPageAsImage]', err);
     } finally {
       this.ui.container.style.opacity = '1';
     }
