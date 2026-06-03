@@ -39,8 +39,11 @@ export async function saveState(state: SavedState): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch {
-    // IDB unavailable (private browsing, storage full) — silently skip
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+      throw err;  // re-throw so caller can notify user
+    }
+    // IDB unavailable (private browsing, permissions) — silently skip
   }
 }
 

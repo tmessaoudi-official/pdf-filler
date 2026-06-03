@@ -674,14 +674,21 @@ export class PDFEditorApp {
     const sourcePdfs = Array.from(this.documentModel.sourcePdfs.values()).map(s => ({
       id: s.id, name: s.name, bytes: s.bytes,
     }));
-    await saveState({
-      elements: this.elements.map(el => el.toJSON()),
-      pages: [...this.documentModel.pages],
-      watermark: { ...this.documentModel.watermark },
-      currentPageIndex: this.documentModel.currentPageIndex,
-      sourcePdfs,
-      formValues: { ...this._formValues },
-    });
+    try {
+      await saveState({
+        elements: this.elements.map(el => el.toJSON()),
+        pages: [...this.documentModel.pages],
+        watermark: { ...this.documentModel.watermark },
+        currentPageIndex: this.documentModel.currentPageIndex,
+        sourcePdfs,
+        formValues: { ...this._formValues },
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        this.showToast('Storage full — export your PDF to avoid losing work', 8000);
+      }
+      // Other errors (IDB unavailable in private browsing etc.) — silently skip
+    }
   }
 
   private async _restoreSession(): Promise<void> {
