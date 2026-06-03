@@ -49,6 +49,8 @@ export class PDFEditorApp {
   private _textSearch = new TextSearchHandler();
   private _findMatches: MatchResult[] = [];
   private _findMatchIndex = -1;
+  private _searchGen = 0;
+  private _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
@@ -107,7 +109,10 @@ export class PDFEditorApp {
     this.ui.redactBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawRedaction'); });
     this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
     this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
-    this.ui.findInput.addEventListener('input', () => this._search());
+    this.ui.findInput.addEventListener('input', () => {
+      clearTimeout(this._searchDebounceTimer ?? undefined);
+      this._searchDebounceTimer = setTimeout(() => this._search(), 300);
+    });
     this.ui.findNext.addEventListener('click', () => this._nextMatch());
     this.ui.findPrev.addEventListener('click', () => this._prevMatch());
     this.ui.findHighlight.addEventListener('click', () => this._highlightCurrentMatch());
@@ -408,6 +413,7 @@ export class PDFEditorApp {
   }
 
   private async _search(): Promise<void> {
+    const myGen = ++this._searchGen;
     this._clearSearchMatches();
     this._findMatches = [];
     this._findMatchIndex = -1;
@@ -420,9 +426,13 @@ export class PDFEditorApp {
     const page = await src.doc.getPage(docPage.sourcePageNum);
     await this._textSearch.buildIndex(page, docPage.id);
 
+    if (myGen !== this._searchGen) return; // stale — a newer search has started
+
     const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale);
+
+    if (myGen !== this._searchGen) return; // stale after search
 
     if (this._findMatches.length > 0) {
       this._findMatchIndex = 0;

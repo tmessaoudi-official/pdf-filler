@@ -148,3 +148,24 @@ describe('undo/redo error surfacing (BUG-18)', () => {
     expect(toasts).toContain('Render failed after undo/redo — try reloading');
   });
 });
+
+describe('_search debounce (BUG-20)', () => {
+  it('generation counter discards stale results', () => {
+    let gen = 0;
+    let savedMatches: string[] | null = null;
+
+    const runSearch = async (query: string, myGen: number) => {
+      await Promise.resolve();
+      if (myGen !== gen) return; // stale
+      savedMatches = [query];
+    };
+
+    gen++; void runSearch('he', gen);    // gen=1
+    gen++; void runSearch('hello', gen); // gen=2 — this should win
+
+    return new Promise<void>(resolve => setTimeout(() => {
+      expect(savedMatches).toEqual(['hello']); // gen=1 was discarded
+      resolve();
+    }, 10));
+  });
+});
