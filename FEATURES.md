@@ -3,7 +3,7 @@
 **Version**: 1.0.0  
 **Build**: Vite 5 / TypeScript / PWA  
 **Base URL**: `/pdf-filler/`  
-**Tested**: 2026-06-02 (Playwright + unit evaluation, all 22 surfaces verified)
+**Tested**: 2026-06-03 (Playwright live sweep + static analysis, all 22 surfaces verified; 2 confirmed bugs)
 
 ---
 
@@ -119,6 +119,8 @@ Every placed element has:
 
 **Trigger**: **T Text** button or keyboard `T`.
 
+> ⚠️ **P0 Bug**: Text placement is currently broken. Clicking the canvas creates a text element but `selectElement()` is called before `inputEl.focus()`, causing `_cleanEmptyTextElements()` to immediately remove the element (empty text, input not focused). **No text can be placed.** Fix: reorder lines in `addTextAtPosition()` — focus the input before calling `selectElement()`. See `js/pdfEditorApp.ts:addTextAtPosition`.
+
 **Placement**: Click anywhere on the PDF canvas. A text input appears centred on the click point.
 
 **Properties** (all changeable while element is selected):
@@ -203,6 +205,8 @@ The signature is captured as a PNG data URL. Placed as a resizable image overlay
 **Placement**: Click-drag to draw a highlight rectangle (preview shown during drag with semi-transparent yellow overlay).
 
 **Properties**: Default color `#FFFF00`, opacity 0.3. Color not currently editable via UI after placement.
+
+> ⚠️ **Bug**: `highlightElement.ts:20-22` uses `parseInt(hex, 16) || fallback` to parse RGB channels. Any channel with value `0` is replaced by the fallback (r→255, g→220, b→0). Example: red `#FF0000` renders as `rgba(255, 220, 0, 0.3)` (orange), black `#000000` renders as `rgba(255, 220, 0, 0.3)`. Only affects non-default colors (default yellow `#FFFF00` is unaffected). Fix: replace `|| fallback` with `isNaN(v) ? fallback : v`.
 
 **Export**: Rendered as a semi-transparent filled rectangle (`drawRectangle` with `opacity`).
 
@@ -450,3 +454,5 @@ Help modal accessible via **?** button (toolbar) or `?` key.
 - App icon: SVG (192×192 and 512×512).
 
 > Note: In development mode, the manifest.json route returns a syntax error (Vite serves a JS-based manifest; the JSON endpoint is only available after `vite build`). This does not affect functionality.
+>
+> ⚠️ **H-14 Bug**: `index.html` hardcodes `<link rel="manifest" href="./manifest.json">` but vite-plugin-pwa generates `manifest.webmanifest`. Both links are present in the built `index.html`; browsers use the first (which 404s). PWA install prompt silently fails in production. Fix: remove the hardcoded manifest link from `index.html`.
