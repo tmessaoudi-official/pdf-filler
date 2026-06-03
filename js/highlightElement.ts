@@ -17,9 +17,10 @@ export class HighlightElement extends PDFElement {
     div.dataset.id = String(this.id);
 
     const hex = this.color.replace(/^#/, '');
-    const r = parseInt(hex.substring(0, 2), 16) || 255;
-    const g = parseInt(hex.substring(2, 4), 16) || 220;
-    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    const parseHexCh = (s: string): number => { const v = parseInt(s, 16); return isNaN(v) ? 0 : v; };
+    const r = parseHexCh(hex.substring(0, 2));
+    const g = parseHexCh(hex.substring(2, 4));
+    const b = parseHexCh(hex.substring(4, 6));
 
     Object.assign(div.style, {
       position: 'absolute',
