@@ -63,4 +63,25 @@ describe('PDFRenderer pending queue fix (BUG-08)', () => {
     expect(resolved).toContain(2);
     expect(resolved).toContain(3);
   });
+
+  it('resolves queued Promise even when queued page throws', async () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    const goodDoc = makeDoc();         // first render succeeds
+    const badDoc = makeDoc(1);         // queued page 1 throws
+
+    // Start first render
+    const first = (renderer as any)._renderPdfPage(goodDoc, 1);
+
+    // Queue a bad page while first is in progress
+    let queuedResolved = false;
+    const queued = (renderer as any)._renderPdfPage(badDoc, 1).then(
+      () => { queuedResolved = true; },
+      () => { queuedResolved = true; } // also resolved on rejection — we just want it to settle
+    );
+
+    // first may throw because the queued page error propagates through the recursive call
+    await first.catch(() => {});
+    await queued;
+    expect(queuedResolved).toBe(true);
+  });
 });

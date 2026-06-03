@@ -119,8 +119,11 @@ export class PDFRenderer {
       const pendingResolve = this._pendingResolve;
       this.pendingPage = null;
       this._pendingResolve = null;
-      await this._renderPdfPage(pendingDoc, pending, pendingRot);
-      if (pendingResolve) pendingResolve();
+      try {
+        await this._renderPdfPage(pendingDoc, pending, pendingRot);
+      } finally {
+        if (pendingResolve) pendingResolve();
+      }
     }
   }
 
