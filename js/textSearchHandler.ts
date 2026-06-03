@@ -55,26 +55,28 @@ export class TextSearchHandler {
     const vt = viewport.transform as number[];
 
     for (const item of items) {
-      if (!item.str.toLowerCase().includes(q)) continue;
-
       // Map baseline position from PDF user space to canvas pixel space
       const canvasPt = applyTransform([item.transform[4], item.transform[5]], vt);
       // Scale of viewport (absolute value to handle y-flip)
       const scaleInVp = Math.abs(vt[0]) || currentScale;
 
-      // Approximate text box in canvas pixels (top-left origin):
-      // baseline is at canvasPt[1]; text extends above baseline by ~85% of height
-      const w = item.width * scaleInVp;
-      const h = item.height * scaleInVp;
-      const x = canvasPt[0];
-      const y = canvasPt[1] - h * 0.9; // approx top of text
+      const itemStr  = item.str;
+      const matchIdx = itemStr.toLowerCase().indexOf(q);
+      if (matchIdx === -1) continue;
+
+      const totalW   = item.width * scaleInVp;
+      const charW    = totalW / (itemStr.length || 1);
+      const matchX   = canvasPt[0] + matchIdx * charW;
+      const matchW   = Math.max(charW, q.length * charW);
+      const h        = item.height * scaleInVp;
+      const y        = canvasPt[1] - h * 0.9;
 
       results.push({
         pageId,
-        x: x / currentScale,         // convert to scale=1
-        y: y / currentScale,
-        width: w / currentScale,
-        height: h / currentScale,
+        x:      matchX / currentScale,
+        y:      y      / currentScale,
+        width:  matchW / currentScale,
+        height: h      / currentScale,
       });
     }
     return results;
