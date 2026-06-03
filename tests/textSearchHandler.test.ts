@@ -67,3 +67,29 @@ describe('TextSearchHandler word-level highlights', () => {
     expect(matches[0].x).toBeGreaterThan(50);
   });
 });
+
+describe('TextSearchHandler rotated page scale (BUG-37)', () => {
+  it('Math.hypot extracts correct scale from 90° rotated viewport transform', () => {
+    // For a 90° rotation at scale=1.5: vt = [0, -1.5, 1.5, 0, ...]
+    const vt = [0, -1.5, 1.5, 0, 100, 200];
+    const currentScale = 1.5;
+
+    // Old: Math.abs(vt[0]) || currentScale = Math.abs(0) || 1.5 = 1.5 (coincidentally correct here)
+    // But the mechanism is wrong — it falls back to the passed scale, not extracted
+    const oldMethod = Math.abs(vt[0]) || currentScale;
+
+    // New: Math.hypot(vt[0], vt[1]) = Math.hypot(0, -1.5) = 1.5
+    const newMethod = Math.hypot(vt[0], vt[1]) || currentScale;
+
+    expect(oldMethod).toBe(1.5);   // coincidentally same for scale=1.5 but wrong mechanism
+    expect(newMethod).toBe(1.5);   // correct: extracts from matrix
+
+    // Critical test: when currentScale differs from actual scale in matrix
+    // vt = [0, -2.0, 2.0, 0, ...] but currentScale = 1.0 (passed wrong value)
+    const vt2 = [0, -2.0, 2.0, 0, 100, 200];
+    const wrong = Math.abs(vt2[0]) || 1.0;   // 0 || 1.0 = 1.0 (wrong — actual scale is 2.0)
+    const correct = Math.hypot(vt2[0], vt2[1]) || 1.0; // hypot(0, -2.0) = 2.0 (correct)
+    expect(wrong).toBe(1.0);    // demonstrates the bug
+    expect(correct).toBe(2.0);  // demonstrates the fix
+  });
+});

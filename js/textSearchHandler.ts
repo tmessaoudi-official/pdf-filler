@@ -58,7 +58,7 @@ export class TextSearchHandler {
       // Map baseline position from PDF user space to canvas pixel space
       const canvasPt = applyTransform([item.transform[4], item.transform[5]], vt);
       // Scale of viewport (absolute value to handle y-flip)
-      const scaleInVp = Math.abs(vt[0]) || currentScale;
+      const scaleInVp = Math.hypot(vt[0], vt[1]) || currentScale;
 
       const itemStr  = item.str;
       const matchIdx = itemStr.toLowerCase().indexOf(q);
