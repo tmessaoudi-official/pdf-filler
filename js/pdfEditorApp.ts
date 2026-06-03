@@ -52,6 +52,7 @@ export class PDFEditorApp {
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
+  private _isLoading = false;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -734,57 +735,68 @@ export class PDFEditorApp {
 
   // ── File upload ───────────────────────────────────────────────
   async handleFileUpload(e: Event) {
+    if (this._isLoading) return;
+    this._isLoading = true;
     const file = (e.target as HTMLInputElement).files?.[0];
     (e.target as HTMLInputElement).value = '';
     if (!file || file.type !== 'application/pdf') {
       alert('Please select a valid PDF file');
+      this._isLoading = false;
       return;
     }
-    const rawBytes = new Uint8Array(await file.arrayBuffer());
-    const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
-    const doc = await pdfjsLib.getDocument(rawBytes).promise;
+    try {
+      const rawBytes = new Uint8Array(await file.arrayBuffer());
+      const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
+      const doc = await pdfjsLib.getDocument(rawBytes).promise;
 
-    // Reset state for new document
-    this.documentModel = new DocumentModel();
-    this.renderer.setModel(this.documentModel);
-    this.elements = [];
-    this._formValues = {};
-    this._warnedUnsupportedFields = false;
-    this._formFieldOverlay.clear();
-    this.historyManager.clear();
-    this.selectedElement = null;
-    this.currentFilename = file.name;
+      // Reset state for new document
+      this.documentModel = new DocumentModel();
+      this.renderer.setModel(this.documentModel);
+      this.elements = [];
+      this._formValues = {};
+      this._warnedUnsupportedFields = false;
+      this._formFieldOverlay.clear();
+      this._textSearch.clearCache();
+      this.historyManager.clear();
+      this.selectedElement = null;
+      this.currentFilename = file.name;
 
-    // Re-init thumbnail panel with new model
-    this.ui.pageThumbnailContainer.innerHTML = '';
-    this._thumbnailPanel = new PageThumbnailPanel({
-      container: this.ui.pageThumbnailContainer,
-      renderer: this.renderer,
-      model: this.documentModel,
-      onNavigate: (index) => this._goToPageIndex(index),
-      onDelete: (pageId) => this._deletePage(pageId),
-      onReorder: (newOrder) => this._reorderPages(newOrder),
-      onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
-      onAddPdf: () => this.ui.addPdfInput.click(),
-      onDownload: (index) => this.downloadPage(index),
-    });
+      // Re-init thumbnail panel with new model
+      this.ui.pageThumbnailContainer.innerHTML = '';
+      this._thumbnailPanel = new PageThumbnailPanel({
+        container: this.ui.pageThumbnailContainer,
+        renderer: this.renderer,
+        model: this.documentModel,
+        onNavigate: (index) => this._goToPageIndex(index),
+        onDelete: (pageId) => this._deletePage(pageId),
+        onReorder: (newOrder) => this._reorderPages(newOrder),
+        onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
+        onAddPdf: () => this.ui.addPdfInput.click(),
+        onDownload: (index) => this.downloadPage(index),
+      });
 
-    const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
-    this.documentModel.addPagesFrom(src.id);
-    this.renderer.pdfDoc = doc;
+      const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
+      this.documentModel.addPagesFrom(src.id);
+      this.renderer.pdfDoc = doc;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    document.getElementById('emptyState')!.style.display = 'none';
-    const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
-    const isMobile = window.innerWidth <= 640;
-    await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
-    this.enableUI();
-    this.ui.clearSaveBtn.disabled = false;
-    this.ui.pageThumbnailContainer.style.display = '';
-    await this._thumbnailPanel.render();
-    this.updatePageInfo();
-    this.renderElements();
-    this._autosave();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      document.getElementById('emptyState')!.style.display = 'none';
+      const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
+      const isMobile = window.innerWidth <= 640;
+      await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
+      this.enableUI();
+      this.ui.clearSaveBtn.disabled = false;
+      this.ui.pageThumbnailContainer.style.display = '';
+      await this._thumbnailPanel.render();
+      this.updatePageInfo();
+      this.renderElements();
+      this._autosave();
+    } catch (err) {
+      this.showToast('Failed to load PDF — ' + (err instanceof Error ? err.message.slice(0, 80) : 'unknown error'));
+      console.error('[handleFileUpload]', err);
+    } finally {
+      this._isLoading = false;
+    }
   }
 
   enableUI() { this.uiController.enableUI(); }

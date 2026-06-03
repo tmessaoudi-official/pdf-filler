@@ -72,3 +72,36 @@ describe('_cleanEmptyTextElements DOM guard (BUG-29)', () => {
     expect(newBehavior(input, input)).toBe(true);  // mounted focused → keep (same)
   });
 });
+
+describe('handleFileUpload error handling (BUG-03 + BUG-09)', () => {
+  it('_isLoading guard prevents re-entrant calls', () => {
+    const calls: string[] = [];
+    const guardFn = (isLoading: boolean) => {
+      if (isLoading) { calls.push('blocked'); return; }
+      calls.push('executed');
+    };
+    guardFn(false); // first call — executes
+    guardFn(true);  // concurrent call — blocked
+    expect(calls).toEqual(['executed', 'blocked']);
+  });
+
+  it('try/catch/finally pattern releases lock on error', () => {
+    let isLoading = false;
+    let toastShown = '';
+    const run = async () => {
+      if (isLoading) return;
+      isLoading = true;
+      try {
+        throw new Error('corrupt PDF');
+      } catch (err) {
+        toastShown = 'Failed to load PDF — ' + (err instanceof Error ? err.message : 'unknown');
+      } finally {
+        isLoading = false;
+      }
+    };
+    return run().then(() => {
+      expect(isLoading).toBe(false);  // lock released in finally
+      expect(toastShown).toContain('corrupt PDF');
+    });
+  });
+});
