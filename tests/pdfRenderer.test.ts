@@ -3,6 +3,8 @@ import { PDFRenderer } from '../js/pdfRenderer';
 
 function makeCanvas() {
   const canvas = document.createElement('canvas');
+  // jsdom returns null for getContext('2d'); stub it so the null guard doesn't throw
+  canvas.getContext = vi.fn().mockReturnValue({}) as typeof canvas.getContext;
   return canvas;
 }
 
