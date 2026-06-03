@@ -428,7 +428,7 @@ export class PDFEditorApp {
 
     if (myGen !== this._searchGen) return; // stale — a newer search has started
 
-    const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+    const effectiveRotation = ((page.rotate + (docPage.rotation ?? 0)) % 360 + 360) % 360;
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale);
 
@@ -1042,7 +1042,7 @@ export class PDFEditorApp {
     const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     const page = await src.doc.getPage(docPage.sourcePageNum);
-    const effectiveRotation = (page.rotate + (docPage.rotation ?? 0)) % 360;
+    const effectiveRotation = ((page.rotate + (docPage.rotation ?? 0)) % 360 + 360) % 360;
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
     const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
     const values = this._formValues[docPage.sourcePdfId] ?? {};
@@ -1134,7 +1134,7 @@ export class PDFEditorApp {
 
     const userRot  = docPage.rotation ?? 0;
     const srcRot   = tempPage.getRotation().angle as number;
-    const totalRot = (srcRot + userRot) % 360;
+    const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
     if (userRot) tempPage.setRotation(degrees(totalRot));
 
     const { width: W_orig, height: H_orig } = tempPage.getSize() as { width: number; height: number };
@@ -1164,7 +1164,7 @@ export class PDFEditorApp {
     const renderDoc  = await pdfjsLib.getDocument(tempBytes).promise;
     const renderPage = await renderDoc.getPage(1);
     const SCALE = 2;
-    const effectiveRotation = (renderPage.rotate + userRot) % 360;
+    const effectiveRotation = ((renderPage.rotate + userRot) % 360 + 360) % 360;
     const vp = renderPage.getViewport({ scale: SCALE, rotation: effectiveRotation });
 
     const offscreen    = document.createElement('canvas');
@@ -1260,7 +1260,7 @@ export class PDFEditorApp {
         // Apply user rotation on top of source rotation
         const userRot = docPage.rotation ?? 0;
         const sourceRot = page.getRotation().angle as number;
-        const totalRot = (sourceRot + userRot) % 360;
+        const totalRot = ((sourceRot + userRot) % 360 + 360) % 360;
         if (userRot) page.setRotation(degrees(totalRot));
 
         // Original (unrotated) content dims for coordinate transform
@@ -1328,7 +1328,7 @@ export class PDFEditorApp {
 
         const userRot  = docPage.rotation ?? 0;
         const srcRot   = page.getRotation().angle as number;
-        const totalRot = (srcRot + userRot) % 360;
+        const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
         if (userRot) page.setRotation(degrees(totalRot));
 
         const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
@@ -1387,7 +1387,7 @@ export class PDFEditorApp {
 
       const userRot  = docPage.rotation ?? 0;
       const srcRot   = page.getRotation().angle as number;
-      const totalRot = (srcRot + userRot) % 360;
+      const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
       if (userRot) page.setRotation(degrees(totalRot));
       const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
       const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);

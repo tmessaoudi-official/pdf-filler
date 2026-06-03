@@ -235,3 +235,16 @@ describe('DrawingHandler fixes', () => {
     expect(newGuard).toBe(false);
   });
 });
+
+describe('rotation normalization (BUG-13)', () => {
+  it('negative srcRot + userRot normalizes to positive', () => {
+    const buggy = (srcRot: number, userRot: number) => (srcRot + userRot) % 360;
+    const fixed = (srcRot: number, userRot: number) => ((srcRot + userRot) % 360 + 360) % 360;
+
+    expect(buggy(-90, 0)).toBe(-90);  // demonstrates the bug
+    expect(fixed(-90, 0)).toBe(270);  // fix: -90 → 270
+    expect(fixed(270, 90)).toBe(0);   // 360 → 0
+    expect(fixed(0, 0)).toBe(0);
+    expect(fixed(180, 90)).toBe(270);
+  });
+});
