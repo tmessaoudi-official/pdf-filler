@@ -1100,10 +1100,16 @@ export class PDFEditorApp {
         const { width: w_eff, height: h_eff } = this._getEffectivePageDims(page);
         const pageElements = this.elements.filter(el => el.pageId === docPage.id);
 
+        const exportErrors: string[] = [];
         for (const element of pageElements) {
           try {
             await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot);
-          } catch { /* skip malformed element */ }
+          } catch {
+            exportErrors.push(`${element.type} (id ${element.id})`);
+          }
+        }
+        if (exportErrors.length > 0) {
+          this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
         }
 
         if (this.documentModel.watermark.enabled) {
@@ -1151,8 +1157,13 @@ export class PDFEditorApp {
       const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
       const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
       const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+      const exportErrors: string[] = [];
       for (const element of pageElements) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+        catch { exportErrors.push(`${element.type} (id ${element.id})`); }
+      }
+      if (exportErrors.length > 0) {
+        this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
       }
       if (this.documentModel.watermark.enabled) {
         await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
@@ -1184,7 +1195,11 @@ export class PDFEditorApp {
       // Build a single-page PDF with all elements drawn in
       const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
-      if (!srcEntry) return;
+      if (!srcEntry) {
+        this.showToast('Export failed — source PDF not found');
+        this.ui.container.style.opacity = '1';
+        return;
+      }
       const srcDoc = await PDFDocument.load(srcEntry.bytes);
       const pdfDoc = await PDFDocument.create();
       const [page] = await pdfDoc.copyPages(srcDoc, [docPage.sourcePageNum - 1]);
@@ -1197,8 +1212,13 @@ export class PDFEditorApp {
       const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
       const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
 
+      const imgExportErrors: string[] = [];
       for (const element of this.elements.filter(el => el.pageId === docPage.id)) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); } catch { /* skip */ }
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+        catch { imgExportErrors.push(`${element.type} (id ${element.id})`); }
+      }
+      if (imgExportErrors.length > 0) {
+        this.showToast(`⚠ ${imgExportErrors.length} element(s) failed to render: ${imgExportErrors.join(', ')}`, 6000);
       }
       if (this.documentModel.watermark.enabled) {
         await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
