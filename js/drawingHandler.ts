@@ -100,7 +100,8 @@ export class DrawingHandler {
     if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._pinchPointers.size < 2) {
       const finalDist = this._lastPinchDist || this._pinchStartDist;
       const newScale = this._pinchStartZoom * finalDist / this._pinchStartDist;
-      this.app.ui.canvas.style.transform = '';
+      this.app.ui.canvas.style.transform       = '';
+      this.app.ui.canvas.style.transformOrigin = '';
       this._pinchStartDist = null;
       this._pinchStartZoom = null;
       this._lastPinchDist  = null;
@@ -199,11 +200,22 @@ export class DrawingHandler {
   handlePointerCancel(e: PointerEvent): void {
     this._pinchPointers.delete(e.pointerId);
     this.cancel();
+
     if (this._pinchPointers.size === 0) {
-      this.app.ui.canvas.style.transform = '';
-      this._pinchStartDist = null;
-      this._pinchStartZoom = null;
-      this._lastPinchDist  = null;
+      this.app.ui.canvas.style.transform       = '';
+      this.app.ui.canvas.style.transformOrigin = '';
+
+      if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._lastPinchDist !== null) {
+        const newScale = this._pinchStartZoom * this._lastPinchDist / this._pinchStartDist;
+        this._pinchStartDist  = null;
+        this._pinchStartZoom  = null;
+        this._lastPinchDist   = null;
+        this.app.applyZoom(newScale);
+      } else {
+        this._pinchStartDist  = null;
+        this._pinchStartZoom  = null;
+        this._lastPinchDist   = null;
+      }
     }
   }
 
