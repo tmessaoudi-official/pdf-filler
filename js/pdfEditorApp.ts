@@ -1220,7 +1220,7 @@ export class PDFEditorApp {
         }
       }
 
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1278,7 +1278,7 @@ export class PDFEditorApp {
         }
       }
 
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1334,7 +1334,7 @@ export class PDFEditorApp {
       }
 
       // Rasterize via pdf.js at 2× scale
-      const pdfBytes  = await pdfDoc.save();
+      const pdfBytes  = await pdfDoc.save({ useObjectStreams: false });
       const renderDoc = await pdfjsLib.getDocument(pdfBytes).promise;
       const renderPage = await renderDoc.getPage(1);
       const SCALE = 2;
