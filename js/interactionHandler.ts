@@ -100,7 +100,7 @@ export class InteractionHandler {
     this._beforeState = this._captureState(element);
     this.startX = e.clientX; this.startY = e.clientY;
     this.startWidth = element.width; this.startHeight = element.height;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    (e.target as Element).setPointerCapture(e.pointerId);
     e.preventDefault(); e.stopPropagation();
   }
 
