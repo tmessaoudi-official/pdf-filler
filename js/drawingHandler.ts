@@ -134,9 +134,15 @@ export class DrawingHandler {
       this._pinchCentroidDoc = null;
       this._pinchCentroidViewport = null;
 
-      await this.app.applyZoom(newScale);
+      try {
+        await this.app.applyZoom(newScale);
+      } catch (err) {
+        console.error('[DrawingHandler] applyZoom failed:', err);
+        return;
+      }
 
-      if (centroidDoc && centroidViewport) {
+      // Guard: skip correction if a new pinch began during the await
+      if (!this._pinchStartDist && centroidDoc && centroidViewport) {
         const container = this.app.ui.container;
         const cRect = container.getBoundingClientRect();
         const canvas = this.app.ui.canvas;
