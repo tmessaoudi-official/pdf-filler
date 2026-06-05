@@ -641,6 +641,34 @@
       transform-origin: center; pointer-events: none; user-select: none;
     }
     .wm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .export-preview-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 500;
+    }
+    .export-preview-overlay .export-preview-banner {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,30,30,0.92);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: all;
+      z-index: 501;
+    }
+    #exportPreviewGhost {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      opacity: 0.4;
+    }
   </style>
 </head>
 <body>
@@ -683,6 +711,7 @@
       <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ <span class="btn-label">Download</span></button>
       <button id="exportImgBtn" class="btn btn-icon" disabled title="Export current page as PNG image">📷</button>
       <button id="exportPageBtn" class="btn btn-icon" disabled title="Export current page as PDF">📄</button>
+      <button id="previewExportBtn" class="btn btn-icon" disabled title="Preview export positions">👁</button>
       <button id="watermarkBtn" class="btn btn-icon" disabled title="Watermark settings">≋</button>
       <button id="clearAllBtn" class="btn btn-icon" disabled title="Clear all annotations">✕</button>
       <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
@@ -840,6 +869,14 @@
 
 <span id="pageInfo" style="display:none"></span>
 <button id="donePill" class="done-pill" style="display:none">✓ Done drawing</button>
+<div id="exportPreviewOverlay" class="export-preview-overlay" style="display:none">
+  <div class="export-preview-banner">
+    This is where your annotations will appear in the exported PDF.
+    <button id="exportPreviewConfirm" class="btn btn-success">Export PDF</button>
+    <button id="exportPreviewClose" class="btn">Close Preview</button>
+  </div>
+  <div id="exportPreviewGhost"></div>
+</div>
 <div id="toast"></div>
 <script type="module" src="./js/main.ts"></script>
 </body>

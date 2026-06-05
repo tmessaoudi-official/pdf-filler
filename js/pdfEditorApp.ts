@@ -132,6 +132,14 @@ export class PDFEditorApp {
     });
     this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
     this.ui.exportPageBtn.addEventListener('click', () => { if (this.documentModel.currentPage) this.downloadPage(this.documentModel.currentPageIndex); });
+    this.ui.previewExportBtn.addEventListener('click', () => {
+      if (this.documentModel.currentPage) this._showExportPreview();
+    });
+    this.ui.exportPreviewClose.addEventListener('click', () => this._hideExportPreview());
+    this.ui.exportPreviewConfirm.addEventListener('click', () => {
+      this._hideExportPreview();
+      this.downloadPDF();
+    });
     this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
     this.ui.findInput.addEventListener('input', () => {
       clearTimeout(this._searchDebounceTimer ?? undefined);
@@ -1218,6 +1226,47 @@ export class PDFEditorApp {
     this.renderElements();
     // Re-run search at new scale so match overlays reposition correctly
     if (this.ui.findBar.style.display !== 'none' && this.ui.findInput.value) this._search();
+  }
+
+  private _showExportPreview(): void {
+    const docPage = this.documentModel.currentPage;
+    if (!docPage) return;
+
+    const canvas = this.renderer.canvas;
+    const ghost = this.ui.exportPreviewGhost;
+    ghost.innerHTML = '';
+    ghost.style.width  = canvas.width  + 'px';
+    ghost.style.height = canvas.height + 'px';
+    ghost.style.left   = canvas.offsetLeft + 'px';
+    ghost.style.top    = canvas.offsetTop  + 'px';
+
+    const W = canvas.width / this.zoomScale;
+    const H = canvas.height / this.zoomScale;
+    const angle = docPage.rotation ?? 0;
+
+    const pageElements = this.elements.filter(el => el.pageId === docPage.id);
+    for (const el of pageElements) {
+      const pdfPt = this._transformPoint(el.x, el.y, W, H, angle);
+      const screenX = pdfPt.x * this.zoomScale;
+      const screenY = (H - pdfPt.y) * this.zoomScale;
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.left   = screenX + 'px';
+      div.style.top    = screenY + 'px';
+      div.style.width  = el.width  * this.zoomScale + 'px';
+      div.style.height = el.height * this.zoomScale + 'px';
+      div.style.border = '2px dashed rgba(37,99,235,0.7)';
+      div.style.background = 'rgba(37,99,235,0.12)';
+      div.style.boxSizing = 'border-box';
+      ghost.appendChild(div);
+    }
+
+    this.ui.exportPreviewOverlay.style.display = '';
+  }
+
+  private _hideExportPreview(): void {
+    this.ui.exportPreviewOverlay.style.display = 'none';
+    this.ui.exportPreviewGhost.innerHTML = '';
   }
 
   async fitToWidth() {

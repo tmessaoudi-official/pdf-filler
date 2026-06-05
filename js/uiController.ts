@@ -80,6 +80,11 @@ export interface UIRefs {
   exportPageBtn: HTMLButtonElement;
   donePill: HTMLButtonElement;
   eraserBtn: HTMLButtonElement;
+  previewExportBtn:     HTMLButtonElement;
+  exportPreviewOverlay: HTMLElement;
+  exportPreviewGhost:   HTMLElement;
+  exportPreviewConfirm: HTMLButtonElement;
+  exportPreviewClose:   HTMLButtonElement;
 }
 
 export class UIController {
@@ -164,6 +169,11 @@ export class UIController {
       exportPageBtn:    document.getElementById('exportPageBtn')    as HTMLButtonElement,
       donePill:         document.getElementById('donePill')         as HTMLButtonElement,
       eraserBtn:        document.getElementById('eraserBtn')        as HTMLButtonElement,
+      previewExportBtn:     document.getElementById('previewExportBtn')     as HTMLButtonElement,
+      exportPreviewOverlay: document.getElementById('exportPreviewOverlay') as HTMLElement,
+      exportPreviewGhost:   document.getElementById('exportPreviewGhost')   as HTMLElement,
+      exportPreviewConfirm: document.getElementById('exportPreviewConfirm') as HTMLButtonElement,
+      exportPreviewClose:   document.getElementById('exportPreviewClose')   as HTMLButtonElement,
     };
   }
 
@@ -194,6 +204,7 @@ export class UIController {
     r.exportImgBtn.disabled   = false;
     r.exportPageBtn.disabled  = false;
     r.eraserBtn.disabled   = false;
+    r.previewExportBtn.disabled = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
