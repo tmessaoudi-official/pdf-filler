@@ -14,6 +14,8 @@ export class DrawingHandler {
   private _pinchStartDist: number | null = null;
   private _pinchStartZoom: number | null = null;
   private _lastPinchDist: number | null = null;
+  private _pinchCentroidDoc: { x: number; y: number } | null = null;
+  private _pinchCentroidViewport: { x: number; y: number } | null = null;
 
   constructor(private app: PDFEditorApp) {}
 
@@ -36,6 +38,19 @@ export class DrawingHandler {
       this._pinchStartDist = this._getPinchDist();
       this._pinchStartZoom = this.app.zoomScale;
       this._lastPinchDist  = this._pinchStartDist;
+
+      const pts = [...this._pinchPointers.values()];
+      const cx = (pts[0].x + pts[1].x) / 2;
+      const cy = (pts[0].y + pts[1].y) / 2;
+      this._pinchCentroidViewport = { x: cx, y: cy };
+      const container = this.app.ui.container;
+      const cRect = container.getBoundingClientRect();
+      const canvas = this.app.ui.canvas;
+      this._pinchCentroidDoc = {
+        x: (cx - cRect.left + container.scrollLeft - canvas.offsetLeft) / this.app.zoomScale,
+        y: (cy - cRect.top  + container.scrollTop  - canvas.offsetTop)  / this.app.zoomScale,
+      };
+
       e.preventDefault();
       return;
     }
@@ -74,8 +89,16 @@ export class DrawingHandler {
       const dist = this._getPinchDist();
       this._lastPinchDist = dist;
       const ratio = dist / this._pinchStartDist;
+
+      if (this._pinchCentroidDoc) {
+        const canvas = this.app.ui.canvas;
+        const tlX = this._pinchCentroidDoc.x * this.app.zoomScale;
+        const tlY = this._pinchCentroidDoc.y * this.app.zoomScale;
+        canvas.style.transformOrigin = `${tlX}px ${tlY}px`;
+      } else {
+        this.app.ui.canvas.style.transformOrigin = 'center center';
+      }
       this.app.ui.canvas.style.transform = `scale(${ratio})`;
-      this.app.ui.canvas.style.transformOrigin = 'center center';
       return;
     }
 
@@ -94,18 +117,34 @@ export class DrawingHandler {
     this._updatePreview(x, y);
   }
 
-  handlePointerUp(e: PointerEvent): void {
+  async handlePointerUp(e: PointerEvent): Promise<void> {
     this._pinchPointers.delete(e.pointerId);
 
     if (this._pinchStartDist !== null && this._pinchStartZoom !== null && this._pinchPointers.size < 2) {
       const finalDist = this._lastPinchDist ?? this._pinchStartDist;
       const newScale = this._pinchStartZoom * finalDist / this._pinchStartDist;
+      const centroidDoc = this._pinchCentroidDoc;
+      const centroidViewport = this._pinchCentroidViewport;
+
       this.app.ui.canvas.style.transform       = '';
       this.app.ui.canvas.style.transformOrigin = '';
       this._pinchStartDist = null;
       this._pinchStartZoom = null;
       this._lastPinchDist  = null;
-      this.app.applyZoom(newScale);
+      this._pinchCentroidDoc = null;
+      this._pinchCentroidViewport = null;
+
+      await this.app.applyZoom(newScale);
+
+      if (centroidDoc && centroidViewport) {
+        const container = this.app.ui.container;
+        const cRect = container.getBoundingClientRect();
+        const canvas = this.app.ui.canvas;
+        container.scrollLeft = centroidDoc.x * this.app.zoomScale + canvas.offsetLeft
+                               - (centroidViewport.x - cRect.left);
+        container.scrollTop  = centroidDoc.y * this.app.zoomScale + canvas.offsetTop
+                               - (centroidViewport.y - cRect.top);
+      }
       return;
     }
 
@@ -209,6 +248,8 @@ export class DrawingHandler {
     this._pinchStartDist  = null;
     this._pinchStartZoom  = null;
     this._lastPinchDist   = null;
+    this._pinchCentroidDoc = null;
+    this._pinchCentroidViewport = null;
   }
 
   private _updatePreview(curX: number, curY: number): void {
