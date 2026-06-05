@@ -782,6 +782,14 @@
       Upload a PDF to get started
     </div>
     <canvas id="pdfCanvas"></canvas>
+    <div id="exportPreviewOverlay" class="export-preview-overlay" style="display:none">
+      <div class="export-preview-banner">
+        This is where your annotations will appear in the exported PDF.
+        <button id="exportPreviewConfirm" class="btn btn-success">Export PDF</button>
+        <button id="exportPreviewClose" class="btn">Close Preview</button>
+      </div>
+      <div id="exportPreviewGhost"></div>
+    </div>
   </div>
   <div id="pageThumbnailContainer" class="page-thumb-container" style="display:none"></div>
 </div>
@@ -869,14 +877,6 @@
 
 <span id="pageInfo" style="display:none"></span>
 <button id="donePill" class="done-pill" style="display:none">✓ Done drawing</button>
-<div id="exportPreviewOverlay" class="export-preview-overlay" style="display:none">
-  <div class="export-preview-banner">
-    This is where your annotations will appear in the exported PDF.
-    <button id="exportPreviewConfirm" class="btn btn-success">Export PDF</button>
-    <button id="exportPreviewClose" class="btn">Close Preview</button>
-  </div>
-  <div id="exportPreviewGhost"></div>
-</div>
 <div id="toast"></div>
 <script type="module" src="./js/main.ts"></script>
 </body>
