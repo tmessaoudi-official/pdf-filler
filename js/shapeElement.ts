@@ -32,6 +32,7 @@ export class ShapeElement extends PDFElement {
   render(_container: HTMLElement, canvasOffset: { left: number; top: number }, scale = 1): HTMLDivElement {
     const div = document.createElement('div');
     div.className = 'pdf-element shape-element';
+    if (this.shapeType === 'freehand') div.classList.add('freehand-element');
     div.dataset.id = String(this.id);
     this.applyStyles(div, canvasOffset, scale);
 
@@ -56,7 +57,7 @@ export class ShapeElement extends PDFElement {
 
     div.appendChild(svg);
     div.appendChild(this.createControls());
-    div.appendChild(this.createResizeHandle());
+    if (this.shapeType !== 'freehand') div.appendChild(this.createResizeHandle());
     return div;
   }
 
