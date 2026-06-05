@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@vitest/ui": "^4.1.8",
-    "eslint": "^9.0.0",
+    "eslint": "^10.0.0",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.0.0",
