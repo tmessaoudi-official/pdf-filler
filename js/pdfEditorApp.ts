@@ -14,6 +14,7 @@ import { ElementFactory } from './elementFactory';
 import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
 import { DrawingHandler } from './drawingHandler';
+import { EraserHandler } from './eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
@@ -24,7 +25,7 @@ import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
 import { CommentElement } from './commentElement';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
@@ -43,6 +44,7 @@ export class PDFEditorApp {
   currentSignature: string | null = null;
   uiController!: UIController;
   drawingHandler!: DrawingHandler;
+  eraserHandler!: EraserHandler;
   private _thumbnailPanel: PageThumbnailPanel | null = null;
   private _pendingImageSrc: string | null = null;
   private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -68,6 +70,7 @@ export class PDFEditorApp {
     this.uiController = new UIController();
     this.interactionHandler = new InteractionHandler(this);
     this.drawingHandler = new DrawingHandler(this);
+    this.eraserHandler = new EraserHandler(this);
     this.signaturePad = new SignaturePad(this.uiController.refs.signatureCanvas);
     this._formFieldOverlay = new FormFieldOverlay(this.uiController.refs.container);
     this.mode = 'select';
@@ -179,14 +182,17 @@ export class PDFEditorApp {
     document.addEventListener('pointermove', (e) => {
       this.interactionHandler.handlePointerMove(e);
       this.drawingHandler.handlePointerMove(e);
+      this.eraserHandler.handlePointerMove(e);
     });
     document.addEventListener('pointerup', (e) => {
       this.interactionHandler.handlePointerUp(e);
       this.drawingHandler.handlePointerUp(e);
+      this.eraserHandler.handlePointerUp(e);
     });
     document.addEventListener('pointercancel', (e) => {
       this.interactionHandler.handlePointerCancel(e);
       this.drawingHandler.handlePointerCancel(e);
+      this.eraserHandler.cancel();
     });
 
     this.ui.zoomInBtn.addEventListener('click',  () => this.applyZoom(this.zoomScale + 0.1));
@@ -212,7 +218,12 @@ export class PDFEditorApp {
       this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
     });
     this.ui.donePill.addEventListener('click', () => this.setMode('select'));
+    this.ui.eraserBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawErase' ? 'select' : 'drawErase');
+    });
     this.ui.canvas.addEventListener('pointerdown', (e) => this.drawingHandler.handlePointerDown(e));
+    this.ui.canvas.addEventListener('pointerdown', (e) => this.eraserHandler.handlePointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
     this.ui.clearAllBtn.addEventListener('click', () => this.clearAll());
@@ -385,6 +396,9 @@ export class PDFEditorApp {
           break;
         case 'h': case 'H':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawHighlight' ? 'select' : 'drawHighlight');
+          break;
+        case 'e': case 'E':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawErase' ? 'select' : 'drawErase');
           break;
         case '?': this._toggleHelp(); break;
         case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight':
@@ -940,6 +954,7 @@ export class PDFEditorApp {
 
   setMode(mode: ToolMode) {
     this.drawingHandler.cancel();
+    this.eraserHandler.cancel();
     this.mode = mode;
     this.uiController.updateModeButtons(mode);
     this._formFieldOverlay.setPointerEvents(mode === 'select');
@@ -956,6 +971,7 @@ export class PDFEditorApp {
       drawHighlight: 'Highlight tool — drag to mark. Press Esc to exit.',
       addComment:    'Comment tool — click to place. Press Esc to cancel.',
       drawRedaction: 'Redact tool — drag to black out. Press Esc to exit.',
+      drawErase:     'Eraser — swipe to erase elements. Press Esc to exit.',
     };
     const label = toastLabels[mode];
     if (label) this.uiController.showToast(label, 1500);

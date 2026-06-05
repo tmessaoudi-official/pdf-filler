@@ -79,6 +79,7 @@ export interface UIRefs {
   exportImgBtn: HTMLButtonElement;
   exportPageBtn: HTMLButtonElement;
   donePill: HTMLButtonElement;
+  eraserBtn: HTMLButtonElement;
 }
 
 export class UIController {
@@ -162,6 +163,7 @@ export class UIController {
       exportImgBtn:     document.getElementById('exportImgBtn')     as HTMLButtonElement,
       exportPageBtn:    document.getElementById('exportPageBtn')    as HTMLButtonElement,
       donePill:         document.getElementById('donePill')         as HTMLButtonElement,
+      eraserBtn:        document.getElementById('eraserBtn')        as HTMLButtonElement,
     };
   }
 
@@ -191,6 +193,7 @@ export class UIController {
     r.redactBtn.disabled      = false;
     r.exportImgBtn.disabled   = false;
     r.exportPageBtn.disabled  = false;
+    r.eraserBtn.disabled   = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -206,18 +209,20 @@ export class UIController {
     r.freehandBtn.classList.toggle('active',     mode === 'drawFreehand');
     r.commentBtn.classList.toggle('active',      mode === 'addComment');
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
+    r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
 
     const badges: Record<string, string> = {
       select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN', addImage: '🖼 IMAGE',
       drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW',
       drawHighlight: '🖊 HIGHLIGHT', addComment: '💬 COMMENT', drawRedaction: '⬛ REDACT',
+      drawErase: '⌫ ERASE',
     };
     r.modeBadge.textContent = badges[mode] || 'SELECT';
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
     r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
 
-    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction';
+    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase';
     r.shapeColor.disabled = !isShapeMode;
     r.shapeWidth.disabled = !isShapeMode;
   }

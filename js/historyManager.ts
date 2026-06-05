@@ -256,3 +256,35 @@ export class HistoryManager {
     this.onChange(false, false);
   }
 }
+
+export class BulkDeleteCmd implements Command {
+  private _deleted: PDFElement[];
+  constructor(private arr: PDFElement[], elements: PDFElement[]) {
+    this._deleted = [...elements];
+  }
+  execute(): void {
+    this._deleted.forEach(el => {
+      const i = this.arr.indexOf(el);
+      if (i !== -1) this.arr.splice(i, 1);
+    });
+  }
+  undo(): void {
+    this.arr.push(...this._deleted);
+  }
+}
+
+export class SplitStrokeCmd implements Command {
+  constructor(
+    private arr: PDFElement[],
+    private original: PDFElement,
+    private replacements: PDFElement[],
+  ) {}
+  execute(): void {
+    const i = this.arr.indexOf(this.original);
+    if (i !== -1) this.arr.splice(i, 1, ...this.replacements);
+  }
+  undo(): void {
+    const i = this.arr.indexOf(this.replacements[0]);
+    if (i !== -1) this.arr.splice(i, this.replacements.length, this.original);
+  }
+}
