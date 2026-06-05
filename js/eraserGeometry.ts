@@ -4,7 +4,7 @@ export type Bbox  = { x: number; y: number; w: number; h: number };
 export function segmentsIntersect(
   a1: Point, a2: Point,
   b1: Point, b2: Point,
-): { intersects: boolean; point?: Point } {
+): { intersects: boolean; t?: number; point?: Point } {
   const dx1 = a2.x - a1.x, dy1 = a2.y - a1.y;
   const dx2 = b2.x - b1.x, dy2 = b2.y - b1.y;
   const denom = dx1 * dy2 - dy1 * dx2;
@@ -16,6 +16,7 @@ export function segmentsIntersect(
   if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
     return {
       intersects: true,
+      t,
       point: { x: a1.x + t * dx1, y: a1.y + t * dy1 },
     };
   }
@@ -54,7 +55,7 @@ export function splitFreehandAtErase(
       const b1 = erasePoints[j], b2 = erasePoints[j + 1];
       const r = segmentsIntersect(a1, a2, b1, b2);
       if (r.intersects && r.point) {
-        crossings.push({ tStroke: i, point: r.point });
+        crossings.push({ tStroke: i + (r.t ?? 0), point: r.point });
       }
     }
   }
