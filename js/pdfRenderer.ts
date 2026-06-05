@@ -3,8 +3,9 @@ import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { DocumentModel } from './documentModel';
 
 // Use Vite's ?url import to copy the worker to dist/ and get its hashed URL
+// Note: pdfjs-dist v4+ uses .mjs extension (ESM-only build)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
+  'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
 ).href;
 
@@ -66,7 +67,7 @@ export class PDFRenderer {
 
   async loadPDF(fileData: ArrayBuffer): Promise<PDFDocumentProxy> {
     const typedArray = new Uint8Array(fileData);
-    const doc = await pdfjsLib.getDocument(typedArray).promise;
+    const doc = await pdfjsLib.getDocument({ data: typedArray }).promise;
     this.pdfDoc = doc;
     return doc;
   }
@@ -112,7 +113,7 @@ export class PDFRenderer {
       const viewport = page.getViewport({ scale: this.scale, rotation: effectiveRotation });
       this.canvas.height = viewport.height;
       this.canvas.width = viewport.width;
-      await page.render({ canvasContext: this.ctx, viewport }).promise;
+      await page.render({ canvas: this.canvas, viewport }).promise;
     } finally {
       this.isRendering = false;  // BUG-05 fix: always release lock
     }
@@ -146,7 +147,7 @@ export class PDFRenderer {
     canvas.height = vp.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    await page.render({ canvas, viewport: vp }).promise;
     return canvas.toDataURL('image/jpeg', 0.7);
   }
 

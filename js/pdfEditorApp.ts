@@ -648,7 +648,7 @@ export class PDFEditorApp {
       try {
         const typedBytes = new Uint8Array(await file.arrayBuffer());
         const bytesToStore = typedBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
-        const doc = await pdfjsLib.getDocument(typedBytes).promise;
+        const doc = await pdfjsLib.getDocument({ data: typedBytes }).promise;
         const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
         const cmd = new AddPagesCmd(this.documentModel, src.id, undefined, () => this._onPageStructureChange());
         this.historyManager.execute(cmd);
@@ -802,7 +802,7 @@ export class PDFEditorApp {
       for (const sp of state.sourcePdfs) {
         const spBytes = sp.bytes instanceof Uint8Array ? sp.bytes : new Uint8Array(sp.bytes);
         const bytesToStore = spBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
-        const doc = await pdfjsLib.getDocument(spBytes).promise;
+        const doc = await pdfjsLib.getDocument({ data: spBytes }).promise;
         const src = this.documentModel.addSourcePdf(doc, bytesToStore, sp.name);
         // Override auto-generated id with the saved one
         this.documentModel.sourcePdfs.delete(src.id);
@@ -892,7 +892,7 @@ export class PDFEditorApp {
     try {
       const rawBytes = new Uint8Array(await file.arrayBuffer());
       const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
-      const doc = await pdfjsLib.getDocument(rawBytes).promise;
+      const doc = await pdfjsLib.getDocument({ data: rawBytes }).promise;
 
       // Reset state for new document
       this.documentModel = new DocumentModel();
@@ -1326,7 +1326,7 @@ export class PDFEditorApp {
 
     // 2. Rasterize via pdf.js at 2× scale
     const tempBytes  = await tempDoc.save({ useObjectStreams: false });
-    const renderDoc  = await pdfjsLib.getDocument(tempBytes).promise;
+    const renderDoc  = await pdfjsLib.getDocument({ data: tempBytes }).promise;
     const renderPage = await renderDoc.getPage(1);
     const SCALE = 2;
     // Rotation is already baked into the temp PDF via setRotation() above — do not re-apply.
@@ -1337,7 +1337,7 @@ export class PDFEditorApp {
     offscreen.height   = Math.round(vp.height);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ctx          = offscreen.getContext('2d')!;
-    await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
+    await renderPage.render({ canvas: offscreen, viewport: vp }).promise;
 
     // 3. Paint redaction boxes onto the canvas (permanently covers content)
     ctx.fillStyle = '#000000';
@@ -1571,7 +1571,7 @@ export class PDFEditorApp {
 
       // Rasterize via pdf.js at 2× scale
       const pdfBytes  = await pdfDoc.save({ useObjectStreams: false });
-      const renderDoc = await pdfjsLib.getDocument(pdfBytes).promise;
+      const renderDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
       const renderPage = await renderDoc.getPage(1);
       const SCALE = 2;
       const vp = renderPage.getViewport({ scale: SCALE });
@@ -1580,7 +1580,7 @@ export class PDFEditorApp {
       offscreen.height = Math.round(vp.height);
       const ctx = offscreen.getContext('2d');
       if (!ctx) { this.showToast('Canvas unavailable — cannot export image'); return; }
-      await renderPage.render({ canvasContext: ctx, viewport: vp }).promise;
+      await renderPage.render({ canvas: offscreen, viewport: vp }).promise;
 
       offscreen.toBlob((blob) => {
         if (!blob) { this.showToast('Image export failed'); return; }
