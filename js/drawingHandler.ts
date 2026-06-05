@@ -238,6 +238,9 @@ export class DrawingHandler {
     if (shape) {
       this.app.historyManager.execute(new AddElementCmd(this.app.elements, shape));
       this.app._autosave();
+      if (this.app.mode === 'drawFreehand') {
+        this.app.selectedElement = null;
+      }
       this.app.renderElements();
     }
   }

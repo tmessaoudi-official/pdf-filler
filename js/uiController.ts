@@ -78,6 +78,7 @@ export interface UIRefs {
   redactBtn: HTMLButtonElement;
   exportImgBtn: HTMLButtonElement;
   exportPageBtn: HTMLButtonElement;
+  donePill: HTMLButtonElement;
 }
 
 export class UIController {
@@ -160,6 +161,7 @@ export class UIController {
       redactBtn:        document.getElementById('redactBtn')        as HTMLButtonElement,
       exportImgBtn:     document.getElementById('exportImgBtn')     as HTMLButtonElement,
       exportPageBtn:    document.getElementById('exportPageBtn')    as HTMLButtonElement,
+      donePill:         document.getElementById('donePill')         as HTMLButtonElement,
     };
   }
 
@@ -213,6 +215,7 @@ export class UIController {
     r.modeBadge.textContent = badges[mode] || 'SELECT';
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
+    r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
 
     const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction';
     r.shapeColor.disabled = !isShapeMode;

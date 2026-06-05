@@ -194,6 +194,25 @@
     }
     #toast.show { opacity: 1; transform: translateY(0); }
 
+    .done-pill {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 900;
+      background: #fff;
+      color: #1d4ed8;
+      border: 1.5px solid #1d4ed8;
+      border-radius: 999px;
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .done-pill:active { background: #eff6ff; }
+
     /* Touch: show controls when element is selected (hover doesn't fire on mobile) */
     .pdf-element.selected .element-controls { opacity: 1; }
     /* Touch: prevent container scroll while dragging an element */
@@ -814,6 +833,7 @@
 </div>
 
 <span id="pageInfo" style="display:none"></span>
+<button id="donePill" class="done-pill" style="display:none">✓ Done drawing</button>
 <div id="toast"></div>
 <script type="module" src="./js/main.ts"></script>
 </body>

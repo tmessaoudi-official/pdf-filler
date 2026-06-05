@@ -211,6 +211,7 @@ export class PDFEditorApp {
       if (!this.documentModel.pageCount) return;
       this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
     });
+    this.ui.donePill.addEventListener('click', () => this.setMode('select'));
     this.ui.canvas.addEventListener('pointerdown', (e) => this.drawingHandler.handlePointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
