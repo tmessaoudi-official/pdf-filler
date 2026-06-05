@@ -76,6 +76,7 @@ export class InteractionHandler {
     this._beforeState = this._captureState(p.element);
     this.offsetX = p.offsetX;
     this.offsetY = p.offsetY;
+    p.div.setPointerCapture(p.pointerId);
     this._pendingTouchDrag = null;
     this.drag(e);
   }
@@ -88,6 +89,7 @@ export class InteractionHandler {
     const divRect = div.getBoundingClientRect();
     this.offsetX = e.clientX - divRect.left;
     this.offsetY = e.clientY - divRect.top;
+    div.setPointerCapture(e.pointerId);
     e.preventDefault();
   }
 
@@ -98,6 +100,7 @@ export class InteractionHandler {
     this._beforeState = this._captureState(element);
     this.startX = e.clientX; this.startY = e.clientY;
     this.startWidth = element.width; this.startHeight = element.height;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     e.preventDefault(); e.stopPropagation();
   }
 
