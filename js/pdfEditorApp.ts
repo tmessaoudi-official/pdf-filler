@@ -101,13 +101,32 @@ export class PDFEditorApp {
   setupEventListeners() {
     this.ui.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
     this.ui.addPdfInput.addEventListener('change', (e) => this._handleAddPdfUpload(e));
-    this.ui.addTextBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addText'); });
-    this.ui.addSignatureBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addSignature'); });
-    this.ui.addImageBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.ui.addImageInput.click(); });
+    this.ui.addTextBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'addText' ? 'select' : 'addText');
+    });
+    this.ui.addSignatureBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'addSignature' ? 'select' : 'addSignature');
+    });
+    this.ui.addImageBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      if (this.mode === 'addImage') { this.setMode('select'); return; }
+      this.ui.addImageInput.click();
+    });
     this.ui.addImageInput.addEventListener('change', (e) => this._handleImageFileSelect(e));
-    this.ui.highlightBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawHighlight'); });
-    this.ui.commentBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('addComment'); });
-    this.ui.redactBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.setMode('drawRedaction'); });
+    this.ui.highlightBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawHighlight' ? 'select' : 'drawHighlight');
+    });
+    this.ui.commentBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'addComment' ? 'select' : 'addComment');
+    });
+    this.ui.redactBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawRedaction' ? 'select' : 'drawRedaction');
+    });
     this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
     this.ui.exportPageBtn.addEventListener('click', () => { if (this.documentModel.currentPage) this.downloadPage(this.documentModel.currentPageIndex); });
     this.ui.findBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this._openFindBar(); });
@@ -176,10 +195,22 @@ export class PDFEditorApp {
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
 
-    this.ui.arrowBtn.addEventListener('click',    () => this.setMode('drawArrow'));
-    this.ui.rectBtn.addEventListener('click',     () => this.setMode('drawRect'));
-    this.ui.circleBtn.addEventListener('click',   () => this.setMode('drawEllipse'));
-    this.ui.freehandBtn.addEventListener('click', () => this.setMode('drawFreehand'));
+    this.ui.arrowBtn.addEventListener('click',    () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawArrow' ? 'select' : 'drawArrow');
+    });
+    this.ui.rectBtn.addEventListener('click',     () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawRect' ? 'select' : 'drawRect');
+    });
+    this.ui.circleBtn.addEventListener('click',   () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawEllipse' ? 'select' : 'drawEllipse');
+    });
+    this.ui.freehandBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
+    });
     this.ui.canvas.addEventListener('pointerdown', (e) => this.drawingHandler.handlePointerDown(e));
 
     this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
@@ -331,14 +362,29 @@ export class PDFEditorApp {
             this._updateFormattingToolbar();
           }
           break;
-        case 't': case 'T': if (this.documentModel.pageCount) this.setMode('addText'); break;
-        case 's': case 'S': if (this.documentModel.pageCount) this.setMode('addSignature'); break;
+        case 't': case 'T':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'addText' ? 'select' : 'addText');
+          break;
+        case 's': case 'S':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'addSignature' ? 'select' : 'addSignature');
+          break;
         case 'i': case 'I': if (this.documentModel.pageCount) this.ui.addImageInput.click(); break;
-        case 'a': case 'A': if (this.documentModel.pageCount) this.setMode('drawArrow'); break;
-        case 'r': case 'R': if (this.documentModel.pageCount) this.setMode('drawRect'); break;
-        case 'c': case 'C': if (this.documentModel.pageCount) this.setMode('drawEllipse'); break;
-        case 'd': case 'D': if (this.documentModel.pageCount) this.setMode('drawFreehand'); break;
-        case 'h': case 'H': if (this.documentModel.pageCount) this.setMode('drawHighlight'); break;
+        case 'a': case 'A':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawArrow' ? 'select' : 'drawArrow');
+          break;
+        case 'r': case 'R':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawRect' ? 'select' : 'drawRect');
+          break;
+        case 'c': case 'C':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawEllipse' ? 'select' : 'drawEllipse');
+          break;
+        case 'd': case 'D':
+        case 'f': case 'F':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
+          break;
+        case 'h': case 'H':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawHighlight' ? 'select' : 'drawHighlight');
+          break;
         case '?': this._toggleHelp(); break;
         case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight':
           if (this.selectedElement) {
@@ -897,6 +943,21 @@ export class PDFEditorApp {
     this.uiController.updateModeButtons(mode);
     this._formFieldOverlay.setPointerEvents(mode === 'select');
     if (mode === 'addSignature') this.openSignatureModal();
+
+    const toastLabels: Partial<Record<ToolMode, string>> = {
+      addText:       'Text tool — click to place. Press Esc to cancel.',
+      addSignature:  'Signature — draw then click to place. Press Esc to cancel.',
+      addImage:      'Image tool — click to place. Press Esc to cancel.',
+      drawArrow:     'Arrow tool — drag to draw. Press Esc to exit.',
+      drawRect:      'Rectangle tool — drag to draw. Press Esc to exit.',
+      drawEllipse:   'Circle tool — drag to draw. Press Esc to exit.',
+      drawFreehand:  'Freehand pen — draw freely. Tap Done or press Esc to exit.',
+      drawHighlight: 'Highlight tool — drag to mark. Press Esc to exit.',
+      addComment:    'Comment tool — click to place. Press Esc to cancel.',
+      drawRedaction: 'Redact tool — drag to black out. Press Esc to exit.',
+    };
+    const label = toastLabels[mode];
+    if (label) this.uiController.showToast(label, 1500);
   }
 
   _isShapeMode() { return this.mode.startsWith('draw'); }
