@@ -264,7 +264,7 @@ export class BulkDeleteCmd implements Command {
   }
   execute(): void {
     this._deleted.forEach(el => {
-      const i = this.arr.indexOf(el);
+      const i = this.arr.findIndex(e => e.id === el.id);
       if (i !== -1) this.arr.splice(i, 1);
     });
   }
@@ -284,7 +284,13 @@ export class SplitStrokeCmd implements Command {
     if (i !== -1) this.arr.splice(i, 1, ...this.replacements);
   }
   undo(): void {
-    const i = this.arr.indexOf(this.replacements[0]);
+    const i = this.arr.findIndex(e => e.id === this.replacements[0].id);
     if (i !== -1) this.arr.splice(i, this.replacements.length, this.original);
   }
+}
+
+export class MacroCmd implements Command {
+  constructor(private cmds: Command[]) {}
+  execute(): void { this.cmds.forEach(c => c.execute()); }
+  undo(): void { [...this.cmds].reverse().forEach(c => c.undo()); }
 }

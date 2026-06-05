@@ -1,7 +1,8 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import type { PDFElement } from './pdfElement';
 import { ShapeElement } from './shapeElement';
-import { BulkDeleteCmd, SplitStrokeCmd } from './historyManager';
+import type { Command } from './historyManager';
+import { BulkDeleteCmd, SplitStrokeCmd, MacroCmd } from './historyManager';
 import { bboxIntersectsPolyline, splitFreehandAtErase } from './eraserGeometry';
 import type { Point } from './eraserGeometry';
 
@@ -116,12 +117,12 @@ export class EraserHandler {
 
     if (toDelete.length === 0 && splits.length === 0) return;
 
-    if (toDelete.length > 0) {
-      this.app.historyManager.execute(new BulkDeleteCmd(this.app.elements, toDelete));
-    }
+    const cmds: Command[] = [];
+    if (toDelete.length > 0) cmds.push(new BulkDeleteCmd(this.app.elements, toDelete));
     for (const { original, replacements } of splits) {
-      this.app.historyManager.execute(new SplitStrokeCmd(this.app.elements, original, replacements));
+      cmds.push(new SplitStrokeCmd(this.app.elements, original, replacements));
     }
+    this.app.historyManager.execute(new MacroCmd(cmds));
 
     this.app._autosave();
     this.app.renderElements();
