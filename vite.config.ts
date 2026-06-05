@@ -12,13 +12,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifestFilename: 'manifest.json',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg}'],
         // pdf.js + pdf-lib chunks can be >2MB — raise the precache limit
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [
           {
             // Cache large JS chunks (pdf.js worker, pdf-lib) at runtime
-            urlPattern: ({ url }) => url.pathname.endsWith('.js') && url.origin === self.location.origin,
+            urlPattern: ({ url }) => (url.pathname.endsWith('.js') || url.pathname.endsWith('.mjs')) && url.origin === self.location.origin,
             handler: 'CacheFirst',
             options: {
               cacheName: 'pdf-chunks',
