@@ -534,7 +534,8 @@ export class PDFEditorApp {
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
     const realFontSize = parseInt(this.ui.wmFontSize.value) || 60;
-    const previewScale = Math.min(32, Math.max(10, h * 0.4)) / realFontSize;
+    // Scale as if the canvas represents a 600pt-tall page so font-size changes are visible.
+    const previewScale = h / 600;
     const liveWm: WatermarkSettings = {
       enabled: true,
       text: this.ui.wmText.value || 'WATERMARK',
@@ -629,6 +630,21 @@ export class PDFEditorApp {
     this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale, { caseSensitive: this._findCaseSensitive, useRegex: this._findRegex });
 
     if (myGen !== this._searchGen) return; // stale after search
+
+    // Also match user-added text boxes on the current page
+    for (const el of this.elements) {
+      if (el.type !== 'text' || el.pageId !== docPage.id) continue;
+      const textEl = el as TextElement;
+      if (!textEl.text) continue;
+      let matched = false;
+      if (this._findRegex) {
+        try { matched = new RegExp(query, this._findCaseSensitive ? '' : 'i').test(textEl.text); } catch { /* invalid regex */ }
+      } else {
+        const haystack = this._findCaseSensitive ? textEl.text : textEl.text.toLowerCase();
+        matched = haystack.includes(this._findCaseSensitive ? query : query.toLowerCase());
+      }
+      if (matched) this._findMatches.push({ pageId: docPage.id, x: textEl.x, y: textEl.y, width: textEl.width, height: textEl.height });
+    }
 
     if (this._findMatches.length > 0) {
       this._findMatchIndex = 0;
@@ -1582,6 +1598,7 @@ export class PDFEditorApp {
     this.updatePageInfo();
     this.renderElements();
     if (this.ui.findBar.style.display !== 'none' && this.ui.findInput.value) this._search();
+    if (this._exportPreviewOpen) this._showExportPreview();
   }
 
   async _goToPage(n: number): Promise<void> {
@@ -1605,6 +1622,7 @@ export class PDFEditorApp {
     this.renderElements();
     // Re-run search at new scale so match overlays reposition correctly
     if (this.ui.findBar.style.display !== 'none' && this.ui.findInput.value) this._search();
+    if (this._exportPreviewOpen) this._showExportPreview();
   }
 
   private _showExportPreview(): void {
