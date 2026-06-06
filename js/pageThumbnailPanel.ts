@@ -12,6 +12,7 @@ export class PageThumbnailPanel {
   private onRotate: (pageId: string, delta: number) => void;
   private onAddPdf: () => void;
   private onDownload: (index: number) => void;
+  private onDownloadImage: (index: number) => void;
   private _dragSrcIndex: number | null = null;
   private _thumbCache: Map<string, string> = new Map(); // pageId → dataURL
 
@@ -25,6 +26,7 @@ export class PageThumbnailPanel {
     onRotate: (pageId: string, delta: number) => void;
     onAddPdf: () => void;
     onDownload: (index: number) => void;
+    onDownloadImage: (index: number) => void;
   }) {
     this.container = opts.container;
     this.renderer = opts.renderer;
@@ -35,6 +37,7 @@ export class PageThumbnailPanel {
     this.onRotate = opts.onRotate;
     this.onAddPdf = opts.onAddPdf;
     this.onDownload = opts.onDownload;
+    this.onDownloadImage = opts.onDownloadImage;
 
     this.strip = document.createElement('div');
     this.strip.className = 'page-thumb-strip';
@@ -84,7 +87,6 @@ export class PageThumbnailPanel {
       del.title = 'Delete page';
       del.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (pages.length <= 1) return; // don't delete last page
         this.onDelete(page.id);
       });
 
@@ -101,18 +103,25 @@ export class PageThumbnailPanel {
       rotateCw.title = 'Rotate CW';
       rotateCw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, -90); });
 
-      // Per-page download button (Feature B: split PDF)
-      const dlBtn = document.createElement('button');
-      dlBtn.className = 'thumb-dl';
-      dlBtn.textContent = '⬇';
-      dlBtn.title = `Export page ${i + 1} as PDF`;
-      dlBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownload(i); });
+      // Per-page download buttons
+      const dlPdfBtn = document.createElement('button');
+      dlPdfBtn.className = 'thumb-dl thumb-dl-pdf';
+      dlPdfBtn.textContent = '📄';
+      dlPdfBtn.title = `Export page ${i + 1} as PDF`;
+      dlPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownload(i); });
+
+      const dlImgBtn = document.createElement('button');
+      dlImgBtn.className = 'thumb-dl thumb-dl-img';
+      dlImgBtn.textContent = '🖼';
+      dlImgBtn.title = `Export page ${i + 1} as PNG`;
+      dlImgBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownloadImage(i); });
 
       item.appendChild(img);
       item.appendChild(label);
       item.appendChild(rotateCcw);
       item.appendChild(rotateCw);
-      item.appendChild(dlBtn);
+      item.appendChild(dlPdfBtn);
+      item.appendChild(dlImgBtn);
       item.appendChild(del);
 
       // Navigate on click

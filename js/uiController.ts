@@ -29,7 +29,12 @@ export interface UIRefs {
   boldBtn: HTMLButtonElement;
   italicBtn: HTMLButtonElement;
   modeBadge: HTMLElement;
-  clearSaveBtn: HTMLButtonElement;
+  fileMenuBtn: HTMLButtonElement;
+  fileMenuWrap: HTMLElement;
+  fileMenuOpen: HTMLButtonElement;
+  fileMenuClose: HTMLButtonElement;
+  fileMenuClearAnnotations: HTMLButtonElement;
+  fileMenuResetSession: HTMLButtonElement;
   firstPage: HTMLButtonElement;
   lastPage: HTMLButtonElement;
   pageInput: HTMLInputElement;
@@ -43,7 +48,6 @@ export interface UIRefs {
   shapeWidth: HTMLInputElement;
   fontSizeDownBtn: HTMLButtonElement;
   fontSizeUpBtn: HTMLButtonElement;
-  clearAllBtn: HTMLButtonElement;
   helpBtn: HTMLButtonElement;
   helpModal: HTMLElement;
   colorSwatches: HTMLElement;
@@ -58,6 +62,8 @@ export interface UIRefs {
   findHighlight: HTMLButtonElement;
   findClose: HTMLButtonElement;
   findCount: HTMLElement;
+  findCaseSensitive: HTMLButtonElement;
+  findRegex: HTMLButtonElement;
   watermarkBtn: HTMLButtonElement;
   watermarkModal: HTMLElement;
   wmEnabled: HTMLInputElement;
@@ -69,6 +75,8 @@ export interface UIRefs {
   wmOpacityDisplay: HTMLElement;
   wmAngle: HTMLInputElement;
   wmAngleDisplay: HTMLElement;
+  wmDensity: HTMLInputElement;
+  wmDensityDisplay: HTMLElement;
   wmPreviewText: HTMLElement;
   wmApply: HTMLButtonElement;
   wmCancel: HTMLButtonElement;
@@ -76,8 +84,8 @@ export interface UIRefs {
   addPdfInput: HTMLInputElement;
   commentBtn: HTMLButtonElement;
   redactBtn: HTMLButtonElement;
-  exportImgBtn: HTMLButtonElement;
-  exportPageBtn: HTMLButtonElement;
+  copyBtn: HTMLButtonElement;
+  pasteBtn: HTMLButtonElement;
   donePill: HTMLButtonElement;
   eraserBtn: HTMLButtonElement;
   previewExportBtn:     HTMLButtonElement;
@@ -118,7 +126,12 @@ export class UIController {
       boldBtn:          document.getElementById('boldBtn')          as HTMLButtonElement,
       italicBtn:        document.getElementById('italicBtn')        as HTMLButtonElement,
       modeBadge:        document.getElementById('modeBadge')        as HTMLElement,
-      clearSaveBtn:     document.getElementById('clearSaveBtn')     as HTMLButtonElement,
+      fileMenuBtn:              document.getElementById('fileMenuBtn')              as HTMLButtonElement,
+      fileMenuWrap:             document.getElementById('fileMenuWrap')             as HTMLElement,
+      fileMenuOpen:             document.getElementById('fileMenuOpen')             as HTMLButtonElement,
+      fileMenuClose:            document.getElementById('fileMenuClose')            as HTMLButtonElement,
+      fileMenuClearAnnotations: document.getElementById('fileMenuClearAnnotations') as HTMLButtonElement,
+      fileMenuResetSession:     document.getElementById('fileMenuResetSession')     as HTMLButtonElement,
       firstPage:        document.getElementById('firstPage')        as HTMLButtonElement,
       lastPage:         document.getElementById('lastPage')         as HTMLButtonElement,
       pageInput:        document.getElementById('pageInput')        as HTMLInputElement,
@@ -132,7 +145,6 @@ export class UIController {
       shapeWidth:       document.getElementById('shapeWidth')       as HTMLInputElement,
       fontSizeDownBtn:  document.getElementById('fontSizeDownBtn')  as HTMLButtonElement,
       fontSizeUpBtn:    document.getElementById('fontSizeUpBtn')    as HTMLButtonElement,
-      clearAllBtn:      document.getElementById('clearAllBtn')      as HTMLButtonElement,
       helpBtn:          document.getElementById('helpBtn')          as HTMLButtonElement,
       helpModal:        document.getElementById('helpModal')        as HTMLElement,
       colorSwatches:    document.getElementById('colorSwatches')    as HTMLElement,
@@ -145,8 +157,10 @@ export class UIController {
       findPrev:         document.getElementById('findPrev')         as HTMLButtonElement,
       findNext:         document.getElementById('findNext')         as HTMLButtonElement,
       findHighlight:    document.getElementById('findHighlight')    as HTMLButtonElement,
-      findClose:        document.getElementById('findClose')        as HTMLButtonElement,
-      findCount:        document.getElementById('findCount')        as HTMLElement,
+      findClose:          document.getElementById('findClose')          as HTMLButtonElement,
+      findCount:          document.getElementById('findCount')          as HTMLElement,
+      findCaseSensitive:  document.getElementById('findCaseSensitive')  as HTMLButtonElement,
+      findRegex:          document.getElementById('findRegex')          as HTMLButtonElement,
       watermarkBtn:     document.getElementById('watermarkBtn')     as HTMLButtonElement,
       watermarkModal:   document.getElementById('watermarkModal')   as HTMLElement,
       wmEnabled:        document.getElementById('wmEnabled')        as HTMLInputElement,
@@ -158,6 +172,8 @@ export class UIController {
       wmOpacityDisplay: document.getElementById('wmOpacityDisplay') as HTMLElement,
       wmAngle:          document.getElementById('wmAngle')          as HTMLInputElement,
       wmAngleDisplay:   document.getElementById('wmAngleDisplay')   as HTMLElement,
+      wmDensity:        document.getElementById('wmDensity')        as HTMLInputElement,
+      wmDensityDisplay: document.getElementById('wmDensityDisplay') as HTMLElement,
       wmPreviewText:    document.getElementById('wmPreviewText')    as HTMLElement,
       wmApply:          document.getElementById('wmApply')          as HTMLButtonElement,
       wmCancel:         document.getElementById('wmCancel')         as HTMLButtonElement,
@@ -165,8 +181,8 @@ export class UIController {
       addPdfInput:      document.getElementById('addPdfInput')      as HTMLInputElement,
       commentBtn:       document.getElementById('commentBtn')       as HTMLButtonElement,
       redactBtn:        document.getElementById('redactBtn')        as HTMLButtonElement,
-      exportImgBtn:     document.getElementById('exportImgBtn')     as HTMLButtonElement,
-      exportPageBtn:    document.getElementById('exportPageBtn')    as HTMLButtonElement,
+      copyBtn:          document.getElementById('copyBtn')          as HTMLButtonElement,
+      pasteBtn:         document.getElementById('pasteBtn')         as HTMLButtonElement,
       donePill:         document.getElementById('donePill')         as HTMLButtonElement,
       eraserBtn:        document.getElementById('eraserBtn')        as HTMLButtonElement,
       previewExportBtn:     document.getElementById('previewExportBtn')     as HTMLButtonElement,
@@ -194,16 +210,13 @@ export class UIController {
     r.rectBtn.disabled        = false;
     r.circleBtn.disabled      = false;
     r.freehandBtn.disabled    = false;
-    r.clearAllBtn.disabled    = false;
     r.addImageBtn.disabled    = false;
     r.highlightBtn.disabled   = false;
     r.findBtn.disabled        = false;
     r.watermarkBtn.disabled   = false;
     r.commentBtn.disabled     = false;
     r.redactBtn.disabled      = false;
-    r.exportImgBtn.disabled   = false;
-    r.exportPageBtn.disabled  = false;
-    r.eraserBtn.disabled   = false;
+    r.eraserBtn.disabled      = false;
     r.previewExportBtn.disabled = false;
   }
 
@@ -233,8 +246,8 @@ export class UIController {
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
     r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
 
-    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase';
-    r.shapeColor.disabled = !isShapeMode;
+    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction';
+    r.shapeColor.disabled = !isShapeMode || mode === 'drawErase';
     r.shapeWidth.disabled = !isShapeMode;
   }
 
@@ -263,7 +276,7 @@ export class UIController {
     }
 
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight');
-    r.shapeColor.disabled = !shapeActive;
+    r.shapeColor.disabled = !shapeActive || mode === 'drawErase';
     r.shapeWidth.disabled = !shapeActive;
     if (isShape) {
       r.shapeColor.value = (el as ShapeElement).strokeColor;
@@ -274,6 +287,11 @@ export class UIController {
   updateUndoRedoBtns(canUndo: boolean, canRedo: boolean): void {
     this.refs.undoBtn.disabled = !canUndo;
     this.refs.redoBtn.disabled = !canRedo;
+  }
+
+  updateCopyPasteBtns(canCopy: boolean, canPaste: boolean): void {
+    this.refs.copyBtn.disabled  = !canCopy;
+    this.refs.pasteBtn.disabled = !canPaste;
   }
 
   updatePageInfo(current: number, total: number): void {

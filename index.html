@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./manifest.json">
+  <!-- manifest injected by vite-plugin-pwa at build time -->
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>PDF Fill & Sign</title>
@@ -153,6 +153,14 @@
     }
     .btn-icon:hover:not(:disabled) { background: #e9ecef; }
     .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+    .toolbar-group .btn {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      box-sizing: border-box;
+    }
     .btn-italic { font-style: italic; }
     .btn-sm { padding: 4px 8px; font-size: 12px; }
     .btn-active-fmt {
@@ -160,6 +168,21 @@
       color: white !important;
       border-color: #2563eb !important;
     }
+    .file-menu-wrap { position: relative; }
+    .file-menu-dropdown {
+      display: none; position: fixed; z-index: 300;
+      background: #fff; border: 1px solid #ced4da; border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15); min-width: 190px;
+      flex-direction: column; padding: 4px 0;
+    }
+    .file-menu-wrap.open .file-menu-dropdown { display: flex; }
+    .file-menu-item {
+      border: 0; background: none; text-align: left; padding: 7px 14px;
+      cursor: pointer; font-size: 14px; color: #212529; white-space: nowrap;
+    }
+    .file-menu-item:hover:not(:disabled) { background: #f1f5f9; }
+    .file-menu-item:disabled { color: #9ca3af; cursor: not-allowed; }
+    .file-menu-sep { border: 0; border-top: 1px solid #e5e7eb; margin: 3px 0; }
     .mode-badge {
       margin-left: auto;
       padding: 3px 10px;
@@ -370,8 +393,8 @@
       border: 2px dashed #2563eb;
       background: rgba(37, 99, 235, 0.1);
       cursor: move;
-      min-width: 50px;
-      min-height: 20px;
+      min-width: 5px;
+      min-height: 5px;
       touch-action: none;
     }
     .pdf-element.selected {
@@ -497,6 +520,8 @@
     .find-bar input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
     .find-count { font-size: 12px; color: #64748b; min-width: 44px; text-align: center; }
     .find-hint { font-size: 10px; color: #94a3b8; margin-left: 4px; }
+    .find-toggle { font-family: monospace; font-weight: 700; }
+    .find-toggle.active { background: #dbeafe; border-color: #2563eb; color: #1d4ed8; }
     .search-match {
       position: absolute;
       background: rgba(255,220,0,0.4);
@@ -590,6 +615,18 @@
     .thumb-rotate-ccw { left: 1px; }
     .thumb-rotate-cw  { left: 17px; }
     .thumb-item:hover .thumb-rotate { opacity: 1; }
+    .thumb-dl {
+      position: absolute; top: 1px;
+      width: 14px; height: 14px; border-radius: 3px;
+      background: rgba(0,0,0,0.55); color: white;
+      border: none; cursor: pointer;
+      font-size: 9px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s; padding: 0;
+    }
+    .thumb-dl-pdf { left: 1px; }
+    .thumb-dl-img { left: 17px; }
+    .thumb-item:hover .thumb-dl { opacity: 1; }
     .thumb-add-btn {
       flex-shrink: 0;
       width: 64px; min-height: 80px;
@@ -607,12 +644,17 @@
     .thumb-add-label { font-size: 10px; font-weight: 600; }
     @media (max-width: 640px) {
       .page-thumb-container { padding: 4px 6px; }
-      .thumb-item { width: 50px; height: 64px; }
-      .thumb-add-btn { width: 50px; min-height: 64px; }
+      /* Extra height (64→74px) lets stacked downloads + rotate fit without collision */
+      .thumb-item { width: 50px; height: 74px; }
+      .thumb-add-btn { width: 50px; min-height: 74px; }
       /* Rotate + delete: always visible on touch (hover never fires), larger tap area */
       .thumb-rotate { width: 18px; height: 18px; opacity: 1; font-size: 10px; }
       .thumb-rotate-cw { left: 21px; }
       .thumb-delete { width: 20px; height: 20px; font-size: 12px; opacity: 1; }
+      /* Downloads stacked vertically at top-left — side-by-side + delete won't fit in 50px */
+      .thumb-dl { width: 18px; height: 18px; opacity: 1; font-size: 10px; }
+      .thumb-dl-pdf { top: 1px;  left: 1px; }
+      .thumb-dl-img { top: 21px; left: 1px; }
     }
 
     /* ── Watermark modal ─────────────────────────────────── */
@@ -678,12 +720,23 @@
   </div>
   <div class="toolbar toolbar-row1">
     <div class="toolbar-group" id="tbg-file">
-      <label for="fileInput" class="btn btn-primary">📁 <span class="btn-label">Upload PDF</span></label>
-      <input type="file" id="fileInput" accept="application/pdf">
+      <div class="file-menu-wrap" id="fileMenuWrap">
+        <button id="fileMenuBtn" class="btn btn-primary">📁 File ▾</button>
+        <div class="file-menu-dropdown" id="fileMenuDropdown">
+          <button id="fileMenuOpen" class="file-menu-item">📂 Open…</button>
+          <button id="fileMenuClose" class="file-menu-item" disabled>✕ Close Document</button>
+          <hr class="file-menu-sep">
+          <button id="fileMenuClearAnnotations" class="file-menu-item" disabled>🗑 Clear Annotations</button>
+          <button id="fileMenuResetSession" class="file-menu-item" disabled>↺ Reset Session</button>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,image/bmp" multiple style="display:none">
     </div>
     <div class="toolbar-group" id="tbg-history">
       <button id="undoBtn" class="btn btn-icon" disabled title="Undo (Ctrl+Z)">↩</button>
       <button id="redoBtn" class="btn btn-icon" disabled title="Redo (Ctrl+Y)">↪</button>
+      <button id="copyBtn" class="btn btn-icon" disabled title="Copy selected element (Ctrl+C)">⎘</button>
+      <button id="pasteBtn" class="btn btn-icon" disabled title="Paste element (Ctrl+V)">⧉</button>
     </div>
     <!-- Mobile line-break: forces tools to second line on small screens -->
     <div id="tbsep-break" class="toolbar-sep"></div>
@@ -694,7 +747,7 @@
       <button id="addImageBtn" class="btn btn-secondary" disabled title="Add Image (I)">🖼 <span class="btn-label">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
       <button id="highlightBtn" class="btn btn-secondary" disabled title="Highlight brush (H)">🖊 <span class="btn-label">Highlight</span></button>
-      <button id="commentBtn" class="btn btn-secondary" disabled title="Add comment / sticky note">💬 <span class="btn-label">Comment</span></button>
+      <button id="commentBtn" class="btn btn-secondary" disabled title="Add comment / sticky note (N)">💬 <span class="btn-label">Comment</span></button>
       <button id="findBtn" class="btn btn-icon" disabled title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
@@ -709,12 +762,8 @@
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-actions">
       <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ <span class="btn-label">Download</span></button>
-      <button id="exportImgBtn" class="btn btn-icon" disabled title="Export current page as PNG image">📷</button>
-      <button id="exportPageBtn" class="btn btn-icon" disabled title="Export current page as PDF">📄</button>
       <button id="previewExportBtn" class="btn btn-icon" disabled title="Preview export positions">👁</button>
       <button id="watermarkBtn" class="btn btn-icon" disabled title="Watermark settings">≋</button>
-      <button id="clearAllBtn" class="btn btn-icon" disabled title="Clear all annotations">✕</button>
-      <button id="clearSaveBtn" class="btn btn-icon" disabled title="Clear saved session for this file">🗑</button>
       <button id="helpBtn" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
       <input type="file" id="addPdfInput" accept="application/pdf" multiple>
     </div>
@@ -771,11 +820,12 @@
   <div id="findBar" class="find-bar" style="display:none">
     <input type="text" id="findInput" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
     <span id="findCount" class="find-count"></span>
+    <button id="findCaseSensitive" class="btn btn-icon btn-sm find-toggle" title="Case sensitive">Aa</button>
+    <button id="findRegex" class="btn btn-icon btn-sm find-toggle" title="Use regular expression">.*</button>
     <button id="findPrev" class="btn btn-icon btn-sm" title="Previous (Shift+Enter)">↑</button>
     <button id="findNext" class="btn btn-icon btn-sm" title="Next (Enter)">↓</button>
     <button id="findHighlight" class="btn btn-secondary btn-sm" title="Add as permanent highlight">🖊 Keep</button>
     <button id="findClose" class="btn btn-icon btn-sm" title="Close (Esc)">×</button>
-    <span class="find-hint">Matches within text runs only</span>
   </div>
   <div class="canvas-container" id="canvasContainer">
     <div id="emptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:18px;pointer-events:none;z-index:1;">
@@ -804,16 +854,23 @@
       <tr><th>Key</th><th>Action</th></tr>
       <tr><td>T</td><td>Add text</td></tr>
       <tr><td>S</td><td>Sign</td></tr>
+      <tr><td>I</td><td>Add image</td></tr>
       <tr><td>A</td><td>Arrow</td></tr>
       <tr><td>R</td><td>Rectangle</td></tr>
       <tr><td>C</td><td>Circle</td></tr>
-      <tr><td>D</td><td>Freehand draw</td></tr>
-      <tr><td>Esc</td><td>Select mode / cancel</td></tr>
+      <tr><td>D / F</td><td>Freehand draw</td></tr>
+      <tr><td>E</td><td>Eraser</td></tr>
+      <tr><td>H</td><td>Highlight</td></tr>
+      <tr><td>N</td><td>Add comment / note</td></tr>
+      <tr><td>Esc</td><td>Select mode / cancel / close modal</td></tr>
       <tr><td>Del / Backspace</td><td>Remove selected element</td></tr>
       <tr><td>←↑→↓</td><td>Nudge selected 1px</td></tr>
       <tr><td>Shift + ←↑→↓</td><td>Nudge selected 10px</td></tr>
       <tr><td>Ctrl+Z</td><td>Undo</td></tr>
       <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
+      <tr><td>Ctrl+C</td><td>Copy selected element</td></tr>
+      <tr><td>Ctrl+V</td><td>Paste element</td></tr>
+      <tr><td>Ctrl+F</td><td>Find in page</td></tr>
       <tr><td>Ctrl+← / Ctrl+→</td><td>Previous / next page</td></tr>
       <tr><td>?</td><td>Show this panel</td></tr>
     </table>
@@ -844,6 +901,10 @@
     <div class="wm-field">
       <label>Angle: <span id="wmAngleDisplay">-45</span>°</label>
       <input type="range" id="wmAngle" min="-180" max="180" value="-45">
+    </div>
+    <div class="wm-field">
+      <label>Density: <span id="wmDensityDisplay">3</span> (1 sparse → 5 dense)</label>
+      <input type="range" id="wmDensity" min="1" max="5" step="1" value="3">
     </div>
     <div class="wm-preview">
       <span id="wmPreviewText" class="wm-preview-text">WATERMARK</span>

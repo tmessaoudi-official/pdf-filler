@@ -1,5 +1,6 @@
 import type { DocumentPage, WatermarkSettings } from './documentModel';
 import type { ElementJSON } from './pdfElement';
+import type { InkStroke } from './inkLayer';
 
 export interface SavedState {
   elements: ElementJSON[];
@@ -9,6 +10,7 @@ export interface SavedState {
   // Source PDF bytes keyed by sourcePdfId
   sourcePdfs: Array<{ id: string; name: string; bytes: Uint8Array }>;
   formValues?: Record<string, Record<string, string>>;
+  inkData?: Record<string, InkStroke[]>;
 }
 
 const DB_NAME = 'pdf-editor';

@@ -9,7 +9,8 @@ import type { MatchResult } from './textSearchHandler';
 import { SignaturePad } from './signaturePad';
 import { InteractionHandler } from './interactionHandler';
 import { ShapeElement } from './shapeElement';
-import type { PDFElement } from './pdfElement';
+import { PDFElement } from './pdfElement';
+import type { ElementJSON } from './pdfElement';
 import { ElementFactory } from './elementFactory';
 import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
@@ -18,7 +19,11 @@ import { EraserHandler } from './eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
+  MacroCmd, TransformAnnotationsCmd, ClearInkCmd,
 } from './historyManager';
+import type { ElementTransformSnapshot } from './historyManager';
+import { InkLayer } from './inkLayer';
+import { InkLayerHandler } from './inkLayerHandler';
 import { DocumentModel } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
@@ -53,12 +58,19 @@ export class PDFEditorApp {
   private _findMatchIndex = -1;
   private _searchGen = 0;
   private _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _findCaseSensitive = false;
+  private _findRegex = false;
   private _formFieldOverlay!: FormFieldOverlay;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
   private _formFieldGen = 0;
   private _isLoading = false;
   private _pageUpdatePending = false;
+  inkLayer!: InkLayer;
+  inkLayerHandler!: InkLayerHandler;
+  private _inkCanvas!: HTMLCanvasElement;
+  private _isFitMode = true;
+  private _clipboard: ElementJSON | null = null;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -71,6 +83,11 @@ export class PDFEditorApp {
     this.interactionHandler = new InteractionHandler(this);
     this.drawingHandler = new DrawingHandler(this);
     this.eraserHandler = new EraserHandler(this);
+    this.inkLayer = new InkLayer();
+    this.inkLayerHandler = new InkLayerHandler(this);
+    this._inkCanvas = document.createElement('canvas');
+    this._inkCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    this.uiController.refs.container.appendChild(this._inkCanvas);
     this.signaturePad = new SignaturePad(this.uiController.refs.signatureCanvas);
     this._formFieldOverlay = new FormFieldOverlay(this.uiController.refs.container);
     this.mode = 'select';
@@ -98,6 +115,7 @@ export class PDFEditorApp {
       onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
       onAddPdf: () => this.ui.addPdfInput.click(),
       onDownload: (index) => this.downloadPage(index),
+      onDownloadImage: (index) => this.downloadPageAsImage(index),
     });
   }
 
@@ -130,8 +148,6 @@ export class PDFEditorApp {
       if (!this.documentModel.pageCount) return;
       this.setMode(this.mode === 'drawRedaction' ? 'select' : 'drawRedaction');
     });
-    this.ui.exportImgBtn.addEventListener('click', () => { if (this.documentModel.pageCount) this.downloadPageAsImage(); });
-    this.ui.exportPageBtn.addEventListener('click', () => { if (this.documentModel.currentPage) this.downloadPage(this.documentModel.currentPageIndex); });
     this.ui.previewExportBtn.addEventListener('click', () => {
       if (this.documentModel.currentPage) this._showExportPreview();
     });
@@ -149,6 +165,16 @@ export class PDFEditorApp {
     this.ui.findPrev.addEventListener('click', () => this._prevMatch());
     this.ui.findHighlight.addEventListener('click', () => this._highlightCurrentMatch());
     this.ui.findClose.addEventListener('click', () => this._closeFindBar());
+    this.ui.findCaseSensitive.addEventListener('click', () => {
+      this._findCaseSensitive = !this._findCaseSensitive;
+      this.ui.findCaseSensitive.classList.toggle('active', this._findCaseSensitive);
+      if (this.ui.findInput.value) this._search();
+    });
+    this.ui.findRegex.addEventListener('click', () => {
+      this._findRegex = !this._findRegex;
+      this.ui.findRegex.classList.toggle('active', this._findRegex);
+      if (this.ui.findInput.value) this._search();
+    });
     this.ui.findInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -191,23 +217,28 @@ export class PDFEditorApp {
       this.interactionHandler.handlePointerMove(e);
       this.drawingHandler.handlePointerMove(e);
       this.eraserHandler.handlePointerMove(e);
+      this.inkLayerHandler.handlePointerMove(e);
     });
     document.addEventListener('pointerup', (e) => {
       this.interactionHandler.handlePointerUp(e);
       this.drawingHandler.handlePointerUp(e);
       this.eraserHandler.handlePointerUp(e);
+      this.inkLayerHandler.handlePointerUp(e);
     });
     document.addEventListener('pointercancel', (e) => {
       this.interactionHandler.handlePointerCancel(e);
       this.drawingHandler.handlePointerCancel(e);
       this.eraserHandler.cancel();
+      this.inkLayerHandler.handlePointerCancel(e);
     });
 
-    this.ui.zoomInBtn.addEventListener('click',  () => this.applyZoom(this.zoomScale + 0.1));
-    this.ui.zoomOutBtn.addEventListener('click', () => this.applyZoom(this.zoomScale - 0.1));
+    this.ui.zoomInBtn.addEventListener('click',  () => { this._isFitMode = false; this.applyZoom(this.zoomScale + 0.1); });
+    this.ui.zoomOutBtn.addEventListener('click', () => { this._isFitMode = false; this.applyZoom(this.zoomScale - 0.1); });
     this.ui.fitBtn.addEventListener('click', () => this.fitToWidth());
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
+    this.ui.copyBtn.addEventListener('click', () => this._copySelectedElement());
+    this.ui.pasteBtn.addEventListener('click', () => this._pasteElement());
 
     this.ui.arrowBtn.addEventListener('click',    () => {
       if (!this.documentModel.pageCount) return;
@@ -232,9 +263,36 @@ export class PDFEditorApp {
     });
     this.ui.canvas.addEventListener('pointerdown', (e) => this.drawingHandler.handlePointerDown(e));
     this.ui.canvas.addEventListener('pointerdown', (e) => this.eraserHandler.handlePointerDown(e));
+    this.ui.canvas.addEventListener('pointerdown', (e) => this.inkLayerHandler.handlePointerDown(e));
 
-    this.ui.clearSaveBtn.addEventListener('click', () => this._clearSave());
-    this.ui.clearAllBtn.addEventListener('click', () => this.clearAll());
+    // File menu — use position:fixed so the dropdown escapes toolbar overflow clipping
+    this.ui.fileMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = this.ui.fileMenuWrap.classList.toggle('open');
+      if (isOpen) {
+        const rect = this.ui.fileMenuBtn.getBoundingClientRect();
+        const drop = this.ui.fileMenuWrap.querySelector('.file-menu-dropdown') as HTMLElement;
+        drop.style.top  = (rect.bottom + 4) + 'px';
+        drop.style.left = rect.left + 'px';
+      }
+    });
+    document.addEventListener('click', () => this.ui.fileMenuWrap.classList.remove('open'));
+    this.ui.fileMenuOpen.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      this.ui.fileInput.click();
+    });
+    this.ui.fileMenuClose.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      this._closeDocument();
+    });
+    this.ui.fileMenuClearAnnotations.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      this.clearAll();
+    });
+    this.ui.fileMenuResetSession.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      this._clearSave();
+    });
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
@@ -264,6 +322,7 @@ export class PDFEditorApp {
     this.ui.container.addEventListener('wheel', (e) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
+      this._isFitMode = false;
       this.applyZoom(this.zoomScale + (e.deltaY < 0 ? 0.05 : -0.05));
     }, { passive: false });
 
@@ -348,13 +407,16 @@ export class PDFEditorApp {
     // Watermark modal
     this.ui.watermarkBtn.addEventListener('click', () => this._openWatermarkModal());
     this.ui.wmCancel.addEventListener('click', () => this._closeWatermarkModal());
-    this.ui.watermarkModal.addEventListener('click', (e) => { if (e.target === this.ui.watermarkModal) this._closeWatermarkModal(); });
+    let _wmBackdropDown = false;
+    this.ui.watermarkModal.addEventListener('mousedown', (e) => { _wmBackdropDown = e.target === this.ui.watermarkModal; });
+    this.ui.watermarkModal.addEventListener('mouseup',   (e) => { if (_wmBackdropDown && e.target === this.ui.watermarkModal) this._closeWatermarkModal(); _wmBackdropDown = false; });
     this.ui.wmApply.addEventListener('click', () => this._applyWatermark());
     this._setupWatermarkPreviewListeners();
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
+        if (this.ui.signatureModal.classList.contains('active')) { this.closeSignatureModal(); return; }
         if (this.ui.watermarkModal.classList.contains('active')) { this._closeWatermarkModal(); return; }
         if (this.ui.findBar.style.display !== 'none') { this._closeFindBar(); return; }
         this.setMode('select');
@@ -368,6 +430,8 @@ export class PDFEditorApp {
           case 'z': e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); break;
           case 'y': e.preventDefault(); this.redo(); break;
           case 'f': e.preventDefault(); if (this.documentModel.pageCount) this._openFindBar(); break;
+          case 'c': e.preventDefault(); this._copySelectedElement(); break;
+          case 'v': e.preventDefault(); this._pasteElement(); break;
           case 'arrowright': e.preventDefault(); this.nextPage(); break;
           case 'arrowleft':  e.preventDefault(); this.prevPage(); break;
         }
@@ -404,6 +468,9 @@ export class PDFEditorApp {
           break;
         case 'h': case 'H':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawHighlight' ? 'select' : 'drawHighlight');
+          break;
+        case 'n': case 'N':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'addComment' ? 'select' : 'addComment');
           break;
         case 'e': case 'E':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawErase' ? 'select' : 'drawErase');
@@ -449,14 +516,17 @@ export class PDFEditorApp {
       this.ui.wmAngleDisplay.textContent = this.ui.wmAngle.value;
       update();
     });
+    this.ui.wmDensity.addEventListener('input', () => {
+      this.ui.wmDensityDisplay.textContent = this.ui.wmDensity.value;
+    });
   }
 
   private _updateWatermarkPreview(): void {
     const t = this.ui.wmPreviewText;
     t.textContent = this.ui.wmText.value || 'WATERMARK';
     t.style.color = this.ui.wmColor.value;
-    t.style.opacity = String(parseInt(this.ui.wmOpacity.value) / 100);
-    t.style.fontSize = Math.min(28, parseInt(this.ui.wmFontSize.value) / 3) + 'px';
+    t.style.opacity = '1'; // always full opacity in preview; slider label shows the actual value
+    t.style.fontSize = Math.min(36, Math.max(12, parseInt(this.ui.wmFontSize.value) / 2)) + 'px';
     t.style.transform = `rotate(${this.ui.wmAngle.value}deg)`;
   }
 
@@ -472,6 +542,9 @@ export class PDFEditorApp {
     this.ui.wmOpacityDisplay.textContent = String(opPct);
     this.ui.wmAngle.value = String(wm.angle);
     this.ui.wmAngleDisplay.textContent = String(wm.angle);
+    const density = wm.density ?? 3;
+    this.ui.wmDensity.value = String(density);
+    this.ui.wmDensityDisplay.textContent = String(density);
     this._updateWatermarkPreview();
     this.ui.watermarkModal.classList.add('active');
   }
@@ -488,6 +561,7 @@ export class PDFEditorApp {
       fontSize: parseInt(this.ui.wmFontSize.value) || 60,
       opacity: parseInt(this.ui.wmOpacity.value) / 100,
       angle: parseInt(this.ui.wmAngle.value),
+      density: parseInt(this.ui.wmDensity.value) || 3,
     };
     this._closeWatermarkModal();
     this._autosave();
@@ -529,7 +603,7 @@ export class PDFEditorApp {
 
     const effectiveRotation = ((page.rotate + (docPage.rotation ?? 0)) % 360 + 360) % 360;
     const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
-    this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale);
+    this._findMatches = this._textSearch.search(query, docPage.id, viewport, this.zoomScale, { caseSensitive: this._findCaseSensitive, useRegex: this._findRegex });
 
     if (myGen !== this._searchGen) return; // stale after search
 
@@ -570,9 +644,11 @@ export class PDFEditorApp {
   private _showSearchMatches(): void {
     this._clearSearchMatches();
     const offset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
+    let activeDiv: Element | null = null;
     this._findMatches.forEach((match, i) => {
+      const isActive = i === this._findMatchIndex;
       const div = document.createElement('div');
-      div.className = 'search-match' + (i === this._findMatchIndex ? ' search-match-active' : '');
+      div.className = 'search-match' + (isActive ? ' search-match-active' : '');
       Object.assign(div.style, {
         position: 'absolute',
         left: `${offset.left + match.x * this.zoomScale}px`,
@@ -583,7 +659,9 @@ export class PDFEditorApp {
         zIndex: '3',
       });
       this.ui.container.appendChild(div);
+      if (isActive) activeDiv = div;
     });
+    if (activeDiv) (activeDiv as Element).scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
   private _clearSearchMatches(): void {
@@ -684,15 +762,55 @@ export class PDFEditorApp {
     this.historyManager.execute(cmd);
   }
 
-  private _rotatePage(pageId: string, delta: number): void {
-    if (this.elements.some(e => e.pageId === pageId)) {
-      this.showToast('Tip: existing annotations may shift in export after rotation', 4000);
-    }
-    const cmd = new RotatePageCmd(this.documentModel, pageId, delta, () => {
+  private async _rotatePage(pageId: string, delta: number): Promise<void> {
+    const docPage = this.documentModel.pages.find(p => p.id === pageId);
+    if (!docPage) return;
+    const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+
+    const pageElements = this.elements.filter(e => e.pageId === pageId);
+
+    // Fetch original page dims + source rotation for transform math
+    const pdfPage = await src.doc.getPage(docPage.sourcePageNum);
+    const srcRot = (pdfPage.rotate as number) ?? 0;
+    const vp0 = pdfPage.getViewport({ scale: 1, rotation: 0 });
+    const W = vp0.width, H = vp0.height;
+
+    const oldUserRot = docPage.rotation ?? 0;
+    const newUserRot = ((oldUserRot + delta) % 360 + 360) % 360;
+    const fromRot = ((srcRot + oldUserRot) % 360 + 360) % 360;
+    const toRot   = ((srcRot + newUserRot) % 360 + 360) % 360;
+
+    const rotateCmd = new RotatePageCmd(this.documentModel, pageId, delta, () => {
       this._thumbnailPanel?.invalidateThumb(pageId);
       this._onPageStructureChange();
     });
-    this.historyManager.execute(cmd);
+
+    if (!pageElements.length) {
+      this.historyManager.execute(rotateCmd);
+      return;
+    }
+
+    // Build before/after snapshots for all annotations on this page
+    const before = new Map<number, ElementTransformSnapshot>();
+    const after  = new Map<number, ElementTransformSnapshot>();
+    for (const el of pageElements) {
+      before.set(el.id, { x: el.x, y: el.y, width: el.width, height: el.height,
+        x1: (el as ShapeElement).x1, y1: (el as ShapeElement).y1,
+        x2: (el as ShapeElement).x2, y2: (el as ShapeElement).y2,
+        points: (el as ShapeElement).points?.map(p => ({ ...p })),
+      });
+      after.set(el.id, this._rotateElementSnapshot(el, W, H, fromRot, toRot));
+    }
+
+    // TransformAnnotationsCmd executes first so elements are in correct positions
+    // when RotatePageCmd's onUpdate triggers the re-render (async, so elements are
+    // already updated before renderElements() is called).
+    this.historyManager.execute(new MacroCmd([
+      new TransformAnnotationsCmd(this.elements, before, after),
+      rotateCmd,
+    ]));
+    this.showToast('Annotations adjusted for page rotation');
   }
 
   /** Transform canvas-space point (top-left origin, scale=1) to PDF content-space point (bottom-left origin).
@@ -705,6 +823,62 @@ export class PDFEditorApp {
       case 270: return { x: py,     y: px };
       default:  return { x: px,     y: H - py };
     }
+  }
+
+  /** Inverse of _transformPoint: PDF content space → canvas space. */
+  private _inverseTransformPoint(pdfX: number, pdfY: number, W: number, H: number, totalRot: number): { x: number; y: number } {
+    switch (((totalRot % 360) + 360) % 360) {
+      case 90:  return { x: H - pdfY, y: W - pdfX };
+      case 180: return { x: W - pdfX, y: H - pdfY };
+      case 270: return { x: pdfY,     y: pdfX };
+      default:  return { x: pdfX,     y: H - pdfY };
+    }
+  }
+
+  /** Transform a canvas-space point from one page rotation to another. */
+  private _transformCanvasPoint(cx: number, cy: number, W: number, H: number, fromRot: number, toRot: number): { x: number; y: number } {
+    const pdf = this._transformPoint(cx, cy, W, H, fromRot);
+    return this._inverseTransformPoint(pdf.x, pdf.y, W, H, toRot);
+  }
+
+  /** Compute the post-rotation ElementTransformSnapshot for a single element. */
+  private _rotateElementSnapshot(el: PDFElement, W: number, H: number, fromRot: number, toRot: number): ElementTransformSnapshot {
+    const tp = (cx: number, cy: number) => this._transformCanvasPoint(cx, cy, W, H, fromRot, toRot);
+    const shape = el as ShapeElement;
+
+    if (el.type === 'shape' && shape.shapeType === 'arrow') {
+      const p1 = tp(shape.x1, shape.y1);
+      const p2 = tp(shape.x2, shape.y2);
+      return {
+        x: Math.min(p1.x, p2.x), y: Math.min(p1.y, p2.y),
+        width:  Math.abs(p2.x - p1.x) || el.width,
+        height: Math.abs(p2.y - p1.y) || el.height,
+        x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+      };
+    }
+
+    if (el.type === 'shape' && shape.shapeType === 'freehand') {
+      const pts = shape.points.map(p => tp(p.x, p.y));
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      return {
+        x: Math.min(...xs), y: Math.min(...ys),
+        width:  Math.max(...xs) - Math.min(...xs) || el.width,
+        height: Math.max(...ys) - Math.min(...ys) || el.height,
+        points: pts,
+      };
+    }
+
+    // Standard box elements: derive new bounding box from all 4 transformed corners
+    const corners = [
+      tp(el.x, el.y), tp(el.x + el.width, el.y),
+      tp(el.x, el.y + el.height), tp(el.x + el.width, el.y + el.height),
+    ];
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    return {
+      x: Math.min(...xs), y: Math.min(...ys),
+      width:  Math.max(...xs) - Math.min(...xs) || el.width,
+      height: Math.max(...ys) - Math.min(...ys) || el.height,
+    };
   }
 
   private async _onPageStructureChange(): Promise<void> {
@@ -786,6 +960,7 @@ export class PDFEditorApp {
         currentPageIndex: this.documentModel.currentPageIndex,
         sourcePdfs,
         formValues: { ...this._formValues },
+        inkData: this.inkLayer.toJSON(),
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'QuotaExceededError') {
@@ -826,9 +1001,11 @@ export class PDFEditorApp {
       this.elements.push(...restored);
       ElementFactory.syncIdCounter(this.elements);
       this._formValues = state.formValues ?? {};
+      if (state.inkData) this.inkLayer.fromJSON(state.inkData);
       this.currentFilename = state.sourcePdfs[0]?.name ?? null;
 
       // Compute initial scale
+      this._isFitMode = true;
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       const isMobile = window.innerWidth <= 640;
       this.zoomScale = isMobile ? Math.max(fitScale, 0.65) : fitScale;
@@ -842,9 +1019,9 @@ export class PDFEditorApp {
 
       await this._renderCurrentPage();
       this.enableUI();
+      this._enableFileMenuDocItems();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       document.getElementById('emptyState')!.style.display = 'none';
-      this.ui.clearSaveBtn.disabled = false;
       this.ui.pageThumbnailContainer.style.display = '';
       await this._thumbnailPanel?.render();
       this.updatePageInfo();
@@ -862,12 +1039,18 @@ export class PDFEditorApp {
   }
 
   _clearSave() {
-    clearState().then(() => this.showToast('Saved session cleared'));
+    this._closeDocument();
+    this.showToast('Session cleared');
   }
 
   clearAll() {
-    if (!this.elements.length) return;
-    this.historyManager.execute(new ClearAllCmd(this.elements));
+    const hasVector = this.elements.length > 0;
+    const hasInk    = this.inkLayer.hasAnyContent();
+    if (!hasVector && !hasInk) { this.showToast('No annotations to clear'); return; }
+    const cmds = [];
+    if (hasVector) cmds.push(new ClearAllCmd(this.elements));
+    if (hasInk)    cmds.push(new ClearInkCmd(this.inkLayer, () => this.renderInkLayer()));
+    this.historyManager.execute(cmds.length === 1 ? cmds[0] : new MacroCmd(cmds));
     this.selectedElement = null;
     this._updateFormattingToolbar();
     this._autosave();
@@ -878,17 +1061,120 @@ export class PDFEditorApp {
   _toggleHelp(show?: boolean) { this.uiController.toggleHelp(show); }
   showToast(msg: string, duration = 3000) { this.uiController.showToast(msg, duration); }
 
+  private _enableFileMenuDocItems(): void {
+    this.ui.fileMenuClose.disabled = false;
+    this.ui.fileMenuClearAnnotations.disabled = false;
+    this.ui.fileMenuResetSession.disabled = false;
+  }
+
+  private _disableFileMenuDocItems(): void {
+    this.ui.fileMenuClose.disabled = true;
+    this.ui.fileMenuClearAnnotations.disabled = true;
+    this.ui.fileMenuResetSession.disabled = true;
+  }
+
+  private _closeDocument(): void {
+    clearState().catch(() => {});
+    this.documentModel = new DocumentModel();
+    this.renderer.setModel(this.documentModel);
+    this.elements = [];
+    this.selectedElement = null;
+    this._clipboard = null;
+    this._updateCopyPasteBtns();
+    this.historyManager.clear();
+    this._textSearch.clearCache();
+    this._thumbnailPanel = null;
+    this._findMatches = [];
+    this._findMatchIndex = -1;
+    this._closeFindBar();
+    this._findCaseSensitive = false;
+    this._findRegex = false;
+    this.ui.findCaseSensitive.classList.remove('active');
+    this.ui.findRegex.classList.remove('active');
+    this.currentFilename = null;
+
+    this.inkLayer.clearAll();
+    const ctx = this.renderer.canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, this.renderer.canvas.width, this.renderer.canvas.height);
+    const ictx = this._inkCanvas.getContext('2d');
+    if (ictx) ictx.clearRect(0, 0, this._inkCanvas.width, this._inkCanvas.height);
+
+    this.ui.pageThumbnailContainer.style.display = 'none';
+    this.ui.pageThumbnailContainer.innerHTML = '';
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    document.getElementById('emptyState')!.style.display = 'flex';
+    this._disableFileMenuDocItems();
+    this.showToast('Document closed');
+  }
+
   // ── File upload ───────────────────────────────────────────────
+  private async _imagesToPdf(imageFiles: File[]): Promise<{ bytes: Uint8Array; name: string }> {
+    const { PDFDocument } = await import('pdf-lib');
+    const pdfDoc = await PDFDocument.create();
+    for (const file of imageFiles) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const isJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg';
+      const img = isJpeg ? await pdfDoc.embedJpg(bytes) : await pdfDoc.embedPng(
+        await (async () => {
+          // convert non-PNG/JPEG to PNG via canvas
+          if (file.type === 'image/png') return bytes;
+          return new Promise<Uint8Array>((resolve) => {
+            const blob = URL.createObjectURL(file);
+            const imgEl = new Image();
+            imgEl.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = imgEl.naturalWidth;
+              canvas.height = imgEl.naturalHeight;
+              canvas.getContext('2d')!.drawImage(imgEl, 0, 0);
+              canvas.toBlob((b) => {
+                b!.arrayBuffer().then(ab => resolve(new Uint8Array(ab)));
+              }, 'image/png');
+              URL.revokeObjectURL(blob);
+            };
+            imgEl.src = blob;
+          });
+        })()
+      );
+      const page = pdfDoc.addPage([img.width, img.height]);
+      page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+    }
+    const bytes = await pdfDoc.save();
+    const baseName = imageFiles.length === 1
+      ? imageFiles[0].name.replace(/\.[^.]+$/, '')
+      : 'images';
+    return { bytes, name: `${baseName}.pdf` };
+  }
+
   async handleFileUpload(e: Event) {
     if (this._isLoading) return;
     this._isLoading = true;
-    const file = (e.target as HTMLInputElement).files?.[0];
-    (e.target as HTMLInputElement).value = '';
-    if (!file || file.type !== 'application/pdf') {
-      alert('Please select a valid PDF file');
+    const inputEl = e.target as HTMLInputElement;
+    const files = Array.from(inputEl.files ?? []);
+    inputEl.value = '';
+
+    // Route image files through image→PDF conversion
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const pdfFiles  = files.filter(f => f.type === 'application/pdf');
+    let file: File;
+
+    if (imageFiles.length > 0 && pdfFiles.length === 0) {
+      this.showToast(`Converting ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''} to PDF…`, 10000);
+      try {
+        const { bytes, name } = await this._imagesToPdf(imageFiles);
+        file = new File([bytes.buffer as ArrayBuffer], name, { type: 'application/pdf' });
+      } catch (err) {
+        this.showToast('Image conversion failed — ' + (err instanceof Error ? err.message.slice(0, 60) : String(err)));
+        this._isLoading = false;
+        return;
+      }
+    } else if (pdfFiles.length === 1 && imageFiles.length === 0) {
+      file = pdfFiles[0];
+    } else {
+      this.showToast('Please select a PDF file or one or more images (not both)');
       this._isLoading = false;
       return;
     }
+
     try {
       const rawBytes = new Uint8Array(await file.arrayBuffer());
       const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
@@ -918,6 +1204,7 @@ export class PDFEditorApp {
         onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
         onAddPdf: () => this.ui.addPdfInput.click(),
         onDownload: (index) => this.downloadPage(index),
+        onDownloadImage: (index) => this.downloadPageAsImage(index),
       });
 
       const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
@@ -926,11 +1213,12 @@ export class PDFEditorApp {
 
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       document.getElementById('emptyState')!.style.display = 'none';
+      this._isFitMode = true;
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       const isMobile = window.innerWidth <= 640;
       await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
       this.enableUI();
-      this.ui.clearSaveBtn.disabled = false;
+      this._enableFileMenuDocItems();
       this.ui.pageThumbnailContainer.style.display = '';
       await this._thumbnailPanel.render();
       this.updatePageInfo();
@@ -963,6 +1251,7 @@ export class PDFEditorApp {
   setMode(mode: ToolMode) {
     this.drawingHandler.cancel();
     this.eraserHandler.cancel();
+    this.inkLayerHandler.cancel();
     this.mode = mode;
     this.uiController.updateModeButtons(mode);
     this._formFieldOverlay.setPointerEvents(mode === 'select');
@@ -1002,6 +1291,10 @@ export class PDFEditorApp {
   }
 
   saveSignature() {
+    if (this.signaturePad.isEmpty()) {
+      this.showToast('Please draw a signature first');
+      return;
+    }
     this.currentSignature = this.signaturePad.getDataURL();
     this.ui.signatureModal.classList.remove('active');
     this.mode = 'addSignature';
@@ -1014,6 +1307,7 @@ export class PDFEditorApp {
     this.selectedElement = element;
     this.renderElements();
     this._updateFormattingToolbar();
+    this._updateCopyPasteBtns();
   }
 
   _updateFormattingToolbar() {
@@ -1151,10 +1445,53 @@ export class PDFEditorApp {
     });
   }
 
+  // ── Ink layer ─────────────────────────────────────────────────
+  renderInkLayer(): void {
+    const canvas = this.ui.canvas;
+    const ic = this._inkCanvas;
+    ic.style.left   = canvas.offsetLeft + 'px';
+    ic.style.top    = canvas.offsetTop  + 'px';
+    ic.style.width  = canvas.offsetWidth  + 'px';
+    ic.style.height = canvas.offsetHeight + 'px';
+    if (ic.width !== canvas.width || ic.height !== canvas.height) {
+      ic.width  = canvas.width;
+      ic.height = canvas.height;
+    }
+    const pageId = this.documentModel.currentPage?.id ?? '';
+    this.inkLayer.renderToCanvas(pageId, ic, this.zoomScale);
+  }
+
+  renderInkLayerWithLive(points: Array<{ x: number; y: number }>, type: 'ink' | 'erase'): void {
+    this.renderInkLayer(); // composite committed strokes first
+    if (points.length < 2) return;
+    const ctx = this._inkCanvas.getContext('2d');
+    if (!ctx) return;
+    const sw = parseInt(this.ui.shapeWidth.value) || 3;
+    ctx.save();
+    ctx.beginPath();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = (type === 'erase' ? Math.max(12, sw * 4) : sw) * this.zoomScale;
+    if (type === 'erase') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = this.ui.shapeColor.value;
+    }
+    ctx.moveTo(points[0].x * this.zoomScale, points[0].y * this.zoomScale);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x * this.zoomScale, points[i].y * this.zoomScale);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // ── Navigation ────────────────────────────────────────────────
   private async _renderCurrentPage(): Promise<void> {
     await this.renderer.renderPageAtIndex(this.documentModel.currentPageIndex);
     await this._renderFormFields();
+    this.renderInkLayer();
   }
 
   private async _renderFormFields(): Promise<void> {
@@ -1198,6 +1535,13 @@ export class PDFEditorApp {
     this._findMatches = [];
     this._findMatchIndex = -1;
     if (this.ui.findBar.style.display !== 'none') this.ui.findCount.textContent = '';
+    if (this._isFitMode) {
+      const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
+      const isMobile = window.innerWidth <= 640;
+      this.zoomScale = isMobile ? Math.max(fitScale, 0.65) : fitScale;
+      this.renderer.setScale(this.zoomScale);
+      this.ui.zoomDisplay.textContent = Math.round(this.zoomScale * 100) + '%';
+    }
     await this._renderCurrentPage();
     this._thumbnailPanel?.updateActive();
     this.updatePageInfo();
@@ -1255,8 +1599,8 @@ export class PDFEditorApp {
       div.style.top    = screenY + 'px';
       div.style.width  = el.width  * this.zoomScale + 'px';
       div.style.height = el.height * this.zoomScale + 'px';
-      div.style.border = '2px dashed rgba(37,99,235,0.7)';
-      div.style.background = 'rgba(37,99,235,0.12)';
+      div.style.border = '3px dashed #e63946';
+      div.style.background = 'rgba(230,57,70,0.15)';
       div.style.boxSizing = 'border-box';
       ghost.appendChild(div);
     }
@@ -1270,8 +1614,34 @@ export class PDFEditorApp {
   }
 
   async fitToWidth() {
+    this._isFitMode = true;
     const scale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
     await this.applyZoom(scale);
+  }
+
+  _copySelectedElement(): void {
+    if (!this.selectedElement) return;
+    this._clipboard = this.selectedElement.toJSON() as ElementJSON;
+    this._updateCopyPasteBtns();
+    this.showToast('Copied');
+  }
+
+  _pasteElement(): void {
+    if (!this._clipboard || !this.documentModel.currentPage) return;
+    const clone = ElementFactory.fromJSON({ ...this._clipboard } as Record<string, unknown>);
+    if (!clone) return;
+    clone.id = PDFElement._nextId++;
+    clone.x += 10;
+    clone.y += 10;
+    clone.pageId = this.documentModel.currentPage.id;
+    this.historyManager.execute(new AddElementCmd(this.elements, clone));
+    this.selectElement(clone);
+    this._autosave();
+    this.showToast('Pasted — Ctrl+Z to undo');
+  }
+
+  private _updateCopyPasteBtns(): void {
+    this.uiController.updateCopyPasteBtns(!!this.selectedElement, !!this._clipboard);
   }
 
   /**
@@ -1448,6 +1818,13 @@ export class PDFEditorApp {
         if (this.documentModel.watermark.enabled) {
           await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
         }
+
+        const inkDataUrl = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
+        if (inkDataUrl) {
+          const inkPng = this._dataUrlToUint8Array(inkDataUrl);
+          const inkImg = await pdfDoc.embedPng(inkPng);
+          page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+        }
       }
 
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
@@ -1509,6 +1886,13 @@ export class PDFEditorApp {
         if (this.documentModel.watermark.enabled) {
           await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
         }
+
+        const inkDataUrl = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
+        if (inkDataUrl) {
+          const inkPng = this._dataUrlToUint8Array(inkDataUrl);
+          const inkImg = await pdfDoc.embedPng(inkPng);
+          page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+        }
       }
 
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
@@ -1530,9 +1914,9 @@ export class PDFEditorApp {
   }
 
   // ── Feature D: Export current page as PNG image ───────────────
-  async downloadPageAsImage(): Promise<void> {
-    const pageIdx = this.documentModel.currentPageIndex;
-    const docPage = this.documentModel.pages[pageIdx];
+  async downloadPageAsImage(pageIdx?: number): Promise<void> {
+    const idx = pageIdx ?? this.documentModel.currentPageIndex;
+    const docPage = this.documentModel.pages[idx];
     if (!docPage) return;
     this.showToast('Rendering page image…', 30000);
     this.ui.container.style.opacity = '0.4';
@@ -1588,9 +1972,9 @@ export class PDFEditorApp {
         const link = document.createElement('a');
         link.href = url;
         const base = (this.currentFilename || 'document').replace(/\.pdf$/i, '');
-        link.download = `${base}-page${pageIdx + 1}.png`;
+        link.download = `${base}-page${idx + 1}.png`;
         link.click();
-        this.showToast(`Page ${pageIdx + 1} exported as PNG!`);
+        this.showToast(`Page ${idx + 1} exported as PNG!`);
         URL.revokeObjectURL(url);
       }, 'image/png');
     } catch (err) {
@@ -1599,6 +1983,63 @@ export class PDFEditorApp {
     } finally {
       this.ui.container.style.opacity = '1';
     }
+  }
+
+  private _dataUrlToUint8Array(dataUrl: string): Uint8Array {
+    const base64 = dataUrl.split(',')[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  /**
+   * Render ink strokes into unrotated PDF coordinate space (W_orig × H_orig) at 2× resolution.
+   * Points are stored in rotated canvas space; _transformPoint converts them to PDF content space.
+   * Returns a PNG data URL, or null if there is no visible ink on this page.
+   */
+  private _renderInkForExport(pageId: string, W_orig: number, H_orig: number, totalRot: number): string | null {
+    const strokes = this.inkLayer.getStrokes(pageId);
+    if (!strokes.length) return null;
+
+    const SCALE = 2;
+    const c = document.createElement('canvas');
+    c.width  = Math.round(W_orig * SCALE);
+    c.height = Math.round(H_orig * SCALE);
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+
+    for (const stroke of strokes) {
+      if (stroke.points.length < 2) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = stroke.width * SCALE;
+      if (stroke.type === 'erase') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = stroke.color;
+      }
+      // Transform each point: canvas space (rotated view, scale=1) → PDF content space (unrotated, y-up)
+      // → export canvas space (unrotated, y-down, ×SCALE)
+      const pts = stroke.points.map(p => {
+        const pdf = this._transformPoint(p.x, p.y, W_orig, H_orig, totalRot);
+        return { x: pdf.x * SCALE, y: (H_orig - pdf.y) * SCALE };
+      });
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 0) return c.toDataURL('image/png');
+    }
+    return null;
   }
 
   private _getEffectivePageDims(page: { getSize(): { width: number; height: number }; getRotation(): { angle: number } }): { width: number; height: number } {
@@ -1664,10 +2105,11 @@ export class PDFEditorApp {
           const pt1 = tp(she.x1, she.y1);
           const pt2 = tp(she.x2, she.y2);
           const pa = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-          const headLen = Math.max(8, lw * 4);
+          const headLen = Math.max(12, lw * 5);
+          const headThick = Math.max(1, Math.min(lw, lw * 0.4));
           page.drawLine({ start: { x: pt1.x, y: pt1.y }, end: { x: pt2.x, y: pt2.y }, thickness: lw, color: shapeColor });
-          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa + Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa + Math.PI * 0.75) }, thickness: lw, color: shapeColor });
-          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa - Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa - Math.PI * 0.75) }, thickness: lw, color: shapeColor });
+          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa + Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa + Math.PI * 0.75) }, thickness: headThick, color: shapeColor });
+          page.drawLine({ start: { x: pt2.x, y: pt2.y }, end: { x: pt2.x + headLen * Math.cos(pa - Math.PI * 0.75), y: pt2.y + headLen * Math.sin(pa - Math.PI * 0.75) }, thickness: headThick, color: shapeColor });
           break;
         }
         case 'freehand': {
@@ -1688,8 +2130,9 @@ export class PDFEditorApp {
       page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? ce.height : ce.width, height: swapDims ? ce.width : ce.height, color: rgb(col.r, col.g, col.b), opacity: 0.85, borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1 });
       if (ce.text) {
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const anchor2 = tp(ce.x + 4, ce.y + ce.height - 18);
-        page.drawText(ce.text.slice(0, 200), { x: anchor2.x, y: anchor2.y, size: 10, font, color: rgb(0, 0, 0), maxWidth: swapDims ? ce.height - 8 : ce.width - 8, opacity: 0.9 });
+        // Text starts at top of box with 4px padding + ~10pt ascent (matches canvas textarea layout)
+        const anchor2 = tp(ce.x + 4, ce.y + 4 + 10);
+        page.drawText(ce.text.slice(0, 200), { x: anchor2.x, y: anchor2.y, size: 10, font, color: rgb(0, 0, 0), maxWidth: swapDims ? ce.height - 8 : ce.width - 8, lineHeight: 14, opacity: 0.9 });
       }
     } else if (element.type === 'redaction') {
       const anchor = tp(element.x, element.y + element.height);
@@ -1706,8 +2149,10 @@ export class PDFEditorApp {
     const col = this.hexToRgbValues(wm.color);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const textWidth = font.widthOfTextAtSize(wm.text, wm.fontSize);
-    const stepX = Math.max(textWidth + wm.fontSize * 1.5, W_orig / 3);
-    const stepY = Math.max(wm.fontSize * 3, H_orig / 3);
+    const densityFactors = [0, 2.0, 1.5, 1.0, 0.7, 0.5]; // index 1–5
+    const spacingFactor = densityFactors[Math.max(1, Math.min(5, wm.density ?? 3))];
+    const stepX = Math.max(textWidth + wm.fontSize * 0.8, W_orig / 5) * spacingFactor;
+    const stepY = Math.max(wm.fontSize * 2, H_orig / 4) * spacingFactor;
     for (let y = -(stepY / 2); y < H_orig + stepY; y += stepY) {
       for (let x = -(stepX / 2); x < W_orig + stepX; x += stepX) {
         page.drawText(wm.text, {

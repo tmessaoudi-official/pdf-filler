@@ -1,6 +1,7 @@
 import { ElementFactory } from './elementFactory';
 import type { PDFElement } from './pdfElement';
 import type { DocumentModel, DocumentPage, SourcePdf } from './documentModel';
+import type { InkLayer, InkStroke } from './inkLayer';
 
 export interface Command {
   execute(): void;
@@ -293,4 +294,57 @@ export class MacroCmd implements Command {
   constructor(private cmds: Command[]) {}
   execute(): void { this.cmds.forEach(c => c.execute()); }
   undo(): void { [...this.cmds].reverse().forEach(c => c.undo()); }
+}
+
+export interface ElementTransformSnapshot {
+  x: number; y: number; width: number; height: number;
+  x1?: number; y1?: number; x2?: number; y2?: number;
+  points?: Array<{ x: number; y: number }>;
+}
+
+export class InkStrokeCmd implements Command {
+  constructor(
+    private layer: InkLayer,
+    private pageId: string,
+    private stroke: InkStroke,
+    private onUpdate: () => void,
+  ) {}
+  execute(): void { this.layer.addStroke(this.pageId, this.stroke); this.onUpdate(); }
+  undo():    void { this.layer.removeLastStroke(this.pageId); this.onUpdate(); }
+}
+
+export class ClearInkCmd implements Command {
+  private _saved: Record<string, InkStroke[]>;
+  constructor(private layer: InkLayer, private onUpdate: () => void) {
+    this._saved = layer.toJSON();
+  }
+  execute(): void { this.layer.clearAll(); this.onUpdate(); }
+  undo():    void { this.layer.fromJSON(this._saved); this.onUpdate(); }
+}
+
+export class TransformAnnotationsCmd implements Command {
+  constructor(
+    private arr: PDFElement[],
+    private before: Map<number, ElementTransformSnapshot>,
+    private after:  Map<number, ElementTransformSnapshot>,
+  ) {}
+
+  private _apply(snaps: Map<number, ElementTransformSnapshot>): void {
+    for (const el of this.arr) {
+      const s = snaps.get(el.id);
+      if (!s) continue;
+      el.x = s.x; el.y = s.y; el.width = s.width; el.height = s.height;
+      // ShapeElement extra fields — cast to any to avoid circular import
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sh = el as any;
+      if (s.x1 !== undefined) sh.x1 = s.x1;
+      if (s.y1 !== undefined) sh.y1 = s.y1;
+      if (s.x2 !== undefined) sh.x2 = s.x2;
+      if (s.y2 !== undefined) sh.y2 = s.y2;
+      if (s.points !== undefined) sh.points = s.points.map((p: { x: number; y: number }) => ({ ...p }));
+    }
+  }
+
+  execute(): void { this._apply(this.after); }
+  undo():    void { this._apply(this.before); }
 }

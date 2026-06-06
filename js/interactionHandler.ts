@@ -151,8 +151,17 @@ export class InteractionHandler {
     const scale = this.app.zoomScale;
     const deltaX = (e.clientX - this.startX) / scale;
     const deltaY = (e.clientY - this.startY) / scale;
-    const newWidth  = Math.max(50, this.startWidth  + deltaX);
-    const newHeight = Math.max(20, this.startHeight + deltaY);
+    const [minW, minH] = (() => {
+      switch (el.type) {
+        case 'highlight': case 'redaction': return [5, 5];
+        case 'shape':     return [10, 10];
+        case 'image':     case 'signature': return [20, 20];
+        case 'comment':   return [80, 40];
+        default:          return [20, 16]; // text and others
+      }
+    })();
+    const newWidth  = Math.max(minW, this.startWidth  + deltaX);
+    const newHeight = Math.max(minH, this.startHeight + deltaY);
     const maxW = (canvas.width  / scale) - el.x;
     const maxH = (canvas.height / scale) - el.y;
     el.width  = Math.min(newWidth,  maxW);

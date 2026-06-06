@@ -22,6 +22,7 @@ export interface WatermarkSettings {
   angle: number;
   color: string;
   fontSize: number;
+  density?: number; // 1 (sparse) to 5 (dense), default 3
 }
 
 export class DocumentModel {

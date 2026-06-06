@@ -30,48 +30,15 @@ export class CommentElement extends PDFElement {
       border: '1px solid #ccc',
       borderRadius: '4px',
       boxShadow: '2px 2px 6px rgba(0,0,0,0.2)',
-      display: 'flex',
-      flexDirection: 'column',
       overflow: 'hidden',
       boxSizing: 'border-box',
       zIndex: '20',
     });
 
-    const header = document.createElement('div');
-    Object.assign(header.style, {
-      background: 'rgba(0,0,0,0.12)',
-      padding: '2px 4px',
-      fontSize: '10px',
-      cursor: 'move',
-      userSelect: 'none',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '4px',
-    });
-    const label = document.createElement('span');
-    label.textContent = '💬 Note';
-    label.style.flex = '1';
-    const delBtn = document.createElement('button');
-    delBtn.textContent = '×';
-    delBtn.title = 'Delete';
-    Object.assign(delBtn.style, {
-      background: 'none', border: 'none', cursor: 'pointer',
-      color: 'rgba(0,0,0,0.5)', fontWeight: 'bold', fontSize: '13px',
-      lineHeight: '1', padding: '0 2px', flexShrink: '0',
-    });
-    delBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-    delBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      delBtn.dispatchEvent(new CustomEvent<{ id: number }>('element:delete', {
-        bubbles: true, composed: true, detail: { id: this.id },
-      }));
-    });
-    header.appendChild(label);
-    header.appendChild(delBtn);
-
     const textarea = document.createElement('textarea');
     Object.assign(textarea.style, {
-      flex: '1',
+      width: '100%',
+      height: '100%',
       border: 'none',
       background: 'transparent',
       padding: '4px',
@@ -79,6 +46,7 @@ export class CommentElement extends PDFElement {
       resize: 'none',
       outline: 'none',
       fontFamily: 'sans-serif',
+      boxSizing: 'border-box',
     });
     textarea.value = this.text;
     textarea.placeholder = 'Add a note…';
@@ -90,8 +58,8 @@ export class CommentElement extends PDFElement {
     });
     textarea.addEventListener('click', e => e.stopPropagation());
 
-    wrapper.appendChild(header);
     wrapper.appendChild(textarea);
+    wrapper.appendChild(this.createControls());
     wrapper.appendChild(this.createResizeHandle());
     container.appendChild(wrapper);
     return wrapper;

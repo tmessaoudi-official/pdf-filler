@@ -45,39 +45,44 @@ export class TextSearchHandler {
 
   /** Search the current page. Returns match positions in scale=1 canvas coordinates. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  search(query: string, pageId: string, viewport: any, currentScale: number): MatchResult[] {
+  search(query: string, pageId: string, viewport: any, currentScale: number, opts: { caseSensitive?: boolean; useRegex?: boolean } = {}): MatchResult[] {
     if (!query.trim()) return [];
     const items = this._cache.get(pageId);
     if (!items) return [];
 
-    const q = query.toLowerCase();
+    const caseSensitive = opts.caseSensitive ?? false;
+    const useRegex      = opts.useRegex ?? false;
+    let pattern: RegExp;
+    try {
+      const flags = caseSensitive ? 'g' : 'gi';
+      pattern = useRegex ? new RegExp(query, flags) : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    } catch { return []; }
+
     const results: MatchResult[] = [];
     const vt = viewport.transform as number[];
 
     for (const item of items) {
-      // Map baseline position from PDF user space to canvas pixel space
-      const canvasPt = applyTransform([item.transform[4], item.transform[5]], vt);
-      // Scale of viewport (absolute value to handle y-flip)
+      const canvasPt  = applyTransform([item.transform[4], item.transform[5]], vt);
       const scaleInVp = Math.hypot(vt[0], vt[1]) || currentScale;
+      const totalW    = item.width * scaleInVp;
+      const charW     = totalW / (item.str.length || 1);
+      const h         = item.height * scaleInVp;
+      const y         = canvasPt[1] - h * 0.9;
 
-      const itemStr  = item.str;
-      const matchIdx = itemStr.toLowerCase().indexOf(q);
-      if (matchIdx === -1) continue;
-
-      const totalW   = item.width * scaleInVp;
-      const charW    = totalW / (itemStr.length || 1);
-      const matchX   = canvasPt[0] + matchIdx * charW;
-      const matchW   = Math.max(charW, q.length * charW);
-      const h        = item.height * scaleInVp;
-      const y        = canvasPt[1] - h * 0.9;
-
-      results.push({
-        pageId,
-        x:      matchX / currentScale,
-        y:      y      / currentScale,
-        width:  matchW / currentScale,
-        height: h      / currentScale,
-      });
+      pattern.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = pattern.exec(item.str)) !== null) {
+        const matchX = canvasPt[0] + m.index * charW;
+        const matchW = Math.max(charW, m[0].length * charW);
+        results.push({
+          pageId,
+          x:      matchX / currentScale,
+          y:      y      / currentScale,
+          width:  matchW / currentScale,
+          height: h      / currentScale,
+        });
+        if (m[0].length === 0) { pattern.lastIndex++; } // guard against zero-length match infinite loop
+      }
     }
     return results;
   }

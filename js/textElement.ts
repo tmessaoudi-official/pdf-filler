@@ -28,7 +28,7 @@ export class TextElement extends PDFElement {
     this.fontFamily = options.fontFamily ?? 'Arial';
     this.bold = options.bold ?? false;
     this.italic = options.italic ?? false;
-    this.multiline = options.multiline ?? false;
+    this.multiline = options.multiline ?? true;
   }
 
   render(_container: HTMLElement, canvasOffset: { left: number; top: number }, scale = 1): HTMLDivElement {

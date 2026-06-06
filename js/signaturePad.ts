@@ -50,8 +50,14 @@ export class SignaturePad {
 
   private _stopDrawing(): void { this.isDrawing = false; }
 
-  clear():                    void   { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
-  getDataURL():               string { return this.canvas.toDataURL(); }
-  setLineWidth(w: number):    void   { this.lineWidth = w; }
-  setColor(c: string):        void   { this.color = c; }
+  clear():                    void    { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
+  getDataURL():               string  { return this.canvas.toDataURL(); }
+  setLineWidth(w: number):    void    { this.lineWidth = w; }
+  setColor(c: string):        void    { this.color = c; }
+
+  isEmpty(): boolean {
+    const data = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+    for (let i = 3; i < data.length; i += 4) { if (data[i] > 0) return false; }
+    return true;
+  }
 }

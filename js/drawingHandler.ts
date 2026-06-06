@@ -56,6 +56,7 @@ export class DrawingHandler {
     }
 
     if (!this.app.mode.startsWith('draw')) return;
+    if (this.app.mode === 'drawFreehand') return; // handled by InkLayerHandler
     if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
 
     const rect = this.app.ui.canvas.getBoundingClientRect();
