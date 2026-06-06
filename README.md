@@ -1,6 +1,6 @@
-# PDF Fill & Sign
+# PDFturbo
 
-Add text and draw signatures on any PDF, then download the filled copy.
+Edit, annotate, sign and fill PDFs entirely in your browser — nothing uploaded, nothing tracked.
 
 ## How to run
 

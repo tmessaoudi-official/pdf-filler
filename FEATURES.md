@@ -1,8 +1,8 @@
-# PDF Fill & Sign — Feature Test Checklist
+# PDFturbo — Feature Test Checklist
 
 **Version**: 1.0.0  
 **Build**: Vite 8 / TypeScript 6 / PWA  
-**Base URL**: `/pdf-filler/`  
+**Base URL**: `/pdfturbo/`  
 **Total features**: 37  
 **Last updated**: 2026-06-05 (full codebase re-audit)
 
@@ -761,7 +761,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 
 ## 37. PWA / Offline Support
 
-**How it works**: `vite-plugin-pwa` with `autoUpdate`. Service worker (Workbox `generateSW`) precaches all JS/CSS/HTML/SVG. Large chunks (pdf.js worker, pdf-lib) use `CacheFirst` with 30-day TTL. Max precache file size: 6 MB. Manifest: name "PDF Fill & Sign", `standalone` display, blue theme.
+**How it works**: `vite-plugin-pwa` with `autoUpdate`. Service worker (Workbox `generateSW`) precaches all JS/CSS/HTML/SVG. Large chunks (pdf.js worker, pdf-lib) use `CacheFirst` with 30-day TTL. Max precache file size: 6 MB. Manifest: name "PDFturbo", `standalone` display, blue theme.
 
 > ⚠️ **H-14 Bug**: `index.html` hardcodes `<link rel="manifest" href="./manifest.json">` but vite-plugin-pwa generates `manifest.webmanifest`. Both links present in built HTML; browsers use the first (which 404s in production). PWA install prompt silently fails.
 

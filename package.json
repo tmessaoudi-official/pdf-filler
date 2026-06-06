@@ -1,9 +1,9 @@
 {
-  "name": "pdf-fill-sign",
+  "name": "pdfturbo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "PDF fill and sign tool — add text and signatures to any PDF",
+  "description": "PDFturbo — edit, annotate, sign and fill PDFs entirely in your browser",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

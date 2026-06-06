@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/pdf-filler/',
+  base: '/pdfturbo/',
   build: {
     outDir: 'dist',
     target: 'es2020',
@@ -28,9 +28,9 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'PDF Fill & Sign',
-        short_name: 'PDF Sign',
-        description: 'Fill and sign PDF documents in your browser',
+        name: 'PDFturbo',
+        short_name: 'PDFturbo',
+        description: 'Edit, annotate, sign and fill PDFs in your browser',
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'standalone',

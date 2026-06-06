@@ -1,4 +1,4 @@
-# Contributing to PDF Fill & Sign
+# Contributing to PDFturbo
 
 Thank you for contributing!
 
@@ -10,11 +10,11 @@ Thank you for contributing!
 ## Development Setup
 
 ```bash
-git clone https://github.com/tmessaoudi-official/pdf-filler.git
-cd pdf-filler
+git clone https://github.com/tmessaoudi-official/pdfturbo.git
+cd pdfturbo
 npm install
 npm run dev
-# Open http://localhost:5173/pdf-filler/
+# Open http://localhost:5173/pdfturbo/
 ```
 
 **Requirements:** Node.js 20+ and npm.
@@ -40,8 +40,8 @@ These run automatically in CI (GitHub Actions) on every push to `master`.
 
 ## Tech Stack
 
-- **TypeScript 5** — all source in `js/`
-- **Vite 5** — bundler and dev server; `vite.config.ts` controls PWA, base path, build
+- **TypeScript 6** — all source in `js/`
+- **Vite 8** — bundler and dev server; `vite.config.ts` controls PWA, base path, build
 - **pdfjs-dist** — PDF rendering (npm package, not CDN)
 - **pdf-lib** — PDF generation for export (dynamic import at export time)
 - **Vitest** — unit tests in `tests/`
@@ -65,7 +65,7 @@ js/               TypeScript source modules (one class per file)
 tests/            Vitest tests
 docs/             Plans and reference docs
 index.html        Single-page application entry point
-vite.config.ts    Build config (base: '/pdf-filler/', PWA, manifest)
+vite.config.ts    Build config (base: '/pdfturbo/', PWA, manifest)
 .github/          CI workflow (build → test → deploy to GitHub Pages)
 ```
 

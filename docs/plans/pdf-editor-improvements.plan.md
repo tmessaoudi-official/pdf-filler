@@ -3,7 +3,7 @@
 **Created**: 2026-06-06  
 **Source**: Full 37-feature live test session with user feedback  
 **Status**: SPEC COMPLETE — awaiting brainstorm sessions before implementation  
-**Deployed app**: https://tmessaoudi-official.github.io/pdf-filler/
+**Deployed app**: https://tmessaoudi-official.github.io/pdfturbo/
 
 ---
 
