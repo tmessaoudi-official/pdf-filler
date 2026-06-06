@@ -562,8 +562,8 @@ export class PDFEditorApp {
     const density = wm.density ?? 3;
     this.ui.wmDensity.value = String(density);
     this.ui.wmDensityDisplay.textContent = String(density);
-    this._updateWatermarkPreview();
     this.ui.watermarkModal.classList.add('active');
+    this._updateWatermarkPreview();
   }
 
   private _closeWatermarkModal(): void {
