@@ -77,7 +77,7 @@ export interface UIRefs {
   wmAngleDisplay: HTMLElement;
   wmDensity: HTMLInputElement;
   wmDensityDisplay: HTMLElement;
-  wmPreviewText: HTMLElement;
+  wmPreviewCanvas: HTMLCanvasElement;
   wmApply: HTMLButtonElement;
   wmCancel: HTMLButtonElement;
   pageThumbnailContainer: HTMLElement;
@@ -174,7 +174,7 @@ export class UIController {
       wmAngleDisplay:   document.getElementById('wmAngleDisplay')   as HTMLElement,
       wmDensity:        document.getElementById('wmDensity')        as HTMLInputElement,
       wmDensityDisplay: document.getElementById('wmDensityDisplay') as HTMLElement,
-      wmPreviewText:    document.getElementById('wmPreviewText')    as HTMLElement,
+      wmPreviewCanvas:  document.getElementById('wmPreviewCanvas')  as HTMLCanvasElement,
       wmApply:          document.getElementById('wmApply')          as HTMLButtonElement,
       wmCancel:         document.getElementById('wmCancel')         as HTMLButtonElement,
       pageThumbnailContainer: document.getElementById('pageThumbnailContainer') as HTMLElement,

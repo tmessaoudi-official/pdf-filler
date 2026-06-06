@@ -25,6 +25,7 @@ import type { ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
 import { InkLayerHandler } from './inkLayerHandler';
 import { DocumentModel } from './documentModel';
+import type { WatermarkSettings } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
@@ -71,6 +72,7 @@ export class PDFEditorApp {
   private _inkCanvas!: HTMLCanvasElement;
   private _isFitMode = true;
   private _clipboard: ElementJSON | null = null;
+  private _exportPreviewOpen = false;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -518,16 +520,31 @@ export class PDFEditorApp {
     });
     this.ui.wmDensity.addEventListener('input', () => {
       this.ui.wmDensityDisplay.textContent = this.ui.wmDensity.value;
+      update();
     });
   }
 
   private _updateWatermarkPreview(): void {
-    const t = this.ui.wmPreviewText;
-    t.textContent = this.ui.wmText.value || 'WATERMARK';
-    t.style.color = this.ui.wmColor.value;
-    t.style.opacity = '1'; // always full opacity in preview; slider label shows the actual value
-    t.style.fontSize = Math.min(36, Math.max(12, parseInt(this.ui.wmFontSize.value) / 2)) + 'px';
-    t.style.transform = `rotate(${this.ui.wmAngle.value}deg)`;
+    const canvas = this.ui.wmPreviewCanvas;
+    const w = canvas.offsetWidth || 300;
+    const h = canvas.offsetHeight || 80;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    const realFontSize = parseInt(this.ui.wmFontSize.value) || 60;
+    const previewScale = Math.min(32, Math.max(10, h * 0.4)) / realFontSize;
+    const liveWm: WatermarkSettings = {
+      enabled: true,
+      text: this.ui.wmText.value || 'WATERMARK',
+      color: this.ui.wmColor.value,
+      fontSize: realFontSize,
+      opacity: parseInt(this.ui.wmOpacity.value) / 100,
+      angle: parseInt(this.ui.wmAngle.value),
+      density: parseInt(this.ui.wmDensity.value) || 3,
+    };
+    this._drawWatermarkOnCanvas(ctx, w, h, liveWm, previewScale);
   }
 
   private _openWatermarkModal(): void {
@@ -568,6 +585,7 @@ export class PDFEditorApp {
     this._autosave();
     const status = this.documentModel.watermark.enabled ? 'Watermark enabled' : 'Watermark disabled';
     this.showToast(status);
+    if (this._exportPreviewOpen) this._showExportPreview();
   }
 
   private _syncWatermarkBtn(): void {
@@ -1610,7 +1628,7 @@ export class PDFEditorApp {
       wmCanvas.style.top           = '0';
       wmCanvas.style.pointerEvents = 'none';
       const ctx = wmCanvas.getContext('2d');
-      if (ctx) this._drawWatermarkOnCanvas(ctx, canvas.width, canvas.height);
+      if (ctx) this._drawWatermarkOnCanvas(ctx, canvas.width, canvas.height, this.documentModel.watermark);
       ghost.appendChild(wmCanvas);
     }
 
@@ -1635,14 +1653,15 @@ export class PDFEditorApp {
       ghost.appendChild(div);
     }
 
+    this._exportPreviewOpen = true;
+    this.ui.previewExportBtn.classList.add('active');
     this.ui.exportPreviewOverlay.style.display = '';
   }
 
-  private _drawWatermarkOnCanvas(ctx: CanvasRenderingContext2D, screenW: number, screenH: number): void {
-    const wm = this.documentModel.watermark;
+  private _drawWatermarkOnCanvas(ctx: CanvasRenderingContext2D, screenW: number, screenH: number, wm: WatermarkSettings, scale?: number): void {
     if (!wm.enabled || !wm.text) return;
-    const scale = this.zoomScale;
-    const fontSize = wm.fontSize * scale;
+    const effectiveScale = scale ?? this.zoomScale;
+    const fontSize = wm.fontSize * effectiveScale;
     ctx.font = `${fontSize}px Helvetica, Arial, sans-serif`;
     const textWidth = ctx.measureText(wm.text).width;
     const densityFactors = [0, 2.0, 1.5, 1.0, 0.7, 0.5];
@@ -1665,6 +1684,8 @@ export class PDFEditorApp {
   }
 
   private _hideExportPreview(): void {
+    this._exportPreviewOpen = false;
+    this.ui.previewExportBtn.classList.remove('active');
     this.ui.exportPreviewOverlay.style.display = 'none';
     this.ui.exportPreviewGhost.innerHTML = '';
   }
