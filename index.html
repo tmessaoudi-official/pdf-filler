@@ -368,6 +368,10 @@
     .btn.active {
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
     }
+    #watermarkBtn.active {
+      background: rgba(245, 158, 11, 0.15);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.5);
+    }
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -765,7 +769,7 @@
       <button id="previewExportBtn" class="btn btn-icon" disabled title="Preview export positions">👁</button>
       <button id="watermarkBtn" class="btn btn-icon" disabled title="Watermark settings">≋</button>
       <button id="helpBtn" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
-      <input type="file" id="addPdfInput" accept="application/pdf" multiple>
+      <input type="file" id="addPdfInput" accept="application/pdf,image/*" multiple>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>

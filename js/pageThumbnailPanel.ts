@@ -161,8 +161,8 @@ export class PageThumbnailPanel {
     // "Add PDF" button at the end
     const addBtn = document.createElement('button');
     addBtn.className = 'thumb-add-btn';
-    addBtn.title = 'Add pages from PDF';
-    addBtn.innerHTML = '<span>+</span><span class="thumb-add-label">Add PDF</span>';
+    addBtn.title = 'Add pages from PDF or image';
+    addBtn.innerHTML = '<span>+</span><span class="thumb-add-label">Add PDF/Image</span>';
     addBtn.addEventListener('click', this.onAddPdf);
     this.strip.appendChild(addBtn);
   }

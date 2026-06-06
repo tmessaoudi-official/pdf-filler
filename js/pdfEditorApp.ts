@@ -564,9 +564,14 @@ export class PDFEditorApp {
       density: parseInt(this.ui.wmDensity.value) || 3,
     };
     this._closeWatermarkModal();
+    this._syncWatermarkBtn();
     this._autosave();
     const status = this.documentModel.watermark.enabled ? 'Watermark enabled' : 'Watermark disabled';
     this.showToast(status);
+  }
+
+  private _syncWatermarkBtn(): void {
+    this.ui.watermarkBtn.classList.toggle('active', this.documentModel.watermark.enabled);
   }
 
   // ── Find bar ─────────────────────────────────────────────────
@@ -722,12 +727,23 @@ export class PDFEditorApp {
 
     let addedCount = 0;
     for (const file of files) {
-      if (file.type !== 'application/pdf') continue;
+      const isPdf   = file.type === 'application/pdf';
+      const isImage = file.type.startsWith('image/');
+      if (!isPdf && !isImage) continue;
       try {
-        const typedBytes = new Uint8Array(await file.arrayBuffer());
+        let typedBytes: Uint8Array;
+        let fileName: string;
+        if (isImage) {
+          const { bytes, name } = await this._imagesToPdf([file]);
+          typedBytes = bytes;
+          fileName = name;
+        } else {
+          typedBytes = new Uint8Array(await file.arrayBuffer());
+          fileName = file.name;
+        }
         const bytesToStore = typedBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
         const doc = await pdfjsLib.getDocument({ data: typedBytes }).promise;
-        const src = this.documentModel.addSourcePdf(doc, bytesToStore, file.name);
+        const src = this.documentModel.addSourcePdf(doc, bytesToStore, fileName);
         const cmd = new AddPagesCmd(this.documentModel, src.id, undefined, () => this._onPageStructureChange());
         this.historyManager.execute(cmd);
         addedCount++;
@@ -736,7 +752,7 @@ export class PDFEditorApp {
       }
     }
     if (addedCount > 0) {
-      this.showToast(`Added ${addedCount} PDF file${addedCount > 1 ? 's' : ''}`);
+      this.showToast(`Added ${addedCount} file${addedCount > 1 ? 's' : ''}`);
     }
   }
 
@@ -986,6 +1002,7 @@ export class PDFEditorApp {
       }
       this.documentModel.pages = state.pages ?? [];
       this.documentModel.watermark = state.watermark ?? this.documentModel.watermark;
+      this._syncWatermarkBtn();
       this.documentModel.currentPageIndex = Math.max(0, Math.min(
         state.currentPageIndex ?? 0, this.documentModel.pages.length - 1
       ));
@@ -1584,6 +1601,19 @@ export class PDFEditorApp {
     ghost.style.left   = canvas.offsetLeft + 'px';
     ghost.style.top    = canvas.offsetTop  + 'px';
 
+    if (this.documentModel.watermark.enabled) {
+      const wmCanvas = document.createElement('canvas');
+      wmCanvas.width  = canvas.width;
+      wmCanvas.height = canvas.height;
+      wmCanvas.style.position      = 'absolute';
+      wmCanvas.style.left          = '0';
+      wmCanvas.style.top           = '0';
+      wmCanvas.style.pointerEvents = 'none';
+      const ctx = wmCanvas.getContext('2d');
+      if (ctx) this._drawWatermarkOnCanvas(ctx, canvas.width, canvas.height);
+      ghost.appendChild(wmCanvas);
+    }
+
     const W = canvas.width / this.zoomScale;
     const H = canvas.height / this.zoomScale;
     const angle = docPage.rotation ?? 0;
@@ -1606,6 +1636,32 @@ export class PDFEditorApp {
     }
 
     this.ui.exportPreviewOverlay.style.display = '';
+  }
+
+  private _drawWatermarkOnCanvas(ctx: CanvasRenderingContext2D, screenW: number, screenH: number): void {
+    const wm = this.documentModel.watermark;
+    if (!wm.enabled || !wm.text) return;
+    const scale = this.zoomScale;
+    const fontSize = wm.fontSize * scale;
+    ctx.font = `${fontSize}px Helvetica, Arial, sans-serif`;
+    const textWidth = ctx.measureText(wm.text).width;
+    const densityFactors = [0, 2.0, 1.5, 1.0, 0.7, 0.5];
+    const sf = densityFactors[Math.max(1, Math.min(5, wm.density ?? 3))];
+    const stepX = Math.max(textWidth + fontSize * 0.8, screenW / 5) * sf;
+    const stepY = Math.max(fontSize * 2, screenH / 4) * sf;
+    const col = this.hexToRgbValues(wm.color);
+    ctx.fillStyle = `rgba(${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)},${wm.opacity})`;
+    ctx.textBaseline = 'alphabetic';
+    const angleRad = wm.angle * Math.PI / 180;
+    for (let y = -(stepY / 2); y < screenH + stepY; y += stepY) {
+      for (let x = -(stepX / 2); x < screenW + stepX; x += stepX) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angleRad);
+        ctx.fillText(wm.text, -textWidth / 2, 0);
+        ctx.restore();
+      }
+    }
   }
 
   private _hideExportPreview(): void {
