@@ -57,7 +57,7 @@ describe('TextSearchHandler word-level highlights', () => {
 
   it('match x is offset from item start for mid-string match', async () => {
     const handler = new TextSearchHandler();
-    const text = 'AAAAAABBBBBBBBBBB'; // match "BBB" is in the second half
+    const text = 'AAAAAAbbbCCCCC'; // exactly 1 'bbb' match, offset from item start
     await handler.buildIndex(makePage(text), 'p2');
 
     const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
