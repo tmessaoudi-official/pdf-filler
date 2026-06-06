@@ -35,8 +35,29 @@
       background: #2563eb;
       color: white;
       padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h1 {
+      flex: 1;
       text-align: center;
     }
+    /* ── Language switcher ─────────────────────────── */
+    .lang-switcher { display: flex; gap: 4px; }
+    .lang-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: white;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .lang-btn:hover { background: rgba(255,255,255,0.3); }
+    .lang-btn.lang-active { background: white; color: #2563eb; }
     .toolbar {
       padding: 7px 12px;
       background: #f8f9fa;
@@ -105,7 +126,7 @@
       text-transform: uppercase;
       flex-shrink: 0;
     }
-    #navGroup { margin-left: auto; }
+    #navGroup { margin-inline-start: auto; }
     .color-swatches { display: flex; gap: 3px; align-items: center; }
     .color-swatch {
       width: 16px; height: 16px;
@@ -136,7 +157,7 @@
     }
     .help-header h3 { margin: 0; font-size: 16px; }
     .help-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .help-table th { text-align: left; padding: 6px 10px; background: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
+    .help-table th { text-align: start; padding: 6px 10px; background: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
     .help-table td { padding: 5px 10px; border-bottom: 1px solid #f1f5f9; }
     .help-table tr:last-child td { border-bottom: none; }
     .help-table td:first-child { font-family: monospace; font-weight: 700; color: #1e293b; white-space: nowrap; }
@@ -177,14 +198,14 @@
     }
     .file-menu-wrap.open .file-menu-dropdown { display: flex; }
     .file-menu-item {
-      border: 0; background: none; text-align: left; padding: 7px 14px;
+      border: 0; background: none; text-align: start; padding: 7px 14px;
       cursor: pointer; font-size: 14px; color: #212529; white-space: nowrap;
     }
     .file-menu-item:hover:not(:disabled) { background: #f1f5f9; }
     .file-menu-item:disabled { color: #9ca3af; cursor: not-allowed; }
     .file-menu-sep { border: 0; border-top: 1px solid #e5e7eb; margin: 3px 0; }
     .mode-badge {
-      margin-left: auto;
+      margin-inline-start: auto;
       padding: 3px 10px;
       border-radius: 12px;
       font-size: 11px;
@@ -203,7 +224,7 @@
     #toast {
       position: fixed;
       bottom: 24px;
-      right: 24px;
+      inset-inline-end: 24px;
       background: #1e293b;
       color: white;
       padding: 10px 18px;
@@ -314,12 +335,13 @@
       #toast {
         bottom: auto;
         top: 16px;
-        right: auto;
-        left: 50%;
+        inset-inline-end: auto;
+        inset-inline-start: 50%;
         transform: translateX(-50%) translateY(-8px);
         white-space: nowrap;
       }
       #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      /* RTL toast centering: translateX(-50%) assumes inset-inline-start:50% — correct for both dirs */
       /* Compact signature modal */
       .signature-content { padding: 14px; }
       /* Compact watermark modal */
@@ -424,7 +446,7 @@
     .element-controls {
       position: absolute;
       top: -30px;
-      right: 0;
+      inset-inline-end: 0;
       display: flex;
       gap: 5px;
       opacity: 0;
@@ -454,7 +476,7 @@
     .resize-handle {
       position: absolute;
       bottom: -5px;
-      right: -5px;
+      inset-inline-end: -5px;
       width: 15px;
       height: 15px;
       background: #2563eb;
@@ -598,7 +620,7 @@
       padding: 1px 0; pointer-events: none;
     }
     .thumb-delete {
-      position: absolute; top: 1px; right: 1px;
+      position: absolute; inset-block-start: 1px; inset-inline-end: 1px;
       width: 16px; height: 16px; border-radius: 50%;
       background: #ef4444; color: white;
       border: none; cursor: pointer;
@@ -616,8 +638,8 @@
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s; padding: 0;
     }
-    .thumb-rotate-ccw { left: 1px; }
-    .thumb-rotate-cw  { left: 17px; }
+    .thumb-rotate-ccw { inset-inline-start: 1px; }
+    .thumb-rotate-cw  { inset-inline-start: 17px; }
     .thumb-item:hover .thumb-rotate { opacity: 1; }
     .thumb-dl {
       position: absolute; top: 1px;
@@ -628,8 +650,8 @@
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s; padding: 0;
     }
-    .thumb-dl-pdf { left: 1px; }
-    .thumb-dl-img { left: 17px; }
+    .thumb-dl-pdf { inset-inline-start: 1px; }
+    .thumb-dl-img { inset-inline-start: 17px; }
     .thumb-item:hover .thumb-dl { opacity: 1; }
     .thumb-add-btn {
       flex-shrink: 0;
@@ -653,12 +675,12 @@
       .thumb-add-btn { width: 50px; min-height: 74px; }
       /* Rotate + delete: always visible on touch (hover never fires), larger tap area */
       .thumb-rotate { width: 18px; height: 18px; opacity: 1; font-size: 10px; }
-      .thumb-rotate-cw { left: 21px; }
+      .thumb-rotate-cw { inset-inline-start: 21px; }
       .thumb-delete { width: 20px; height: 20px; font-size: 12px; opacity: 1; }
       /* Downloads stacked vertically at top-left — side-by-side + delete won't fit in 50px */
       .thumb-dl { width: 18px; height: 18px; opacity: 1; font-size: 10px; }
-      .thumb-dl-pdf { top: 1px;  left: 1px; }
-      .thumb-dl-img { top: 21px; left: 1px; }
+      .thumb-dl-pdf { inset-block-start: 1px;  inset-inline-start: 1px; }
+      .thumb-dl-img { inset-block-start: 21px; inset-inline-start: 1px; }
     }
 
     /* ── Watermark modal ─────────────────────────────────── */
@@ -716,127 +738,132 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>PDFturbo</h1>
+    <h1 data-i18n="app.title">PDFturbo</h1>
+    <div class="lang-switcher">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="ar">ع</button>
+    </div>
   </div>
   <div class="toolbar toolbar-row1">
     <div class="toolbar-group" id="tbg-file">
       <div class="file-menu-wrap" id="fileMenuWrap">
-        <button id="fileMenuBtn" class="btn btn-primary">📁 File ▾</button>
+        <button id="fileMenuBtn" class="btn btn-primary" data-i18n="toolbar.file">📁 File ▾</button>
         <div class="file-menu-dropdown" id="fileMenuDropdown">
-          <button id="fileMenuOpen" class="file-menu-item">📂 Open…</button>
-          <button id="fileMenuClose" class="file-menu-item" disabled>✕ Close Document</button>
+          <button id="fileMenuOpen" class="file-menu-item" data-i18n="toolbar.open">📂 Open…</button>
+          <button id="fileMenuClose" class="file-menu-item" disabled data-i18n="toolbar.close">✕ Close Document</button>
           <hr class="file-menu-sep">
-          <button id="fileMenuClearAnnotations" class="file-menu-item" disabled>🗑 Clear Annotations</button>
-          <button id="fileMenuResetSession" class="file-menu-item" disabled>↺ Reset Session</button>
+          <button id="fileMenuClearAnnotations" class="file-menu-item" disabled data-i18n="toolbar.clearAnnotations">🗑 Clear Annotations</button>
+          <button id="fileMenuResetSession" class="file-menu-item" disabled data-i18n="toolbar.resetSession">↺ Reset Session</button>
         </div>
       </div>
       <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,image/bmp" multiple style="display:none">
     </div>
     <div class="toolbar-group" id="tbg-history">
-      <button id="undoBtn" class="btn btn-icon" disabled title="Undo (Ctrl+Z)">↩</button>
-      <button id="redoBtn" class="btn btn-icon" disabled title="Redo (Ctrl+Y)">↪</button>
-      <button id="copyBtn" class="btn btn-icon" disabled title="Copy selected element (Ctrl+C)">⎘</button>
-      <button id="pasteBtn" class="btn btn-icon" disabled title="Paste element (Ctrl+V)">⧉</button>
+      <button id="undoBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.undoTitle" title="Undo (Ctrl+Z)">↩</button>
+      <button id="redoBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.redoTitle" title="Redo (Ctrl+Y)">↪</button>
+      <button id="copyBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.copyTitle" title="Copy selected element (Ctrl+C)">⎘</button>
+      <button id="pasteBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.pasteTitle" title="Paste element (Ctrl+V)">⧉</button>
     </div>
     <!-- Mobile line-break: forces tools to second line on small screens -->
     <div id="tbsep-break" class="toolbar-sep"></div>
     <div class="toolbar-sep" id="tbsep-1"></div>
     <div class="toolbar-group" id="tbg-edit">
-      <button id="addTextBtn" class="btn btn-secondary" disabled title="Add Text (T)">T Text</button>
-      <button id="addSignatureBtn" class="btn btn-secondary" disabled title="Sign (S)">✍ Sign</button>
-      <button id="addImageBtn" class="btn btn-secondary" disabled title="Add Image (I)">🖼 <span class="btn-label">Image</span></button>
+      <button id="addTextBtn" class="btn btn-secondary" disabled data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
+      <button id="addSignatureBtn" class="btn btn-secondary" disabled data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
+      <button id="addImageBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
-      <button id="highlightBtn" class="btn btn-secondary" disabled title="Highlight brush (H)">🖊 <span class="btn-label">Highlight</span></button>
-      <button id="commentBtn" class="btn btn-secondary" disabled title="Add comment / sticky note (N)">💬 <span class="btn-label">Comment</span></button>
-      <button id="findBtn" class="btn btn-icon" disabled title="Find in page (Ctrl+F)">🔍</button>
+      <button id="highlightBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊 <span class="btn-label" data-i18n="toolbar.highlightLabel">Highlight</span></button>
+      <button id="commentBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬 <span class="btn-label" data-i18n="toolbar.commentLabel">Comment</span></button>
+      <button id="findBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.findTitle" title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-shapes">
-      <button id="arrowBtn" class="btn btn-icon" disabled title="Arrow (A)">→</button>
-      <button id="rectBtn" class="btn btn-icon" disabled title="Rectangle (R)">□</button>
-      <button id="circleBtn" class="btn btn-icon" disabled title="Circle (C)">○</button>
-      <button id="freehandBtn" class="btn btn-icon" disabled title="Freehand (D)">✏</button>
-      <button id="eraserBtn" class="btn btn-icon" disabled title="Eraser — swipe to erase (E)">⌫</button>
-      <button id="redactBtn" class="btn btn-icon" disabled title="Redact — draw a permanent black box">⬛</button>
+      <button id="arrowBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
+      <button id="rectBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
+      <button id="circleBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
+      <button id="freehandBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
+      <button id="eraserBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
+      <button id="redactBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
     </div>
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-actions">
-      <button id="downloadBtn" class="btn btn-success" disabled title="Download filled PDF">⬇ <span class="btn-label">Download</span></button>
-      <button id="previewExportBtn" class="btn btn-icon" disabled title="Preview export positions">👁</button>
-      <button id="watermarkBtn" class="btn btn-icon" disabled title="Watermark settings">≋</button>
-      <button id="helpBtn" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
+      <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button>
+      <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
+      <button id="watermarkBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.watermarkTitle" title="Watermark settings">≋</button>
+      <button id="helpBtn" class="btn btn-icon" data-i18n-title="toolbar.helpTitle" title="Keyboard shortcuts (?)">?</button>
       <input type="file" id="addPdfInput" accept="application/pdf,image/*" multiple>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
   <div class="toolbar toolbar-row2">
     <div class="toolbar-group" id="formattingGroup">
-      <span class="toolbar-label">Text</span>
+      <span class="toolbar-label" data-i18n="formatting.textLabel">Text</span>
       <select id="fontFamily" class="toolbar-select" disabled>
         <option value="Arial">Arial</option>
         <option value="Helvetica">Helvetica</option>
         <option value="Times New Roman">Times New Roman</option>
         <option value="Courier New">Courier New</option>
       </select>
-      <button id="boldBtn" class="btn btn-icon" disabled title="Bold"><strong>B</strong></button>
-      <button id="italicBtn" class="btn btn-icon btn-italic" disabled title="Italic"><em>I</em></button>
-      <button id="fontSizeDownBtn" class="btn btn-icon" disabled title="Decrease font size (A-)">A−</button>
+      <button id="boldBtn" class="btn btn-icon" disabled data-i18n-title="formatting.boldTitle" title="Bold"><strong>B</strong></button>
+      <button id="italicBtn" class="btn btn-icon btn-italic" disabled data-i18n-title="formatting.italicTitle" title="Italic"><em>I</em></button>
+      <button id="fontSizeDownBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeDownTitle" title="Decrease font size (A-)">A−</button>
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
-      <button id="fontSizeUpBtn" class="btn btn-icon" disabled title="Increase font size (A+)">A+</button>
+      <button id="fontSizeUpBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeUpTitle" title="Increase font size (A+)">A+</button>
       <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
       <div class="color-swatches" id="colorSwatches">
-        <button class="color-swatch" data-color="#000000" style="background:#000000" title="Black"></button>
-        <button class="color-swatch" data-color="#dc2626" style="background:#dc2626" title="Red"></button>
-        <button class="color-swatch" data-color="#2563eb" style="background:#2563eb" title="Blue"></button>
-        <button class="color-swatch" data-color="#16a34a" style="background:#16a34a" title="Green"></button>
-        <button class="color-swatch" data-color="#ea580c" style="background:#ea580c" title="Orange"></button>
-        <button class="color-swatch" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+        <button class="color-swatch" data-color="#000000" style="background:#000000" data-i18n-title="colors.black" title="Black"></button>
+        <button class="color-swatch" data-color="#dc2626" style="background:#dc2626" data-i18n-title="colors.red" title="Red"></button>
+        <button class="color-swatch" data-color="#2563eb" style="background:#2563eb" data-i18n-title="colors.blue" title="Blue"></button>
+        <button class="color-swatch" data-color="#16a34a" style="background:#16a34a" data-i18n-title="colors.green" title="Green"></button>
+        <button class="color-swatch" data-color="#ea580c" style="background:#ea580c" data-i18n-title="colors.orange" title="Orange"></button>
+        <button class="color-swatch" data-color="#ffffff" style="background:#ffffff" data-i18n-title="colors.white" title="White"></button>
       </div>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
-      <span class="toolbar-label">Shape</span>
+      <span class="toolbar-label" data-i18n="formatting.shapeLabel">Shape</span>
       <input type="color" id="shapeColor" value="#ef4444" class="toolbar-color" disabled>
       <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
-      <button id="zoomOutBtn" class="btn btn-icon" disabled title="Zoom out">−</button>
+      <button id="zoomOutBtn" class="btn btn-icon" disabled data-i18n-title="formatting.zoomOutTitle" title="Zoom out">−</button>
       <span id="zoomDisplay" class="zoom-display">—</span>
-      <button id="zoomInBtn" class="btn btn-icon" disabled title="Zoom in">+</button>
-      <button id="fitBtn" class="btn btn-secondary btn-sm" disabled title="Fit to width">⊡ Fit</button>
+      <button id="zoomInBtn" class="btn btn-icon" disabled data-i18n-title="formatting.zoomInTitle" title="Zoom in">+</button>
+      <button id="fitBtn" class="btn btn-secondary btn-sm" disabled data-i18n="formatting.fit" data-i18n-title="formatting.fitTitle" title="Fit to width">⊡ Fit</button>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group" id="navGroup">
-      <button id="firstPage" class="btn btn-icon" disabled title="First page">◀◀</button>
-      <button id="prevPage" class="btn btn-icon" disabled title="Previous page (Ctrl+←)">◀</button>
+      <button id="firstPage" class="btn btn-icon" disabled data-i18n-title="formatting.firstPageTitle" title="First page">◀◀</button>
+      <button id="prevPage" class="btn btn-icon" disabled data-i18n-title="formatting.prevPageTitle" title="Previous page (Ctrl+←)">◀</button>
       <input type="number" id="pageInput" value="1" min="1" class="toolbar-number page-input" disabled>
       <span id="pageTotal" class="page-total">/ —</span>
-      <button id="nextPage" class="btn btn-icon" disabled title="Next page (Ctrl+→)">▶</button>
-      <button id="lastPage" class="btn btn-icon" disabled title="Last page">▶▶</button>
+      <button id="nextPage" class="btn btn-icon" disabled data-i18n-title="formatting.nextPageTitle" title="Next page (Ctrl+→)">▶</button>
+      <button id="lastPage" class="btn btn-icon" disabled data-i18n-title="formatting.lastPageTitle" title="Last page">▶▶</button>
     </div>
   </div>
   <!-- Find bar — shown via Ctrl+F or 🔍 button -->
   <div id="findBar" class="find-bar" style="display:none">
-    <input type="text" id="findInput" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
+    <input type="text" id="findInput" data-i18n-placeholder="findbar.placeholder" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
     <span id="findCount" class="find-count"></span>
-    <button id="findCaseSensitive" class="btn btn-icon btn-sm find-toggle" title="Case sensitive">Aa</button>
-    <button id="findRegex" class="btn btn-icon btn-sm find-toggle" title="Use regular expression">.*</button>
-    <button id="findPrev" class="btn btn-icon btn-sm" title="Previous (Shift+Enter)">↑</button>
-    <button id="findNext" class="btn btn-icon btn-sm" title="Next (Enter)">↓</button>
-    <button id="findHighlight" class="btn btn-secondary btn-sm" title="Add as permanent highlight">🖊 Keep</button>
-    <button id="findClose" class="btn btn-icon btn-sm" title="Close (Esc)">×</button>
+    <button id="findCaseSensitive" class="btn btn-icon btn-sm find-toggle" data-i18n-title="findbar.caseSensitiveTitle" title="Case sensitive">Aa</button>
+    <button id="findRegex" class="btn btn-icon btn-sm find-toggle" data-i18n-title="findbar.regexTitle" title="Use regular expression">.*</button>
+    <button id="findPrev" class="btn btn-icon btn-sm" data-i18n-title="findbar.prevTitle" title="Previous (Shift+Enter)">↑</button>
+    <button id="findNext" class="btn btn-icon btn-sm" data-i18n-title="findbar.nextTitle" title="Next (Enter)">↓</button>
+    <button id="findHighlight" class="btn btn-secondary btn-sm" data-i18n="findbar.keepHighlight" data-i18n-title="findbar.keepHighlightTitle" title="Add as permanent highlight">🖊 Keep</button>
+    <button id="findClose" class="btn btn-icon btn-sm" data-i18n-title="findbar.closeTitle" title="Close (Esc)">×</button>
   </div>
-  <div class="canvas-container" id="canvasContainer">
+  <div class="canvas-container" id="canvasContainer" dir="ltr">
     <div id="emptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:18px;pointer-events:none;z-index:1;">
-      Upload a PDF to get started
+      <span data-i18n="canvas.emptyState">Upload a PDF to get started</span>
     </div>
     <canvas id="pdfCanvas"></canvas>
     <div id="exportPreviewOverlay" class="export-preview-overlay" style="display:none">
       <div class="export-preview-banner">
-        This is where your annotations will appear in the exported PDF.
-        <button id="exportPreviewConfirm" class="btn btn-success">Export PDF</button>
-        <button id="exportPreviewClose" class="btn">Close Preview</button>
+        <span data-i18n="modal.exportPreview.banner">This is where your annotations will appear in the exported PDF.</span>
+        <button id="exportPreviewConfirm" class="btn btn-success" data-i18n="modal.exportPreview.export">Export PDF</button>
+        <button id="exportPreviewClose" class="btn" data-i18n="modal.exportPreview.close">Close Preview</button>
       </div>
       <div id="exportPreviewGhost"></div>
     </div>
@@ -847,97 +874,97 @@
 <div class="help-modal" id="helpModal">
   <div class="help-content">
     <div class="help-header">
-      <h3>Keyboard Shortcuts</h3>
+      <h3 data-i18n="modal.help.title">Keyboard Shortcuts</h3>
       <button id="closeHelp" class="btn btn-icon">×</button>
     </div>
     <table class="help-table">
-      <tr><th>Key</th><th>Action</th></tr>
-      <tr><td>T</td><td>Add text</td></tr>
-      <tr><td>S</td><td>Sign</td></tr>
-      <tr><td>I</td><td>Add image</td></tr>
-      <tr><td>A</td><td>Arrow</td></tr>
-      <tr><td>R</td><td>Rectangle</td></tr>
-      <tr><td>C</td><td>Circle</td></tr>
-      <tr><td>D / F</td><td>Freehand draw</td></tr>
-      <tr><td>E</td><td>Eraser</td></tr>
-      <tr><td>H</td><td>Highlight</td></tr>
-      <tr><td>N</td><td>Add comment / note</td></tr>
-      <tr><td>Esc</td><td>Select mode / cancel / close modal</td></tr>
-      <tr><td>Del / Backspace</td><td>Remove selected element</td></tr>
-      <tr><td>←↑→↓</td><td>Nudge selected 1px</td></tr>
-      <tr><td>Shift + ←↑→↓</td><td>Nudge selected 10px</td></tr>
-      <tr><td>Ctrl+Z</td><td>Undo</td></tr>
-      <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
-      <tr><td>Ctrl+C</td><td>Copy selected element</td></tr>
-      <tr><td>Ctrl+V</td><td>Paste element</td></tr>
-      <tr><td>Ctrl+F</td><td>Find in page</td></tr>
-      <tr><td>Ctrl+← / Ctrl+→</td><td>Previous / next page</td></tr>
-      <tr><td>?</td><td>Show this panel</td></tr>
+      <tr><th data-i18n="modal.help.keyHeader">Key</th><th data-i18n="modal.help.actionHeader">Action</th></tr>
+      <tr><td>T</td><td data-i18n="modal.help.actions.T">Add text</td></tr>
+      <tr><td>S</td><td data-i18n="modal.help.actions.S">Sign</td></tr>
+      <tr><td>I</td><td data-i18n="modal.help.actions.I">Add image</td></tr>
+      <tr><td>A</td><td data-i18n="modal.help.actions.A">Arrow</td></tr>
+      <tr><td>R</td><td data-i18n="modal.help.actions.R">Rectangle</td></tr>
+      <tr><td>C</td><td data-i18n="modal.help.actions.C">Circle</td></tr>
+      <tr><td>D / F</td><td data-i18n="modal.help.actions.DF">Freehand draw</td></tr>
+      <tr><td>E</td><td data-i18n="modal.help.actions.E">Eraser</td></tr>
+      <tr><td>H</td><td data-i18n="modal.help.actions.H">Highlight</td></tr>
+      <tr><td>N</td><td data-i18n="modal.help.actions.N">Add comment / note</td></tr>
+      <tr><td>Esc</td><td data-i18n="modal.help.actions.Esc">Select mode / cancel / close modal</td></tr>
+      <tr><td>Del / Backspace</td><td data-i18n="modal.help.actions.Del">Remove selected element</td></tr>
+      <tr><td>←↑→↓</td><td data-i18n="modal.help.actions.Arrows">Nudge selected 1px</td></tr>
+      <tr><td>Shift + ←↑→↓</td><td data-i18n="modal.help.actions.ShiftArrows">Nudge selected 10px</td></tr>
+      <tr><td>Ctrl+Z</td><td data-i18n="modal.help.actions.CtrlZ">Undo</td></tr>
+      <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td data-i18n="modal.help.actions.CtrlY">Redo</td></tr>
+      <tr><td>Ctrl+C</td><td data-i18n="modal.help.actions.CtrlC">Copy selected element</td></tr>
+      <tr><td>Ctrl+V</td><td data-i18n="modal.help.actions.CtrlV">Paste element</td></tr>
+      <tr><td>Ctrl+F</td><td data-i18n="modal.help.actions.CtrlF">Find in page</td></tr>
+      <tr><td>Ctrl+← / Ctrl+→</td><td data-i18n="modal.help.actions.CtrlNav">Previous / next page</td></tr>
+      <tr><td>?</td><td data-i18n="modal.help.actions.Question">Show this panel</td></tr>
     </table>
   </div>
 </div>
 
 <div class="watermark-modal" id="watermarkModal">
   <div class="watermark-content">
-    <h3>Watermark Settings</h3>
+    <h3 data-i18n="modal.watermark.title">Watermark Settings</h3>
     <div class="wm-field">
-      <label><input type="checkbox" id="wmEnabled"> Enable watermark on all pages</label>
+      <label><input type="checkbox" id="wmEnabled"> <span data-i18n="modal.watermark.enable">Enable watermark on all pages</span></label>
     </div>
     <div class="wm-field">
-      <label>Text</label>
+      <label data-i18n="modal.watermark.textLabel">Text</label>
       <input type="text" id="wmText" value="WATERMARK" class="wm-input" placeholder="Watermark text">
     </div>
     <div class="wm-field">
-      <label>Color <input type="color" id="wmColor" value="#888888"></label>
+      <label><span data-i18n="modal.watermark.colorLabel">Color</span> <input type="color" id="wmColor" value="#888888"></label>
     </div>
     <div class="wm-field">
-      <label>Font size: <span id="wmFontSizeDisplay">60</span>px</label>
+      <label><span data-i18n="modal.watermark.fontSizeLabel">Font size</span>: <span id="wmFontSizeDisplay">60</span>px</label>
       <input type="range" id="wmFontSize" min="12" max="200" value="60">
     </div>
     <div class="wm-field">
-      <label>Opacity: <span id="wmOpacityDisplay">25</span>%</label>
+      <label><span data-i18n="modal.watermark.opacityLabel">Opacity</span>: <span id="wmOpacityDisplay">25</span>%</label>
       <input type="range" id="wmOpacity" min="1" max="100" value="25">
     </div>
     <div class="wm-field">
-      <label>Angle: <span id="wmAngleDisplay">-45</span>°</label>
+      <label><span data-i18n="modal.watermark.angleLabel">Angle</span>: <span id="wmAngleDisplay">-45</span>°</label>
       <input type="range" id="wmAngle" min="-180" max="180" value="-45">
     </div>
     <div class="wm-field">
-      <label>Density: <span id="wmDensityDisplay">3</span> (1 sparse → 5 dense)</label>
+      <label><span data-i18n="modal.watermark.densityLabel">Density</span>: <span id="wmDensityDisplay">3</span> (<span data-i18n="modal.watermark.densityHint">1 sparse → 5 dense</span>)</label>
       <input type="range" id="wmDensity" min="1" max="5" step="1" value="3">
     </div>
     <div class="wm-preview">
       <canvas id="wmPreviewCanvas"></canvas>
     </div>
     <div class="wm-actions">
-      <button id="wmCancel" class="btn btn-secondary">Cancel</button>
-      <button id="wmApply" class="btn btn-success">Apply</button>
+      <button id="wmCancel" class="btn btn-secondary" data-i18n="modal.watermark.cancel">Cancel</button>
+      <button id="wmApply" class="btn btn-success" data-i18n="modal.watermark.apply">Apply</button>
     </div>
   </div>
 </div>
 
 <div class="signature-modal" id="signatureModal">
   <div class="signature-content">
-    <h3>Draw Your Signature</h3>
+    <h3 data-i18n="modal.signature.title">Draw Your Signature</h3>
     <div class="signature-settings">
       <label>
-        Line Width: <input type="number" id="sigLineWidth" value="2" min="1" max="10">
+        <span data-i18n="modal.signature.lineWidthLabel">Line Width:</span> <input type="number" id="sigLineWidth" value="2" min="1" max="10">
       </label>
       <label>
-        Color: <input type="color" id="sigColor" value="#000000">
+        <span data-i18n="modal.signature.colorLabel">Color:</span> <input type="color" id="sigColor" value="#000000">
       </label>
     </div>
     <canvas id="signatureCanvas" width="500" height="200"></canvas>
     <div class="signature-actions">
-      <button id="clearSignature" class="btn btn-secondary">Clear</button>
-      <button id="cancelSignature" class="btn btn-secondary">Cancel</button>
-      <button id="saveSignature" class="btn btn-success">Save</button>
+      <button id="clearSignature" class="btn btn-secondary" data-i18n="modal.signature.clear">Clear</button>
+      <button id="cancelSignature" class="btn btn-secondary" data-i18n="modal.signature.cancel">Cancel</button>
+      <button id="saveSignature" class="btn btn-success" data-i18n="modal.signature.save">Save</button>
     </div>
   </div>
 </div>
 
 <span id="pageInfo" style="display:none"></span>
-<button id="donePill" class="done-pill" style="display:none">✓ Done drawing</button>
+<button id="donePill" class="done-pill" data-i18n="donePill" style="display:none">✓ Done drawing</button>
 <div id="toast"></div>
 <script type="module" src="./js/main.ts"></script>
 </body>

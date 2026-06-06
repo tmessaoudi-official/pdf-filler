@@ -1,5 +1,6 @@
 import type { PDFRenderer } from './pdfRenderer';
 import type { DocumentModel } from './documentModel';
+import { t } from './i18n';
 
 export class PageThumbnailPanel {
   private container: HTMLElement;
@@ -60,7 +61,7 @@ export class PageThumbnailPanel {
       // Thumbnail image
       const img = document.createElement('img');
       img.className = 'thumb-img';
-      img.alt = `Page ${i + 1}`;
+      img.alt = t('thumbnail.pageAlt', { page: i + 1 });
 
       if (this._thumbCache.has(page.id)) {
         img.src = this._thumbCache.get(page.id) ?? '';
@@ -84,7 +85,7 @@ export class PageThumbnailPanel {
       const del = document.createElement('button');
       del.className = 'thumb-delete';
       del.textContent = '×';
-      del.title = 'Delete page';
+      del.title = t('thumbnail.deletePage');
       del.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onDelete(page.id);
@@ -94,26 +95,26 @@ export class PageThumbnailPanel {
       const rotateCcw = document.createElement('button');
       rotateCcw.className = 'thumb-rotate thumb-rotate-ccw';
       rotateCcw.textContent = '↺';
-      rotateCcw.title = 'Rotate CCW';
+      rotateCcw.title = t('thumbnail.rotateCcw');
       rotateCcw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, 90); });
 
       const rotateCw = document.createElement('button');
       rotateCw.className = 'thumb-rotate thumb-rotate-cw';
       rotateCw.textContent = '↻';
-      rotateCw.title = 'Rotate CW';
+      rotateCw.title = t('thumbnail.rotateCw');
       rotateCw.addEventListener('click', (e) => { e.stopPropagation(); this.onRotate(page.id, -90); });
 
       // Per-page download buttons
       const dlPdfBtn = document.createElement('button');
       dlPdfBtn.className = 'thumb-dl thumb-dl-pdf';
       dlPdfBtn.textContent = '📄';
-      dlPdfBtn.title = `Export page ${i + 1} as PDF`;
+      dlPdfBtn.title = t('thumbnail.exportPagePdf', { page: i + 1 });
       dlPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownload(i); });
 
       const dlImgBtn = document.createElement('button');
       dlImgBtn.className = 'thumb-dl thumb-dl-img';
       dlImgBtn.textContent = '🖼';
-      dlImgBtn.title = `Export page ${i + 1} as PNG`;
+      dlImgBtn.title = t('thumbnail.exportPageImg', { page: i + 1 });
       dlImgBtn.addEventListener('click', (e) => { e.stopPropagation(); this.onDownloadImage(i); });
 
       item.appendChild(img);
@@ -161,8 +162,8 @@ export class PageThumbnailPanel {
     // "Add PDF" button at the end
     const addBtn = document.createElement('button');
     addBtn.className = 'thumb-add-btn';
-    addBtn.title = 'Add pages from PDF or image';
-    addBtn.innerHTML = '<span>+</span><span class="thumb-add-label">Add PDF/Image</span>';
+    addBtn.title = t('thumbnail.addPagesTitle');
+    addBtn.innerHTML = `<span>+</span><span class="thumb-add-label">${t('thumbnail.addPages')}</span>`;
     addBtn.addEventListener('click', this.onAddPdf);
     this.strip.appendChild(addBtn);
   }

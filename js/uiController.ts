@@ -2,6 +2,7 @@ import type { PDFElement } from './pdfElement';
 import type { TextElement } from './textElement';
 import type { ShapeElement } from './shapeElement';
 import type { ToolMode } from './pdfEditorApp';
+import { t } from './i18n';
 
 export interface UIRefs {
   fileInput: HTMLInputElement;
@@ -235,13 +236,14 @@ export class UIController {
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
 
-    const badges: Record<string, string> = {
-      select: 'SELECT', addText: '+ TEXT', addSignature: '✍ SIGN', addImage: '🖼 IMAGE',
-      drawArrow: '→ ARROW', drawRect: '□ RECT', drawEllipse: '○ CIRCLE', drawFreehand: '✏ DRAW',
-      drawHighlight: '🖊 HIGHLIGHT', addComment: '💬 COMMENT', drawRedaction: '⬛ REDACT',
-      drawErase: '⌫ ERASE',
+    const badgeKeys: Record<string, string> = {
+      select: 'badge.select', addText: 'badge.addText', addSignature: 'badge.addSignature',
+      addImage: 'badge.addImage', drawArrow: 'badge.drawArrow', drawRect: 'badge.drawRect',
+      drawEllipse: 'badge.drawEllipse', drawFreehand: 'badge.drawFreehand',
+      drawHighlight: 'badge.drawHighlight', addComment: 'badge.addComment',
+      drawRedaction: 'badge.drawRedaction', drawErase: 'badge.drawErase',
     };
-    r.modeBadge.textContent = badges[mode] || 'SELECT';
+    r.modeBadge.textContent = t(badgeKeys[mode] ?? 'badge.select');
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
     r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';

@@ -30,6 +30,7 @@ import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
 import { CommentElement } from './commentElement';
+import { t } from './i18n';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase';
 
@@ -534,8 +535,8 @@ export class PDFEditorApp {
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
     const realFontSize = parseInt(this.ui.wmFontSize.value) || 60;
-    // Scale as if the canvas represents a 600pt-tall page so font-size changes are visible.
-    const previewScale = h / 600;
+    // Scale as if the canvas represents an A4 page (842pt tall) for WYSIWYG density.
+    const previewScale = h / 842;
     const liveWm: WatermarkSettings = {
       enabled: true,
       text: this.ui.wmText.value || 'WATERMARK',
@@ -584,7 +585,7 @@ export class PDFEditorApp {
     this._closeWatermarkModal();
     this._syncWatermarkBtn();
     this._autosave();
-    const status = this.documentModel.watermark.enabled ? 'Watermark enabled' : 'Watermark disabled';
+    const status = this.documentModel.watermark.enabled ? t('toast.watermarkEnabled') : t('toast.watermarkDisabled');
     this.showToast(status);
     if (this._exportPreviewOpen) this._showExportPreview();
   }
@@ -677,7 +678,7 @@ export class PDFEditorApp {
     this._autosave();
     this.renderElements();
     this._showSearchMatches(); // re-render match overlays after renderElements clears elements
-    this.showToast('Highlight added — Ctrl+Z to undo');
+    this.showToast(t('toast.highlightAdded'));
   }
 
   private _showSearchMatches(): void {
@@ -721,7 +722,7 @@ export class PDFEditorApp {
     (e.target as HTMLInputElement).value = '';
     if (!file || !this.documentModel.currentPage) return;
     if (!file.type.startsWith('image/')) {
-      this.showToast('Please select an image file (PNG, JPEG, GIF, or WebP)');
+      this.showToast(t('toast.selectImageFile'));
       return;
     }
     const reader = new FileReader();
@@ -730,7 +731,7 @@ export class PDFEditorApp {
       if (!src) return;
       this._pendingImageSrc = src;
       this.setMode('addImage');
-      this.showToast('Click on the PDF to place the image');
+      this.showToast(t('toast.clickToPlaceImage'));
     };
     reader.readAsDataURL(file);
   }
@@ -782,17 +783,17 @@ export class PDFEditorApp {
         this.historyManager.execute(cmd);
         addedCount++;
       } catch {
-        this.showToast(`Failed to load "${file.name}" — skipping`, 4000);
+        this.showToast(t('toast.fileLoadFailed', { name: file.name }), 4000);
       }
     }
     if (addedCount > 0) {
-      this.showToast(`Added ${addedCount} file${addedCount > 1 ? 's' : ''}`);
+      this.showToast(t('toast.filesAdded', { count: addedCount }));
     }
   }
 
   private _deletePage(pageId: string): void {
     if (this.documentModel.pageCount <= 1) {
-      this.showToast('Cannot delete the only page');
+      this.showToast(t('toast.cannotDeleteOnlyPage'));
       return;
     }
     const src = this.documentModel.sourcePdfs.get(
@@ -860,7 +861,7 @@ export class PDFEditorApp {
       new TransformAnnotationsCmd(this.elements, before, after),
       rotateCmd,
     ]));
-    this.showToast('Annotations adjusted for page rotation');
+    this.showToast(t('toast.annotationsAdjusted'));
   }
 
   /** Transform canvas-space point (top-left origin, scale=1) to PDF content-space point (bottom-left origin).
@@ -967,7 +968,7 @@ export class PDFEditorApp {
         this.updatePageInfo();
       }).catch((err: unknown) => {
         console.error('[undo render]', err);
-        this.showToast('Render failed after undo — try reloading', 4000);
+        this.showToast(t('toast.renderFailedUndo'), 4000);
       });
       this._updateFormattingToolbar();
       this._autosave();
@@ -984,7 +985,7 @@ export class PDFEditorApp {
         this.updatePageInfo();
       }).catch((err: unknown) => {
         console.error('[redo render]', err);
-        this.showToast('Render failed after redo — try reloading', 4000);
+        this.showToast(t('toast.renderFailedRedo'), 4000);
       });
       this._updateFormattingToolbar();
       this._autosave();
@@ -1014,7 +1015,7 @@ export class PDFEditorApp {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-        this.showToast('Storage full — export your PDF to avoid losing work', 8000);
+        this.showToast(t('toast.storageFull'), 8000);
       }
       // Other errors (IDB unavailable in private browsing etc.) — silently skip
     }
@@ -1077,7 +1078,7 @@ export class PDFEditorApp {
       await this._thumbnailPanel?.render();
       this.updatePageInfo();
       this.renderElements();
-      this.showToast('Session restored');
+      this.showToast(t('toast.sessionRestored'));
     } catch (err) {
       // BUG-19: reset to clean state on partial restore failure
       console.warn('[_restoreSession] failed, resetting to clean state', err);
@@ -1085,19 +1086,19 @@ export class PDFEditorApp {
       this.renderer.setModel(this.documentModel);
       this.elements = [];
       this._thumbnailPanel = null;
-      this.showToast('Previous session could not be restored — starting fresh');
+      this.showToast(t('toast.sessionRestoreFailed'));
     }
   }
 
   _clearSave() {
     this._closeDocument();
-    this.showToast('Session cleared');
+    this.showToast(t('toast.sessionCleared'));
   }
 
   clearAll() {
     const hasVector = this.elements.length > 0;
     const hasInk    = this.inkLayer.hasAnyContent();
-    if (!hasVector && !hasInk) { this.showToast('No annotations to clear'); return; }
+    if (!hasVector && !hasInk) { this.showToast(t('toast.noAnnotationsToClear')); return; }
     const cmds = [];
     if (hasVector) cmds.push(new ClearAllCmd(this.elements));
     if (hasInk)    cmds.push(new ClearInkCmd(this.inkLayer, () => this.renderInkLayer()));
@@ -1106,7 +1107,7 @@ export class PDFEditorApp {
     this._updateFormattingToolbar();
     this._autosave();
     this.renderElements();
-    this.showToast('All annotations cleared — Ctrl+Z to undo');
+    this.showToast(t('toast.annotationsCleared'));
   }
 
   _toggleHelp(show?: boolean) { this.uiController.toggleHelp(show); }
@@ -1155,7 +1156,7 @@ export class PDFEditorApp {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     document.getElementById('emptyState')!.style.display = 'flex';
     this._disableFileMenuDocItems();
-    this.showToast('Document closed');
+    this.showToast(t('toast.documentClosed'));
   }
 
   // ── File upload ───────────────────────────────────────────────
@@ -1209,19 +1210,19 @@ export class PDFEditorApp {
     let file: File;
 
     if (imageFiles.length > 0 && pdfFiles.length === 0) {
-      this.showToast(`Converting ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''} to PDF…`, 10000);
+      this.showToast(t('toast.convertingImages', { count: imageFiles.length }), 10000);
       try {
         const { bytes, name } = await this._imagesToPdf(imageFiles);
         file = new File([bytes.buffer as ArrayBuffer], name, { type: 'application/pdf' });
       } catch (err) {
-        this.showToast('Image conversion failed — ' + (err instanceof Error ? err.message.slice(0, 60) : String(err)));
+        this.showToast(t('toast.imageConversionFailed', { error: err instanceof Error ? err.message.slice(0, 60) : String(err) }));
         this._isLoading = false;
         return;
       }
     } else if (pdfFiles.length === 1 && imageFiles.length === 0) {
       file = pdfFiles[0];
     } else {
-      this.showToast('Please select a PDF file or one or more images (not both)');
+      this.showToast(t('toast.imageMixedError'));
       this._isLoading = false;
       return;
     }
@@ -1276,7 +1277,7 @@ export class PDFEditorApp {
       this.renderElements();
       this._autosave();
     } catch (err) {
-      this.showToast('Failed to load PDF — ' + (err instanceof Error ? err.message.slice(0, 80) : 'unknown error'));
+      this.showToast(t('toast.pdfLoadFailed', { error: err instanceof Error ? err.message.slice(0, 80) : 'unknown error' }));
       console.error('[handleFileUpload]', err);
     } finally {
       this._isLoading = false;
@@ -1284,6 +1285,14 @@ export class PDFEditorApp {
   }
 
   enableUI() { this.uiController.enableUI(); }
+
+  /** Re-render dynamic DOM strings after a language change. */
+  onLanguageChanged(): void {
+    this.uiController.updateModeButtons(this.mode);
+    if (this.documentModel?.pageCount > 0) {
+      this._thumbnailPanel?.render();
+    }
+  }
 
   _cleanEmptyTextElements() {
     const focused = document.activeElement;
@@ -1308,21 +1317,16 @@ export class PDFEditorApp {
     this._formFieldOverlay.setPointerEvents(mode === 'select');
     if (mode === 'addSignature') this.openSignatureModal();
 
-    const toastLabels: Partial<Record<ToolMode, string>> = {
-      addText:       'Text tool — click to place. Press Esc to cancel.',
-      addSignature:  'Signature — draw then click to place. Press Esc to cancel.',
-      addImage:      'Image tool — click to place. Press Esc to cancel.',
-      drawArrow:     'Arrow tool — drag to draw. Press Esc to exit.',
-      drawRect:      'Rectangle tool — drag to draw. Press Esc to exit.',
-      drawEllipse:   'Circle tool — drag to draw. Press Esc to exit.',
-      drawFreehand:  'Freehand pen — draw freely. Tap Done or press Esc to exit.',
-      drawHighlight: 'Highlight tool — drag to mark. Press Esc to exit.',
-      addComment:    'Comment tool — click to place. Press Esc to cancel.',
-      drawRedaction: 'Redact tool — drag to black out. Press Esc to exit.',
-      drawErase:     'Eraser — swipe to erase elements. Press Esc to exit.',
+    const modeHintKeys: Partial<Record<ToolMode, string>> = {
+      addText: 'toast.modeHint.addText', addSignature: 'toast.modeHint.addSignature',
+      addImage: 'toast.modeHint.addImage', drawArrow: 'toast.modeHint.drawArrow',
+      drawRect: 'toast.modeHint.drawRect', drawEllipse: 'toast.modeHint.drawEllipse',
+      drawFreehand: 'toast.modeHint.drawFreehand', drawHighlight: 'toast.modeHint.drawHighlight',
+      addComment: 'toast.modeHint.addComment', drawRedaction: 'toast.modeHint.drawRedaction',
+      drawErase: 'toast.modeHint.drawErase',
     };
-    const label = toastLabels[mode];
-    if (label) this.uiController.showToast(label, 1500);
+    const hintKey = modeHintKeys[mode];
+    if (hintKey) this.uiController.showToast(t(hintKey), 1500);
   }
 
   _isShapeMode() { return this.mode.startsWith('draw'); }
@@ -1343,7 +1347,7 @@ export class PDFEditorApp {
 
   saveSignature() {
     if (this.signaturePad.isEmpty()) {
-      this.showToast('Please draw a signature first');
+      this.showToast(t('toast.drawSignatureFirst'));
       return;
     }
     this.currentSignature = this.signaturePad.getDataURL();
@@ -1569,10 +1573,7 @@ export class PDFEditorApp {
 
     if (unsupportedCount > 0 && !this._warnedUnsupportedFields) {
       this._warnedUnsupportedFields = true;
-      this.showToast(
-        `This PDF has ${unsupportedCount} checkbox/dropdown field${unsupportedCount > 1 ? 's' : ''} — only text fields are supported`,
-        5000,
-      );
+      this.showToast(t('toast.unsupportedFields', { count: unsupportedCount }), 5000);
     }
     this._formFieldOverlay.setPointerEvents(this.mode === 'select');
   }

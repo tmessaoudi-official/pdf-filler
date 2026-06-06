@@ -85,8 +85,8 @@ All content authored as i18n keys. Arabic prose = placeholder until human transl
 | Stage | Items | Status |
 |-------|-------|--------|
 | Stage 0: Rename | PDFturbo | ✅ DONE (3fc10e2) |
-| Stage 1: Bugs B1/B2/B4 | 3 bugs | 🔄 IN PROGRESS |
-| Stage 2: i18n scaffold | EN/FR/AR + RTL | ⏳ PENDING |
+| Stage 1: Bugs B1/B2/B4 | 3 bugs | ✅ DONE (56c4ec6) |
+| Stage 2: i18n scaffold | EN/FR/AR + RTL | ✅ DONE (pending commit) |
 | Stage 3: a11y | 32 aria-labels + modals + focus traps | ⏳ PENDING |
 | Stage 4: Legal pages | 6 pages + footer + LICENSE | ⏳ PENDING |
 | Stage 5: B3 text layer | renderTextLayer + annotation layer | ⏳ PENDING |
