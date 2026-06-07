@@ -51,7 +51,6 @@ export interface UIRefs {
   fontSizeUpBtn: HTMLButtonElement;
   helpBtn: HTMLButtonElement;
   helpModal: HTMLElement;
-  colorSwatches: HTMLElement;
   addImageBtn: HTMLButtonElement;
   addImageInput: HTMLInputElement;
   highlightBtn: HTMLButtonElement;
@@ -152,7 +151,6 @@ export class UIController {
       fontSizeUpBtn:    document.getElementById('fontSizeUpBtn')    as HTMLButtonElement,
       helpBtn:          document.getElementById('helpBtn')          as HTMLButtonElement,
       helpModal:        document.getElementById('helpModal')        as HTMLElement,
-      colorSwatches:    document.getElementById('colorSwatches')    as HTMLElement,
       addImageBtn:      document.getElementById('addImageBtn')      as HTMLButtonElement,
       addImageInput:    document.getElementById('addImageInput')    as HTMLInputElement,
       highlightBtn:     document.getElementById('highlightBtn')     as HTMLButtonElement,
@@ -283,8 +281,6 @@ export class UIController {
     r.fontSizeDownBtn.disabled = !isText;
     r.fontSizeUpBtn.disabled   = !isText;
     r.textColorInput.disabled  = !isText;
-    const shapeSwatchActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
-    r.colorSwatches.classList.toggle('disabled', !shapeSwatchActive);
     if (isText) {
       r.fontFamily.value = (el as TextElement).fontFamily || 'Arial';
       r.boldBtn.classList.toggle('btn-active-fmt',   !!(el as TextElement).bold);

@@ -308,13 +308,6 @@ export class PDFEditorApp {
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
 
-    this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        if (this.ui.shapeColor.disabled) return;
-        this.ui.shapeColor.value = (swatch as HTMLElement).dataset["color"] ?? '#000000';
-        this.ui.shapeColor.dispatchEvent(new Event('input'));
-      });
-    });
 
     this.ui.firstPage.addEventListener('click', () => this._goToPage(1));
     this.ui.lastPage.addEventListener('click',  () => this._goToPage(this.documentModel.pageCount));

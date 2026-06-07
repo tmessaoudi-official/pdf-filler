@@ -127,19 +127,6 @@
       flex-shrink: 0;
     }
     #navGroup { }
-    .color-swatches { display: flex; gap: 3px; align-items: center; }
-    .color-swatch {
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      border: 2px solid #dee2e6;
-      cursor: pointer;
-      padding: 0;
-      flex-shrink: 0;
-      transition: transform 0.1s, box-shadow 0.1s;
-    }
-    .color-swatch:hover { transform: scale(1.3); box-shadow: 0 0 0 2px #2563eb; }
-    .color-swatch[data-color="#ffffff"] { border-color: #94a3b8; }
-    .color-swatches.disabled .color-swatch { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
     .help-modal {
       display: none; position: fixed; top: 0; left: 0;
       width: 100%; height: 100%;
@@ -326,8 +313,6 @@
       .toolbar-label { display: none; }
       /* Icon-only Upload/Download on mobile so line 1 fits in one row */
       .btn-label { display: none; }
-      /* Swatches take too much width in the scrolling properties row on mobile */
-      .color-swatches { display: none; }
       /* Larger resize handle for fat-finger accuracy */
       .resize-handle { width: 22px; height: 22px; bottom: -8px; right: -8px; }
       /* Larger delete button */
@@ -944,18 +929,6 @@
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
       <button id="fontSizeUpBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeUpTitle" title="Increase font size (A+)">A+</button>
       <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
-      <div class="color-swatches" id="colorSwatches">
-        <button class="color-swatch" data-color="#000000" style="background:#000000" data-i18n-title="colors.black" title="Black"></button>
-        <button class="color-swatch" data-color="#dc2626" style="background:#dc2626" data-i18n-title="colors.red" title="Red"></button>
-        <button class="color-swatch" data-color="#2563eb" style="background:#2563eb" data-i18n-title="colors.blue" title="Blue"></button>
-        <button class="color-swatch" data-color="#16a34a" style="background:#16a34a" data-i18n-title="colors.green" title="Green"></button>
-        <button class="color-swatch" data-color="#ea580c" style="background:#ea580c" data-i18n-title="colors.orange" title="Orange"></button>
-        <button class="color-swatch" data-color="#eab308" style="background:#eab308" data-i18n-title="colors.yellow" title="Yellow"></button>
-        <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed" data-i18n-title="colors.purple" title="Purple"></button>
-        <button class="color-swatch" data-color="#0891b2" style="background:#0891b2" data-i18n-title="colors.teal" title="Teal"></button>
-        <button class="color-swatch" data-color="#6b7280" style="background:#6b7280" data-i18n-title="colors.gray" title="Gray"></button>
-        <button class="color-swatch" data-color="#ffffff" style="background:#ffffff" data-i18n-title="colors.white" title="White"></button>
-      </div>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
