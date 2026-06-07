@@ -89,7 +89,7 @@ All content authored as i18n keys. Arabic prose = placeholder until human transl
 | Stage 2: i18n scaffold | EN/FR/AR + RTL | ✅ DONE (2979213) |
 | Stage 3: a11y | 32 aria-labels + modals + focus traps | ✅ DONE (597de70) |
 | Stage 4: Legal pages | 6 pages + footer + LICENSE | ✅ DONE (597de70) |
-| Stage 5: B3 text layer | renderTextLayer + annotation layer | ⏳ PENDING |
+| Stage 5: B3 text layer | renderTextLayer + annotation layer | ✅ DONE (pending commit) |
 
 ---
 

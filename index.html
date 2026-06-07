@@ -578,6 +578,38 @@
       box-shadow: 0 0 0 2px rgba(66,133,244,0.3);
       z-index: 5;
     }
+    /* ── PDF text layer ─────────────────────────────────── */
+    .textLayer {
+      overflow: hidden;
+      line-height: 1;
+      -webkit-text-size-adjust: none;
+      text-size-adjust: none;
+      forced-color-adjust: none;
+      transform-origin: 0 0;
+      caret-color: CanvasText;
+      z-index: 1;
+      pointer-events: none; /* enabled in select mode via JS */
+    }
+    .textLayer span,
+    .textLayer br {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+    }
+    .textLayer :is(span, br)::selection {
+      background-color: rgba(0, 0, 255, 0.25);
+      color: transparent;
+    }
+    /* ── PDF annotation link overlay ────────────────────── */
+    .annotationLayer {
+      z-index: 1;
+      pointer-events: none; /* individual links controlled by JS */
+    }
+    .annotationLayer .linkAnnotation {
+      pointer-events: none; /* default; enabled in select mode */
+    }
     /* ── Page thumbnail panel ────────────────────────────── */
     .page-thumb-container {
       border-top: 2px solid #dee2e6;

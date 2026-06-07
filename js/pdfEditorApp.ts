@@ -29,6 +29,7 @@ import type { WatermarkSettings } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
+import { TextLayerManager } from './textLayer';
 import { CommentElement } from './commentElement';
 import { t } from './i18n';
 import { trapFocus } from './focusTrap';
@@ -64,6 +65,7 @@ export class PDFEditorApp {
   private _findCaseSensitive = false;
   private _findRegex = false;
   private _formFieldOverlay!: FormFieldOverlay;
+  private _textLayerManager!: TextLayerManager;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
   private _formFieldGen = 0;
@@ -95,6 +97,7 @@ export class PDFEditorApp {
     this.uiController.refs.container.appendChild(this._inkCanvas);
     this.signaturePad = new SignaturePad(this.uiController.refs.signatureCanvas);
     this._formFieldOverlay = new FormFieldOverlay(this.uiController.refs.container);
+    this._textLayerManager = new TextLayerManager(this.uiController.refs.container);
     this.mode = 'select';
     this.zoomScale = 1.0;
     this.selectedElement = null;
@@ -1260,6 +1263,7 @@ export class PDFEditorApp {
       this._formValues = {};
       this._warnedUnsupportedFields = false;
       this._formFieldOverlay.clear();
+      this._textLayerManager.clear();
       this._textSearch.clearCache();
       this.historyManager.clear();
       this.selectedElement = null;
@@ -1336,6 +1340,7 @@ export class PDFEditorApp {
     this.mode = mode;
     this.uiController.updateModeButtons(mode);
     this._formFieldOverlay.setPointerEvents(mode === 'select');
+    this._textLayerManager.setPointerEvents(mode === 'select');
     if (mode === 'addSignature') this.openSignatureModal();
 
     const modeHintKeys: Partial<Record<ToolMode, string>> = {
@@ -1576,7 +1581,21 @@ export class PDFEditorApp {
   private async _renderCurrentPage(): Promise<void> {
     await this.renderer.renderPageAtIndex(this.documentModel.currentPageIndex);
     await this._renderFormFields();
+    await this._renderTextLayer();
     this.renderInkLayer();
+  }
+
+  private async _renderTextLayer(): Promise<void> {
+    const docPage = this.documentModel.currentPage;
+    if (!docPage) { this._textLayerManager.clear(); return; }
+    const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+    if (!src) return;
+    const page = await src.doc.getPage(docPage.sourcePageNum);
+    const effectiveRotation = ((page.rotate + (docPage.rotation ?? 0)) % 360 + 360) % 360;
+    const viewport = page.getViewport({ scale: this.zoomScale, rotation: effectiveRotation });
+    const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
+    await this._textLayerManager.render(page, viewport, canvasOffset);
+    this._textLayerManager.setPointerEvents(this.mode === 'select');
   }
 
   private async _renderFormFields(): Promise<void> {
