@@ -291,6 +291,7 @@ export class PDFEditorApp {
       }
     });
     document.addEventListener('click', () => this.ui.fileMenuWrap.classList.remove('open'));
+    document.addEventListener('selectionchange', () => this._updateCopyPasteBtns());
     this.ui.fileMenuOpen.addEventListener('click', () => {
       this.ui.fileMenuWrap.classList.remove('open');
       this.ui.fileInput.click();
@@ -1841,7 +1842,8 @@ export class PDFEditorApp {
   }
 
   private _updateCopyPasteBtns(): void {
-    this.uiController.updateCopyPasteBtns(!!this.selectedElement, !!this._clipboard);
+    const hasPdfText = !!window.getSelection()?.toString();
+    this.uiController.updateCopyPasteBtns(!!this.selectedElement || hasPdfText, !!this._clipboard);
   }
 
   /**
