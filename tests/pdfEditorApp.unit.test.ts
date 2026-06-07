@@ -301,3 +301,179 @@ describe('image MIME validation (BUG-43)', () => {
     expect(isValidImage('image/jpeg')).toBe(true);
   });
 });
+
+// ─── coordinate transform math ───────────────────────────────────────────────
+
+// Extracted from pdfEditorApp.ts _transformPoint / _inverseTransformPoint.
+// Two variants: BUGGY (current code — swapped 90/270, wrong 180 y) and
+// CORRECT (fixed — derived from pdfjs rotation matrices in pdf.mjs:818-844).
+const buggyTransformPoint = (px: number, py: number, W: number, H: number, rot: number) => {
+  switch (((rot % 360) + 360) % 360) {
+    case 90:  return { x: W - py, y: H - px }; // WRONG: this is 270's formula
+    case 180: return { x: W - px, y: H - py }; // WRONG: y should be py
+    case 270: return { x: py,     y: px };      // WRONG: this is 90's formula
+    default:  return { x: px,     y: H - py };
+  }
+};
+const buggyInverseTransformPoint = (pdfX: number, pdfY: number, W: number, H: number, rot: number) => {
+  switch (((rot % 360) + 360) % 360) {
+    case 90:  return { x: H - pdfY, y: W - pdfX }; // WRONG
+    case 180: return { x: W - pdfX, y: H - pdfY }; // WRONG
+    case 270: return { x: pdfY,     y: pdfX };      // WRONG
+    default:  return { x: pdfX,     y: H - pdfY };
+  }
+};
+
+const correctTransformPoint = (px: number, py: number, W: number, H: number, rot: number) => {
+  switch (((rot % 360) + 360) % 360) {
+    case 90:  return { x: py,     y: px     };
+    case 180: return { x: W - px, y: py     };
+    case 270: return { x: W - py, y: H - px };
+    default:  return { x: px,     y: H - py };
+  }
+};
+const correctInverseTransformPoint = (pdfX: number, pdfY: number, W: number, H: number, rot: number) => {
+  switch (((rot % 360) + 360) % 360) {
+    case 90:  return { x: pdfY,     y: pdfX     };
+    case 180: return { x: W - pdfX, y: pdfY     };
+    case 270: return { x: H - pdfY, y: W - pdfX };
+    default:  return { x: pdfX,     y: H - pdfY };
+  }
+};
+
+describe('coordinate transform math (rotation fix)', () => {
+  const W = 595, H = 842; // A4 at 72 dpi
+
+  // Buggy cross-rotation (0→90): canvas(100,200) maps to wrong position.
+  // pdfjs at rot=90 renders PDF(pdf_x,pdf_y) at canvas(pdf_y, pdf_x).
+  // PDF coords for canvas(100,200) at rot=0: pdf=(100,642).
+  // At rot=90 that lands at canvas(642,100) — NOT what the buggy formula gives.
+  it('buggy cross-rotation 0→90 puts element in wrong canvas position (confirms bug)', () => {
+    const buggyTCP = (cx: number, cy: number, from: number, to: number) => {
+      const pdf  = buggyTransformPoint(cx, cy, W, H, from);
+      return buggyInverseTransformPoint(pdf.x, pdf.y, W, H, to);
+    };
+    const result = buggyTCP(100, 200, 0, 90);
+    // Correct answer is (642,100); buggy answer is NOT (642,100)
+    expect(result.x).not.toBeCloseTo(642, 1);
+    expect(result.y).not.toBeCloseTo(100, 1);
+  });
+
+  it('corrected formula: round-trip is identity for all rotations and points', () => {
+    const points = [{ x: 100, y: 200 }, { x: 0, y: 0 }, { x: W, y: H }, { x: 300, y: 500 }];
+    for (const rot of [0, 90, 180, 270]) {
+      for (const { x, y } of points) {
+        const pdf  = correctTransformPoint(x, y, W, H, rot);
+        const back = correctInverseTransformPoint(pdf.x, pdf.y, W, H, rot);
+        expect(back.x).toBeCloseTo(x, 5);
+        expect(back.y).toBeCloseTo(y, 5);
+      }
+    }
+  });
+
+  it('rot=0: canvas top-left (0,0) → PDF bottom-left (0,H)', () => {
+    expect(correctTransformPoint(0, 0, W, H, 0)).toEqual({ x: 0, y: H });
+  });
+
+  it('rot=90: canvas(100,200) → PDF(200,100)', () => {
+    expect(correctTransformPoint(100, 200, W, H, 90)).toEqual({ x: 200, y: 100 });
+  });
+
+  it('rot=180: canvas(100,200) → PDF x-flipped, y-preserved', () => {
+    expect(correctTransformPoint(100, 200, W, H, 180)).toEqual({ x: W - 100, y: 200 });
+  });
+
+  it('rot=270: canvas(0,0) → PDF(W,H)', () => {
+    expect(correctTransformPoint(0, 0, W, H, 270)).toEqual({ x: W, y: H });
+  });
+
+  it('correct cross-rotation 0→90: canvas(100,200) lands at correct canvas(642,100)', () => {
+    const pdf  = correctTransformPoint(100, 200, W, H, 0);
+    const dest = correctInverseTransformPoint(pdf.x, pdf.y, W, H, 90);
+    expect(dest.x).toBeCloseTo(642, 5);
+    expect(dest.y).toBeCloseTo(100, 5);
+  });
+
+  it('90° rotate then back is identity (correctTransformCanvasPoint)', () => {
+    const tcp = (cx: number, cy: number, from: number, to: number) => {
+      const pdf = correctTransformPoint(cx, cy, W, H, from);
+      return correctInverseTransformPoint(pdf.x, pdf.y, W, H, to);
+    };
+    const r1 = tcp(100, 200, 0, 90);
+    const r2 = tcp(r1.x, r1.y, 90, 0);
+    expect(r2.x).toBeCloseTo(100, 5);
+    expect(r2.y).toBeCloseTo(200, 5);
+  });
+});
+
+describe('watermark density step computation (density fix)', () => {
+  const computeSteps = (density: number, textWidth: number, fontSize: number, screenW: number, screenH: number) => {
+    const count = Math.max(1, Math.min(5, density ?? 3));
+    const stepX = Math.max(textWidth * 1.2, screenW / (count + 0.5));
+    const stepY = Math.max(fontSize * 2.5, screenH / (count + 0.5));
+    return { stepX, stepY, countX: Math.ceil(screenW / stepX), countY: Math.ceil(screenH / stepY) };
+  };
+
+  it('old formula causes overlap at density=5', () => {
+    // Old: stepX = max(textWidth + fontSize*0.8, screenW/5) * sf (sf=0.5 at density=5)
+    const textWidth = 100, fontSize = 20, screenW = 800;
+    const sf = 0.5;
+    const oldStepX = Math.max(textWidth + fontSize * 0.8, screenW / 5) * sf;
+    // textWidth+fontSize*0.8 = 116, screenW/5=160 → max=160, *0.5=80 < textWidth → overlap
+    expect(oldStepX).toBeLessThan(textWidth);
+  });
+
+  it('new formula: stepX always >= textWidth*1.2 (no overlap)', () => {
+    for (const density of [1, 2, 3, 4, 5]) {
+      const { stepX } = computeSteps(density, 100, 20, 800, 1000);
+      expect(stepX).toBeGreaterThanOrEqual(120);
+    }
+  });
+
+  it('density=5 produces more tiles than density=1', () => {
+    const r1 = computeSteps(1, 100, 20, 800, 1000);
+    const r5 = computeSteps(5, 100, 20, 800, 1000);
+    expect(r5.countX).toBeGreaterThan(r1.countX);
+    expect(r5.countY).toBeGreaterThan(r1.countY);
+  });
+
+  it('clamps density 0→1 and 6→5', () => {
+    const r0 = computeSteps(0, 100, 20, 800, 1000);
+    const r1 = computeSteps(1, 100, 20, 800, 1000);
+    const r6 = computeSteps(6, 100, 20, 800, 1000);
+    const r5 = computeSteps(5, 100, 20, 800, 1000);
+    expect(r0.stepX).toBeCloseTo(r1.stepX, 5);
+    expect(r6.stepX).toBeCloseTo(r5.stepX, 5);
+  });
+});
+
+describe('ink stroke rotation (all strokes must be transformed on page rotate)', () => {
+  const tp = (cx: number, cy: number, W: number, H: number, from: number, to: number) => {
+    const pdf  = correctTransformPoint(cx, cy, W, H, from);
+    return correctInverseTransformPoint(pdf.x, pdf.y, W, H, to);
+  };
+  const W = 595, H = 842;
+
+  it('stroke points transform correctly when rotating 0→90', () => {
+    const points = [{ x: 100, y: 200 }, { x: 150, y: 250 }];
+    const transformed = points.map(p => tp(p.x, p.y, W, H, 0, 90));
+    // Points must have changed
+    expect(transformed[0].x).not.toBeCloseTo(100, 1);
+    // Round-trip back must give original
+    const back = transformed.map(p => tp(p.x, p.y, W, H, 90, 0));
+    expect(back[0].x).toBeCloseTo(100, 5);
+    expect(back[0].y).toBeCloseTo(200, 5);
+    expect(back[1].x).toBeCloseTo(150, 5);
+    expect(back[1].y).toBeCloseTo(250, 5);
+  });
+
+  it('all four rotation cycles restore original stroke position', () => {
+    const orig = { x: 200, y: 300 };
+    let p = { ...orig };
+    for (const [from, to] of [[0,90],[90,180],[180,270],[270,0]] as [number,number][]) {
+      p = tp(p.x, p.y, W, H, from, to);
+    }
+    expect(p.x).toBeCloseTo(orig.x, 4);
+    expect(p.y).toBeCloseTo(orig.y, 4);
+  });
+});

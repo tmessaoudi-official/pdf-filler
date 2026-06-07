@@ -866,6 +866,12 @@ export class PDFEditorApp {
       after.set(el.id, this._rotateElementSnapshot(el, W, H, fromRot, toRot));
     }
 
+    // Transform ink strokes so they stay in correct visual position after rotation.
+    const strokes = this.inkLayer.getStrokes(pageId);
+    for (const stroke of strokes) {
+      stroke.points = stroke.points.map(p => this._transformCanvasPoint(p.x, p.y, W, H, fromRot, toRot));
+    }
+
     // TransformAnnotationsCmd executes first so elements are in correct positions
     // when RotatePageCmd's onUpdate triggers the re-render (async, so elements are
     // already updated before renderElements() is called).
@@ -881,9 +887,9 @@ export class PDFEditorApp {
    *  totalRot is the effective CCW rotation (source + user) in degrees. */
   private _transformPoint(px: number, py: number, W: number, H: number, totalRot: number): { x: number; y: number } {
     switch (((totalRot % 360) + 360) % 360) {
-      case 90:  return { x: W - py, y: H - px };
-      case 180: return { x: W - px, y: H - py };
-      case 270: return { x: py,     y: px };
+      case 90:  return { x: py,     y: px     };
+      case 180: return { x: W - px, y: py     };
+      case 270: return { x: W - py, y: H - px };
       default:  return { x: px,     y: H - py };
     }
   }
@@ -891,9 +897,9 @@ export class PDFEditorApp {
   /** Inverse of _transformPoint: PDF content space → canvas space. */
   private _inverseTransformPoint(pdfX: number, pdfY: number, W: number, H: number, totalRot: number): { x: number; y: number } {
     switch (((totalRot % 360) + 360) % 360) {
-      case 90:  return { x: H - pdfY, y: W - pdfX };
-      case 180: return { x: W - pdfX, y: H - pdfY };
-      case 270: return { x: pdfY,     y: pdfX };
+      case 90:  return { x: pdfY,     y: pdfX     };
+      case 180: return { x: W - pdfX, y: pdfY     };
+      case 270: return { x: H - pdfY, y: W - pdfX };
       default:  return { x: pdfX,     y: H - pdfY };
     }
   }
@@ -1732,10 +1738,9 @@ export class PDFEditorApp {
     const fontSize = wm.fontSize * effectiveScale;
     ctx.font = `${fontSize}px Helvetica, Arial, sans-serif`;
     const textWidth = ctx.measureText(wm.text).width;
-    const densityFactors = [0, 2.0, 1.5, 1.0, 0.7, 0.5];
-    const sf = densityFactors[Math.max(1, Math.min(5, wm.density ?? 3))];
-    const stepX = Math.max(textWidth + fontSize * 0.8, screenW / 5) * sf;
-    const stepY = Math.max(fontSize * 2, screenH / 4) * sf;
+    const count = Math.max(1, Math.min(5, wm.density ?? 3));
+    const stepX = Math.max(textWidth * 1.2, screenW / (count + 0.5));
+    const stepY = Math.max(fontSize * 2.5, screenH / (count + 0.5));
     const col = this.hexToRgbValues(wm.color);
     ctx.fillStyle = `rgba(${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)},${wm.opacity})`;
     ctx.textBaseline = 'alphabetic';
