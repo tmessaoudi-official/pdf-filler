@@ -238,13 +238,13 @@ if (this._exportPreviewOpen) {
 3. **BUG-07**: `setPointerCapture` wrapped in try/catch in all 3 locations
 4. **BUG-04**: SELECT button added to toolbar (↖, active by default, synced with mode)
 
-### Phase B — Element rotation (core feature, ~1 day)
-1. Add `rotation: number` to element data model and `PDFElement` type
-2. Apply `transform: rotate(${el.rotation}deg)` in `renderElements()`
-3. On document page rotation, increment all elements' `rotation` by ±90
-4. Add rotation handle UI to element controls
-5. Free-angle drag rotation (no 45° snapping)
-6. Persist rotation in undo/redo and export (`_drawElementOnPage`)
+### Phase B — Element rotation ✅ DONE (commit 77d34e5)
+1. Add `rotation: number` to element data model and `PDFElement` type ✓
+2. Apply `transform: rotate(${el.rotation}deg)` in `renderElements()` ✓
+3. On document page rotation, increment all elements' `rotation` by ±90 ✓
+4. Add rotation handle UI to element controls (↻ purple circle, top-center) ✓
+5. Free-angle drag rotation (no 45° snapping) via `startRotation()`/`_rotate()` ✓
+6. Persist rotation in undo/redo (`RotateElementCmd`) and export (`_drawElementOnPage`) ✓
 
 ### Phase C — Export correctness verification
 1. Verify pdf-lib export respects `el.rotation` for all element types
@@ -254,6 +254,7 @@ if (this._exportPreviewOpen) {
 ---
 
 ## Decisions Log
+- [2026-06-07] AGREED: Phase B complete — element rotation committed as 77d34e5; 80/80 tests pass
 - [2026-06-07] AGREED: Phase sequence A → B → C before any publish
 - [2026-06-07] AGREED: BUG-03 watermark fix: keep `textWidth*1.2` floor (prevents overlap); the prior plan's "remove floor entirely" was wrong (advisor confirmed)
 - [2026-06-07] CONFIRMED: Redaction is cryptographically secure (rasterization approach)

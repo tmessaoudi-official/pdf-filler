@@ -126,7 +126,7 @@
       text-transform: uppercase;
       flex-shrink: 0;
     }
-    #navGroup { margin-inline-start: auto; }
+    #navGroup { }
     .color-swatches { display: flex; gap: 3px; align-items: center; }
     .color-swatch {
       width: 16px; height: 16px;
@@ -422,6 +422,7 @@
       min-width: 5px;
       min-height: 5px;
       touch-action: none;
+      z-index: 2; /* above textLayer (z:1) so SELECT mode drag still works */
     }
     .pdf-element.selected {
       border-color: #ef4444;
@@ -621,6 +622,10 @@
       pointer-events: none; /* enabled in select mode via JS */
       user-select: text;
       -webkit-user-select: text;
+      /* pdfjs-dist v6 scale vars (pdf_viewer.css is not imported; we inline what we need) */
+      --min-font-size: 1;
+      --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+      --min-font-size-inv: calc(1 / var(--min-font-size));
     }
     .textLayer span,
     .textLayer br {
@@ -629,6 +634,12 @@
       white-space: pre;
       cursor: text;
       transform-origin: 0% 0%;
+      /* pdfjs-dist v6: font-size and transform driven by CSS vars set inline per-span */
+      --font-height: 0;
+      --scale-x: 1;
+      --rotate: 0deg;
+      font-size: calc(var(--text-scale-factor) * var(--font-height));
+      transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
     }
     .textLayer :is(span, br)::selection {
       background-color: rgba(0, 0, 255, 0.25);
@@ -898,6 +909,14 @@
       <button id="findBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.findTitle" title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
+    <div class="toolbar-group" id="tbg-actions">
+      <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button>
+      <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
+      <button id="watermarkBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.watermarkTitle" title="Watermark settings">≋</button>
+      <button id="helpBtn" class="btn btn-icon" data-i18n-title="toolbar.helpTitle" title="Keyboard shortcuts (?)">?</button>
+      <input type="file" id="addPdfInput" accept="application/pdf,image/*" multiple>
+    </div>
+    <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-shapes">
       <button id="arrowBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
       <button id="rectBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
@@ -905,14 +924,6 @@
       <button id="freehandBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
       <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
       <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
-    </div>
-    <div class="toolbar-sep" id="tbsep-3"></div>
-    <div class="toolbar-group" id="tbg-actions">
-      <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button>
-      <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
-      <button id="watermarkBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.watermarkTitle" title="Watermark settings">≋</button>
-      <button id="helpBtn" class="btn btn-icon" data-i18n-title="toolbar.helpTitle" title="Keyboard shortcuts (?)">?</button>
-      <input type="file" id="addPdfInput" accept="application/pdf,image/*" multiple>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
@@ -1048,6 +1059,7 @@
       <tr><td>Ctrl+← / Ctrl+→</td><td data-i18n="modal.help.actions.CtrlNav">Previous / next page</td></tr>
       <tr><td>?</td><td data-i18n="modal.help.actions.Question">Show this panel</td></tr>
     </table>
+    <p style="margin-top:10px;font-size:11px;color:#64748b;line-height:1.5" data-i18n="modal.help.ctrlCNote">* Ctrl+C copies the selected annotation element. If PDF text is selected, the browser's native copy takes precedence instead.</p>
   </div>
 </div>
 

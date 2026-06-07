@@ -440,7 +440,7 @@ export class PDFEditorApp {
           case 'z': e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); break;
           case 'y': e.preventDefault(); this.redo(); break;
           case 'f': e.preventDefault(); if (this.documentModel.pageCount) this._openFindBar(); break;
-          case 'c': e.preventDefault(); this._copySelectedElement(); break;
+          case 'c': if (!window.getSelection()?.toString()) { e.preventDefault(); this._copySelectedElement(); } break;
           case 'v': e.preventDefault(); this._pasteElement(); break;
           case 'arrowright': e.preventDefault(); this.nextPage(); break;
           case 'arrowleft':  e.preventDefault(); this.prevPage(); break;
@@ -942,16 +942,16 @@ export class PDFEditorApp {
       };
     }
 
-    // Standard box elements: derive new bounding box from all 4 transformed corners
-    const corners = [
-      tp(el.x, el.y), tp(el.x + el.width, el.y),
-      tp(el.x, el.y + el.height), tp(el.x + el.width, el.y + el.height),
-    ];
-    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    // Standard box elements: transform center, keep original dimensions.
+    // el.rotation is already incremented by delta (in _rotatePage line 870) so CSS
+    // transform: rotate(el.rotation deg) handles the visual reorientation — swapping
+    // width/height here would cancel the visual rotation out instead of preserving it.
+    const c = tp(el.x + el.width / 2, el.y + el.height / 2);
     return {
-      x: Math.min(...xs), y: Math.min(...ys),
-      width:  Math.max(...xs) - Math.min(...xs) || el.width,
-      height: Math.max(...ys) - Math.min(...ys) || el.height,
+      x: c.x - el.width / 2,
+      y: c.y - el.height / 2,
+      width: el.width,
+      height: el.height,
     };
   }
 
@@ -1214,6 +1214,7 @@ export class PDFEditorApp {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     document.getElementById('emptyState')!.style.display = 'flex';
     this._disableFileMenuDocItems();
+    this.renderElements(); // clear annotation DOM nodes after model is reset
     this.showToast(t('toast.documentClosed'));
   }
 
