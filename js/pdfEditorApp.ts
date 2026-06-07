@@ -310,9 +310,14 @@ export class PDFEditorApp {
 
     this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
       swatch.addEventListener('click', () => {
-        if (this.ui.textColorInput.disabled) return;
-        this.ui.textColorInput.value = (swatch as HTMLElement).dataset["color"] ?? '#000000';
-        this.ui.textColorInput.dispatchEvent(new Event('change'));
+        const color = (swatch as HTMLElement).dataset["color"] ?? '#000000';
+        if (!this.ui.textColorInput.disabled) {
+          this.ui.textColorInput.value = color;
+          this.ui.textColorInput.dispatchEvent(new Event('change'));
+        } else if (!this.ui.shapeColor.disabled) {
+          this.ui.shapeColor.value = color;
+          this.ui.shapeColor.dispatchEvent(new Event('input'));
+        }
       });
     });
 
@@ -646,19 +651,25 @@ export class PDFEditorApp {
 
     if (myGen !== this._searchGen) return; // stale after search
 
-    // Also match user-added text boxes on the current page
-    for (const el of this.elements) {
-      if (el.type !== 'text' || el.pageId !== docPage.id) continue;
-      const textEl = el as TextElement;
-      if (!textEl.text) continue;
-      let matched = false;
+    // Also match user-added text boxes and comments on the current page
+    const _matchesQuery = (text: string): boolean => {
       if (this._findRegex) {
-        try { matched = new RegExp(query, this._findCaseSensitive ? '' : 'i').test(textEl.text); } catch { /* invalid regex */ }
-      } else {
-        const haystack = this._findCaseSensitive ? textEl.text : textEl.text.toLowerCase();
-        matched = haystack.includes(this._findCaseSensitive ? query : query.toLowerCase());
+        try { return new RegExp(query, this._findCaseSensitive ? '' : 'i').test(text); } catch { return false; }
       }
-      if (matched) this._findMatches.push({ pageId: docPage.id, x: textEl.x, y: textEl.y, width: textEl.width, height: textEl.height });
+      const haystack = this._findCaseSensitive ? text : text.toLowerCase();
+      return haystack.includes(this._findCaseSensitive ? query : query.toLowerCase());
+    };
+    for (const el of this.elements) {
+      if (el.pageId !== docPage.id) continue;
+      if (el.type === 'text') {
+        const textEl = el as TextElement;
+        if (textEl.text && _matchesQuery(textEl.text))
+          this._findMatches.push({ pageId: docPage.id, x: textEl.x, y: textEl.y, width: textEl.width, height: textEl.height });
+      } else if (el.type === 'comment') {
+        const commentEl = el as CommentElement;
+        if (commentEl.text && _matchesQuery(commentEl.text))
+          this._findMatches.push({ pageId: docPage.id, x: commentEl.x, y: commentEl.y, width: commentEl.width, height: commentEl.height });
+      }
     }
 
     if (this._findMatches.length > 0) {
@@ -867,7 +878,11 @@ export class PDFEditorApp {
         points: (el as ShapeElement).points?.map(p => ({ ...p })),
       });
       const snap = this._rotateElementSnapshot(el, W, H, fromRot, toRot);
-      snap.rotation = ((el.rotation + delta) % 360 + 360) % 360;
+      // Arrows and freehand encode rotation geometrically (x1/y1/x2/y2 or points).
+      // Setting snap.rotation here would double-apply the rotation via CSS.
+      const shapType = (el as ShapeElement).shapeType;
+      const isGeometric = el.type === 'shape' && (shapType === 'arrow' || shapType === 'freehand');
+      if (!isGeometric) snap.rotation = ((el.rotation + delta) % 360 + 360) % 360;
       after.set(el.id, snap);
     }
 

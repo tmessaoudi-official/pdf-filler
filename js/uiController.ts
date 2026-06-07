@@ -283,7 +283,8 @@ export class UIController {
     r.fontSizeDownBtn.disabled = !isText;
     r.fontSizeUpBtn.disabled   = !isText;
     r.textColorInput.disabled  = !isText;
-    r.colorSwatches.classList.toggle('disabled', !isText);
+    const shapeSwatchActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
+    r.colorSwatches.classList.toggle('disabled', !isText && !shapeSwatchActive);
     if (isText) {
       r.fontFamily.value = (el as TextElement).fontFamily || 'Arial';
       r.boldBtn.classList.toggle('btn-active-fmt',   !!(el as TextElement).bold);

@@ -178,7 +178,7 @@ export class InteractionHandler {
         case 'highlight': case 'redaction': return [5, 5];
         case 'shape':     return [10, 10];
         case 'image':     case 'signature': return [20, 20];
-        case 'comment':   return [80, 40];
+        case 'comment':   return [40, 30];
         default:          return [20, 16]; // text and others
       }
     })();

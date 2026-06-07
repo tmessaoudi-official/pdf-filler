@@ -259,6 +259,8 @@
 
     /* Touch: show controls when element is selected (hover doesn't fire on mobile) */
     .pdf-element.selected .element-controls { opacity: 1; }
+    /* Comments: delete button lives inside the element at top-right corner */
+    .comment-element .element-controls { opacity: 1; top: 4px; inset-inline-end: 4px; }
     /* Touch: prevent container scroll while dragging an element */
     .pdf-element { touch-action: none; }
     /* Signature canvas fills its container, JS sets intrinsic size */
@@ -948,6 +950,10 @@
         <button class="color-swatch" data-color="#2563eb" style="background:#2563eb" data-i18n-title="colors.blue" title="Blue"></button>
         <button class="color-swatch" data-color="#16a34a" style="background:#16a34a" data-i18n-title="colors.green" title="Green"></button>
         <button class="color-swatch" data-color="#ea580c" style="background:#ea580c" data-i18n-title="colors.orange" title="Orange"></button>
+        <button class="color-swatch" data-color="#eab308" style="background:#eab308" data-i18n-title="colors.yellow" title="Yellow"></button>
+        <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed" data-i18n-title="colors.purple" title="Purple"></button>
+        <button class="color-swatch" data-color="#0891b2" style="background:#0891b2" data-i18n-title="colors.teal" title="Teal"></button>
+        <button class="color-swatch" data-color="#6b7280" style="background:#6b7280" data-i18n-title="colors.gray" title="Gray"></button>
         <button class="color-swatch" data-color="#ffffff" style="background:#ffffff" data-i18n-title="colors.white" title="White"></button>
       </div>
     </div>

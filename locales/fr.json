@@ -56,6 +56,10 @@
     "blue": "Bleu",
     "green": "Vert",
     "orange": "Orange",
+    "yellow": "Jaune",
+    "purple": "Violet",
+    "teal": "Bleu-vert",
+    "gray": "Gris",
     "white": "Blanc"
   },
   "findbar": {
