@@ -300,6 +300,24 @@ export interface ElementTransformSnapshot {
   x: number; y: number; width: number; height: number;
   x1?: number; y1?: number; x2?: number; y2?: number;
   points?: Array<{ x: number; y: number }>;
+  rotation?: number;
+}
+
+export class RotateElementCmd implements Command {
+  constructor(
+    private elements: PDFElement[],
+    private el: PDFElement,
+    private before: number,
+    private after: number,
+  ) {}
+  execute() {
+    const live = this.elements.find(e => e.id === this.el.id) ?? this.el;
+    live.rotation = this.after;
+  }
+  undo() {
+    const live = this.elements.find(e => e.id === this.el.id) ?? this.el;
+    live.rotation = this.before;
+  }
 }
 
 export class InkStrokeCmd implements Command {
@@ -334,6 +352,7 @@ export class TransformAnnotationsCmd implements Command {
       const s = snaps.get(el.id);
       if (!s) continue;
       el.x = s.x; el.y = s.y; el.width = s.width; el.height = s.height;
+      if (s.rotation !== undefined) el.rotation = s.rotation;
       // ShapeElement extra fields — cast to any to avoid circular import
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sh = el as any;

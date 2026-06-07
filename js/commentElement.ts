@@ -59,6 +59,7 @@ export class CommentElement extends PDFElement {
     textarea.addEventListener('click', e => e.stopPropagation());
 
     wrapper.appendChild(textarea);
+    wrapper.appendChild(this.createRotationHandle());
     wrapper.appendChild(this.createControls());
     wrapper.appendChild(this.createResizeHandle());
     container.appendChild(wrapper);

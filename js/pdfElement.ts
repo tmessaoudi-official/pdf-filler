@@ -8,6 +8,7 @@ export interface ElementJSON {
   width: number;
   height: number;
   pageId: string;
+  rotation?: number;
   [key: string]: unknown;
 }
 
@@ -20,6 +21,7 @@ export abstract class PDFElement {
   width: number;
   height: number;
   pageId: string;
+  rotation = 0;
 
   constructor(type: ElementType, x: number, y: number, width: number, height: number, pageId: string) {
     this.id = PDFElement._nextId++;
@@ -52,6 +54,14 @@ export abstract class PDFElement {
     return controls;
   }
 
+  createRotationHandle(): HTMLDivElement {
+    const handle = document.createElement('div');
+    handle.className = 'rotation-handle';
+    handle.title = 'Rotate';
+    handle.textContent = '↻';
+    return handle;
+  }
+
   createResizeHandle(): HTMLDivElement {
     const handle = document.createElement('div');
     handle.className = 'resize-handle';
@@ -61,7 +71,7 @@ export abstract class PDFElement {
   abstract render(container: HTMLElement, canvasOffset: { left: number; top: number }, scale: number): HTMLDivElement;
 
   toJSON(): ElementJSON {
-    return { id: this.id, type: this.type, x: this.x, y: this.y, width: this.width, height: this.height, pageId: this.pageId };
+    return { id: this.id, type: this.type, x: this.x, y: this.y, width: this.width, height: this.height, pageId: this.pageId, rotation: this.rotation };
   }
 }
 

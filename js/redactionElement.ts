@@ -21,6 +21,7 @@ export class RedactionElement extends PDFElement {
       zIndex:     '15',
     });
 
+    wrapper.appendChild(this.createRotationHandle());
     wrapper.appendChild(this.createControls());
     wrapper.appendChild(this.createResizeHandle());
     container.appendChild(wrapper);

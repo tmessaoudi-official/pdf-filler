@@ -33,6 +33,7 @@ export class HighlightElement extends PDFElement {
       zIndex: '2',
     });
 
+    div.appendChild(this.createRotationHandle());
     div.appendChild(this.createControls());
     div.appendChild(this.createResizeHandle());
     return div;

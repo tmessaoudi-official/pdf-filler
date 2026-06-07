@@ -18,6 +18,7 @@ export class SignatureElement extends PDFElement {
     div.style.backgroundSize = 'contain';
     div.style.backgroundRepeat = 'no-repeat';
     div.style.backgroundPosition = 'center';
+    div.appendChild(this.createRotationHandle());
     div.appendChild(this.createControls());
     div.appendChild(this.createResizeHandle());
     return div;

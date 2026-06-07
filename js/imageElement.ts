@@ -39,6 +39,7 @@ export class ImageElement extends PDFElement {
     img.draggable = false;
 
     div.appendChild(img);
+    div.appendChild(this.createRotationHandle());
     div.appendChild(this.createControls());
     div.appendChild(this.createResizeHandle());
     return div;

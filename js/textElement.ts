@@ -46,6 +46,7 @@ export class TextElement extends PDFElement {
     input.addEventListener('input', (e) => { this.text = (e.target as HTMLInputElement).value; });
 
     div.appendChild(input);
+    div.appendChild(this.createRotationHandle());
     div.appendChild(this.createControls());
     div.appendChild(this.createResizeHandle());
     return div;

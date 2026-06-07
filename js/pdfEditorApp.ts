@@ -861,11 +861,14 @@ export class PDFEditorApp {
     const after  = new Map<number, ElementTransformSnapshot>();
     for (const el of pageElements) {
       before.set(el.id, { x: el.x, y: el.y, width: el.width, height: el.height,
+        rotation: el.rotation,
         x1: (el as ShapeElement).x1, y1: (el as ShapeElement).y1,
         x2: (el as ShapeElement).x2, y2: (el as ShapeElement).y2,
         points: (el as ShapeElement).points?.map(p => ({ ...p })),
       });
-      after.set(el.id, this._rotateElementSnapshot(el, W, H, fromRot, toRot));
+      const snap = this._rotateElementSnapshot(el, W, H, fromRot, toRot);
+      snap.rotation = ((el.rotation + delta) % 360 + 360) % 360;
+      after.set(el.id, snap);
     }
 
     // Transform ink strokes so they stay in correct visual position after rotation.
@@ -1532,6 +1535,10 @@ export class PDFEditorApp {
     const currentPageElements = this.elements.filter(el => el.pageId === currentPageId);
     currentPageElements.forEach(element => {
       const div = element.render(this.ui.container, canvasOffset, this.zoomScale);
+      if (element.rotation) {
+        div.style.transform = `rotate(${element.rotation}deg)`;
+        div.style.transformOrigin = 'center center';
+      }
       if (this.selectedElement && this.selectedElement.id === element.id) div.classList.add('selected');
       div.addEventListener('click', (e) => { e.stopPropagation(); this.selectElement(element); });
       div.addEventListener('pointerdown', (e) => { this.interactionHandler.handlePointerDown(e, element, div); });
@@ -1981,7 +1988,7 @@ export class PDFEditorApp {
         const exportErrors: string[] = [];
         for (const element of pageElements) {
           try {
-            await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot);
+            await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot);
           } catch {
             exportErrors.push(`${element.type} (id ${element.id})`);
           }
@@ -2052,7 +2059,7 @@ export class PDFEditorApp {
         const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
         const exportErrors: string[] = [];
         for (const element of pageElements) {
-          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot); }
           catch { exportErrors.push(`${element.type} (id ${element.id})`); }
         }
         if (exportErrors.length > 0) {
@@ -2224,13 +2231,30 @@ export class PDFEditorApp {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, w: number, libs: { rgb: any; StandardFonts: any }, W_orig = 0, H_orig = 0, totalRot = 0): Promise<void> {
+  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, w: number, libs: { rgb: any; StandardFonts: any; degrees?: any }, W_orig = 0, H_orig = 0, totalRot = 0): Promise<void> {
     const { rgb, StandardFonts } = libs;
     // W_orig/H_orig are the unrotated content dims; fall back to effective dims when totalRot=0
     const Wo = W_orig || w;
     const Ho = H_orig || h;
     const tp = (px: number, py: number) => this._transformPoint(px, py, Wo, Ho, totalRot);
     const swapDims = ((totalRot % 360) + 360) % 360 === 90 || ((totalRot % 360) + 360) % 360 === 270;
+    // Element's own rotation (degrees, CW). pdf-lib uses CCW so negate.
+    const elemRot = element.rotation ?? 0;
+    const pdfRotVal = libs.degrees ? libs.degrees(-elemRot) : undefined;
+
+    // Compute anchor adjusted so rotation is around element center, not corner.
+    // pdf-lib rotates around (x, y) so we shift the anchor by the inverse rotation offset.
+    const _anchorForCenter = (cornerX: number, cornerY: number, ew: number, eh: number) => {
+      if (!elemRot || !pdfRotVal) return { x: cornerX, y: cornerY };
+      const rad = (-elemRot) * Math.PI / 180;
+      const cx = cornerX + ew / 2;
+      const cy = cornerY + eh / 2;
+      const ox = -ew / 2, oy = -eh / 2;
+      return {
+        x: cx + ox * Math.cos(rad) - oy * Math.sin(rad),
+        y: cy + ox * Math.sin(rad) + oy * Math.cos(rad),
+      };
+    };
 
     if (element.type === 'text' && (element as TextElement).text) {
       const te = element as TextElement;
@@ -2242,24 +2266,34 @@ export class PDFEditorApp {
       const lineHeight = te.fontSize * 1.2;
       te.text.split('\n').forEach((line, i) => {
         if (!line) return;
-        const anchor = tp(te.x, te.y + te.fontSize * 0.9 + i * lineHeight);
-        page.drawText(line, { x: anchor.x, y: anchor.y, size: te.fontSize, font, color: rgb(col.r, col.g, col.b) });
+        const rawAnchor = tp(te.x, te.y + te.fontSize * 0.9 + i * lineHeight);
+        const a = elemRot ? _anchorForCenter(rawAnchor.x, rawAnchor.y, 0, 0) : rawAnchor;
+        page.drawText(line, { x: a.x, y: a.y, size: te.fontSize, font, color: rgb(col.r, col.g, col.b), ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
       });
     } else if (element.type === 'signature') {
       const se = element as SignatureElement;
       const img = await pdfDoc.embedPng(this._dataUrlToBytes(se.data));
-      const anchor = tp(element.x, element.y + element.height);
-      page.drawImage(img, { x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height });
+      const ew = swapDims ? element.height : element.width;
+      const eh = swapDims ? element.width : element.height;
+      const corner = tp(element.x, element.y + element.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawImage(img, { x: a.x, y: a.y, width: ew, height: eh, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     } else if (element.type === 'image') {
       const ie = element as ImageElement;
       const pdfImg = await this._embedImage(pdfDoc, ie.src);
-      const anchor = tp(element.x, element.y + element.height);
-      page.drawImage(pdfImg, { x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height });
+      const ew = swapDims ? element.height : element.width;
+      const eh = swapDims ? element.width : element.height;
+      const corner = tp(element.x, element.y + element.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawImage(pdfImg, { x: a.x, y: a.y, width: ew, height: eh, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     } else if (element.type === 'highlight') {
       const he = element as HighlightElement;
       const col = this.hexToRgbValues(he.color);
-      const anchor = tp(element.x, element.y + element.height);
-      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, color: rgb(col.r, col.g, col.b), opacity: he.opacity, borderWidth: 0 });
+      const ew = swapDims ? element.height : element.width;
+      const eh = swapDims ? element.width : element.height;
+      const corner = tp(element.x, element.y + element.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, color: rgb(col.r, col.g, col.b), opacity: he.opacity, borderWidth: 0, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     } else if (element.type === 'shape') {
       const she = element as ShapeElement;
       const col = this.hexToRgbValues(she.strokeColor);
@@ -2267,13 +2301,16 @@ export class PDFEditorApp {
       const lw = she.strokeWidth;
       switch (she.shapeType) {
         case 'rect': {
-          const anchor = tp(element.x, element.y + element.height);
-          page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, borderColor: shapeColor, borderWidth: lw });
+          const ew = swapDims ? element.height : element.width;
+          const eh = swapDims ? element.width : element.height;
+          const corner = tp(element.x, element.y + element.height);
+          const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+          page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }
         case 'ellipse': {
           const center = tp(element.x + element.width / 2, element.y + element.height / 2);
-          page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, borderColor: shapeColor, borderWidth: lw });
+          page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }
         case 'arrow': {
@@ -2301,17 +2338,23 @@ export class PDFEditorApp {
     } else if (element.type === 'comment') {
       const ce = element as CommentElement;
       const col = this.hexToRgbValues(ce.color);
-      const anchor = tp(ce.x, ce.y + ce.height);
-      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? ce.height : ce.width, height: swapDims ? ce.width : ce.height, color: rgb(col.r, col.g, col.b), opacity: 0.85, borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1 });
+      const ew = swapDims ? ce.height : ce.width;
+      const eh = swapDims ? ce.width : ce.height;
+      const corner = tp(ce.x, ce.y + ce.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, color: rgb(col.r, col.g, col.b), opacity: 0.85, borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
       if (ce.text) {
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         // Text starts at top of box with 4px padding + ~10pt ascent (matches canvas textarea layout)
         const anchor2 = tp(ce.x + 4, ce.y + 4 + 10);
-        page.drawText(ce.text.slice(0, 200), { x: anchor2.x, y: anchor2.y, size: 10, font, color: rgb(0, 0, 0), maxWidth: swapDims ? ce.height - 8 : ce.width - 8, lineHeight: 14, opacity: 0.9 });
+        page.drawText(ce.text.slice(0, 200), { x: anchor2.x, y: anchor2.y, size: 10, font, color: rgb(0, 0, 0), maxWidth: swapDims ? ce.height - 8 : ce.width - 8, lineHeight: 14, opacity: 0.9, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
       }
     } else if (element.type === 'redaction') {
-      const anchor = tp(element.x, element.y + element.height);
-      page.drawRectangle({ x: anchor.x, y: anchor.y, width: swapDims ? element.height : element.width, height: swapDims ? element.width : element.height, color: rgb(0, 0, 0), borderWidth: 0 });
+      const ew = swapDims ? element.height : element.width;
+      const eh = swapDims ? element.width : element.height;
+      const corner = tp(element.x, element.y + element.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, color: rgb(0, 0, 0), borderWidth: 0, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     }
   }
 

@@ -1,7 +1,7 @@
 import type { PDFEditorApp } from './pdfEditorApp';
 import type { PDFElement } from './pdfElement';
 import type { ShapeElement } from './shapeElement';
-import { MoveResizeCmd } from './historyManager';
+import { MoveResizeCmd, RotateElementCmd } from './historyManager';
 
 interface PendingTouchDrag {
   element: PDFElement;
@@ -17,6 +17,7 @@ export class InteractionHandler {
   private app: PDFEditorApp;
   isDragging = false;
   isResizing = false;
+  isRotating = false;
   currentElement: PDFElement | null = null;
   private _activePointerId: number | null = null;
   private offsetX = 0;
@@ -28,13 +29,17 @@ export class InteractionHandler {
   private _beforeState: Record<string, unknown> | null = null;
   private _pendingTouchDrag: PendingTouchDrag | null = null;
   private static readonly _DRAG_THRESHOLD = 5;
+  private _rotCenterX = 0;
+  private _rotCenterY = 0;
+  private _rotStartAngle = 0;
+  private _rotStartRotation = 0;
 
   constructor(app: PDFEditorApp) {
     this.app = app;
   }
 
   private _captureState(el: PDFElement): Record<string, unknown> {
-    const base = { x: el.x, y: el.y, width: el.width, height: el.height };
+    const base = { x: el.x, y: el.y, width: el.width, height: el.height, rotation: el.rotation };
     if (el.type === 'shape') {
       const s = el as ShapeElement;
       if (s.shapeType === 'arrow') {
@@ -49,7 +54,9 @@ export class InteractionHandler {
 
   handlePointerDown(e: PointerEvent, element: PDFElement, div: HTMLDivElement): void {
     if ((e.target as HTMLElement).classList.contains('control-btn')) return;
-    if ((e.target as HTMLElement).classList.contains('resize-handle')) {
+    if ((e.target as HTMLElement).classList.contains('rotation-handle')) {
+      this.startRotation(e, element, div);
+    } else if ((e.target as HTMLElement).classList.contains('resize-handle')) {
       this.startResize(e, element);
     } else if ((e.target as HTMLElement).matches('input, textarea') && e.pointerType === 'touch') {
       // On touch, defer drag start until movement threshold so tap-to-edit still works
@@ -104,6 +111,20 @@ export class InteractionHandler {
     e.preventDefault(); e.stopPropagation();
   }
 
+  private startRotation(e: PointerEvent, element: PDFElement, div: HTMLDivElement): void {
+    this.isRotating = true;
+    this.currentElement = element;
+    this._activePointerId = e.pointerId;
+    this._beforeState = this._captureState(element);
+    this._rotStartRotation = element.rotation;
+    const rect = div.getBoundingClientRect();
+    this._rotCenterX = rect.left + rect.width / 2;
+    this._rotCenterY = rect.top + rect.height / 2;
+    this._rotStartAngle = Math.atan2(e.clientY - this._rotCenterY, e.clientX - this._rotCenterX) * 180 / Math.PI;
+    try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* pointer already released */ }
+    e.preventDefault(); e.stopPropagation();
+  }
+
   handlePointerMove(e: PointerEvent): void {
     if (this._pendingTouchDrag && e.pointerId === this._pendingTouchDrag.pointerId) {
       const dx = e.clientX - this._pendingTouchDrag.startClientX;
@@ -114,6 +135,7 @@ export class InteractionHandler {
     if (e.pointerId !== this._activePointerId) return;
     if (this.isDragging && this.currentElement) this.drag(e);
     else if (this.isResizing && this.currentElement) this.resize(e);
+    else if (this.isRotating && this.currentElement) this._rotate(e);
   }
 
   private drag(e: PointerEvent): void {
@@ -187,14 +209,33 @@ export class InteractionHandler {
     this._finish();
   }
 
+  private _rotate(e: PointerEvent): void {
+    const el = this.currentElement;
+    if (!el) return;
+    const angle = Math.atan2(e.clientY - this._rotCenterY, e.clientX - this._rotCenterX) * 180 / Math.PI;
+    const delta = angle - this._rotStartAngle;
+    el.rotation = ((this._rotStartRotation + delta) % 360 + 360) % 360;
+    this.app.renderElements();
+  }
+
   private _finish(): void {
     const wasDragging = this.isDragging;
     const wasResizing = this.isResizing;
+    const wasRotating = this.isRotating;
     const movedEl = this.currentElement;
     const before = this._beforeState;
-    this.isDragging = false; this.isResizing = false;
+    this.isDragging = false; this.isResizing = false; this.isRotating = false;
     this.currentElement = null; this._activePointerId = null;
     this._beforeState = null;
+
+    if (wasRotating && movedEl && before) {
+      const beforeRot = before['rotation'] as number;
+      if (movedEl.rotation !== beforeRot) {
+        this.app.historyManager.record(new RotateElementCmd(this.app.elements, movedEl, beforeRot, movedEl.rotation));
+        this.app._autosave();
+      }
+      return;
+    }
 
     if (movedEl && (wasDragging || wasResizing) && before) {
       const after = this._captureState(movedEl);
