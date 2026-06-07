@@ -805,6 +805,23 @@
       white-space: nowrap;
       flex-shrink: 0;
     }
+    .restore-dialog {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .restore-dialog-box {
+      background: white; border-radius: 10px; padding: 28px 32px;
+      max-width: 380px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .restore-dialog-box p {
+      margin: 0; font-size: 15px; color: #1e293b; line-height: 1.5;
+    }
+    .restore-dialog-actions {
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
   </style>
 </head>
 <body>
@@ -841,6 +858,7 @@
     <div id="tbsep-break" class="toolbar-sep"></div>
     <div class="toolbar-sep" id="tbsep-1"></div>
     <div class="toolbar-group" id="tbg-edit">
+      <button id="selectBtn" class="btn btn-icon active" aria-pressed="true" data-i18n-title="toolbar.selectTitle" title="Select (Esc)">↖</button>
       <button id="addTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
       <button id="addSignatureBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
       <button id="addImageBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
@@ -952,11 +970,22 @@
   </footer>
 </div>
 
-<div id="storageBanner" role="region" aria-label="Storage notice" style="display:none">
-  <span>This tool saves your working session in your browser's local storage. No data is sent to any server.
-    <a href="./privacy.html">Privacy Policy</a>
+<div id="storageBanner" role="region" data-i18n-aria="storageBanner.ariaLabel" aria-label="Storage notice" style="display:none">
+  <span>
+    <span data-i18n="storageBanner.text">This tool saves your working session in your browser's local storage. No data is sent to any server.</span>
+    <a href="./privacy.html" data-i18n="storageBanner.privacyLink">Privacy Policy</a>
   </span>
-  <button id="storageBannerDismiss">Got it</button>
+  <button id="storageBannerDismiss" data-i18n="storageBanner.dismiss">Got it</button>
+</div>
+
+<div id="restoreDialog" class="restore-dialog" role="dialog" aria-modal="true" aria-labelledby="restoreDialogMsg" style="display:none">
+  <div class="restore-dialog-box">
+    <p id="restoreDialogMsg" data-i18n="modal.restore.message">Found a saved session. What would you like to do?</p>
+    <div class="restore-dialog-actions">
+      <button id="restoreYesBtn" class="btn btn-success" data-i18n="modal.restore.restore">Restore session</button>
+      <button id="restoreNoBtn" class="btn btn-secondary" data-i18n="modal.restore.fresh">Start fresh</button>
+    </div>
+  </div>
 </div>
 
 <div class="help-modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">

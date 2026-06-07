@@ -76,7 +76,7 @@ export class InteractionHandler {
     this._beforeState = this._captureState(p.element);
     this.offsetX = p.offsetX;
     this.offsetY = p.offsetY;
-    p.div.setPointerCapture(p.pointerId);
+    try { p.div.setPointerCapture(p.pointerId); } catch { /* pointer already released */ }
     this._pendingTouchDrag = null;
     this.drag(e);
   }
@@ -89,7 +89,7 @@ export class InteractionHandler {
     const divRect = div.getBoundingClientRect();
     this.offsetX = e.clientX - divRect.left;
     this.offsetY = e.clientY - divRect.top;
-    div.setPointerCapture(e.pointerId);
+    try { div.setPointerCapture(e.pointerId); } catch { /* pointer already released */ }
     e.preventDefault();
   }
 
@@ -100,7 +100,7 @@ export class InteractionHandler {
     this._beforeState = this._captureState(element);
     this.startX = e.clientX; this.startY = e.clientY;
     this.startWidth = element.width; this.startHeight = element.height;
-    (e.target as Element).setPointerCapture(e.pointerId);
+    try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* pointer already released */ }
     e.preventDefault(); e.stopPropagation();
   }
 

@@ -29,6 +29,7 @@
     "redactTitle": "Caviarder — dessiner un cadre noir permanent",
     "downloadLabel": "Télécharger",
     "downloadTitle": "Télécharger le PDF rempli",
+    "selectTitle": "Mode sélection / pointeur (Échap)",
     "previewExportTitle": "Aperçu des positions d'export",
     "watermarkTitle": "Paramètres du filigrane",
     "helpTitle": "Raccourcis clavier (?)"
@@ -136,6 +137,11 @@
       "banner": "C'est ici que vos annotations apparaîtront dans le PDF exporté.",
       "export": "Exporter le PDF",
       "close": "Fermer l'aperçu"
+    },
+    "restore": {
+      "message": "Une session sauvegardée a été trouvée. Que souhaitez-vous faire ?",
+      "restore": "Restaurer la session",
+      "fresh": "Recommencer"
     }
   },
   "toast": {
@@ -194,5 +200,11 @@
     "emptyState": "Téléchargez un PDF pour commencer",
     "ariaLabel": "Visionneuse de document PDF"
   },
-  "donePill": "✓ Fin du dessin"
+  "donePill": "✓ Fin du dessin",
+  "storageBanner": {
+    "ariaLabel": "Avis de stockage",
+    "text": "Cet outil enregistre votre session de travail dans le stockage local de votre navigateur. Aucune donnée n'est envoyée à un serveur.",
+    "privacyLink": "Politique de confidentialité",
+    "dismiss": "Compris"
+  }
 }

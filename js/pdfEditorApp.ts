@@ -130,6 +130,7 @@ export class PDFEditorApp {
   setupEventListeners() {
     this.ui.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
     this.ui.addPdfInput.addEventListener('change', (e) => this._handleAddPdfUpload(e));
+    this.ui.selectBtn.addEventListener('click', () => this.setMode('select'));
     this.ui.addTextBtn.addEventListener('click', () => {
       if (!this.documentModel.pageCount) return;
       this.setMode(this.mode === 'addText' ? 'select' : 'addText');
@@ -157,7 +158,8 @@ export class PDFEditorApp {
       this.setMode(this.mode === 'drawRedaction' ? 'select' : 'drawRedaction');
     });
     this.ui.previewExportBtn.addEventListener('click', () => {
-      if (this.documentModel.currentPage) this._showExportPreview();
+      if (this._exportPreviewOpen) this._hideExportPreview();
+      else if (this.documentModel.currentPage) this._showExportPreview();
     });
     this.ui.exportPreviewClose.addEventListener('click', () => this._hideExportPreview());
     this.ui.exportPreviewConfirm.addEventListener('click', () => {
@@ -1039,9 +1041,30 @@ export class PDFEditorApp {
     }
   }
 
+  private _askRestoreSession(): Promise<boolean> {
+    return new Promise(resolve => {
+      const dialog = this.ui.restoreDialog;
+      dialog.style.display = '';
+      const onYes = () => { cleanup(); resolve(true); };
+      const onNo  = () => { cleanup(); resolve(false); };
+      const cleanup = () => {
+        dialog.style.display = 'none';
+        this.ui.restoreYesBtn.removeEventListener('click', onYes);
+        this.ui.restoreNoBtn.removeEventListener('click', onNo);
+      };
+      this.ui.restoreYesBtn.addEventListener('click', onYes);
+      this.ui.restoreNoBtn.addEventListener('click', onNo);
+      this.ui.restoreYesBtn.focus();
+    });
+  }
+
   private async _restoreSession(): Promise<void> {
     const state = await loadState();
     if (!state?.sourcePdfs?.length) return;
+    if (this._isLoading) return;
+    const shouldRestore = await this._askRestoreSession();
+    if (!shouldRestore) { await clearState(); return; }
+    this._isLoading = true;
     try {
       for (const sp of state.sourcePdfs) {
         const spBytes = sp.bytes instanceof Uint8Array ? sp.bytes : new Uint8Array(sp.bytes);
@@ -1105,6 +1128,8 @@ export class PDFEditorApp {
       this.elements = [];
       this._thumbnailPanel = null;
       this.showToast(t('toast.sessionRestoreFailed'));
+    } finally {
+      this._isLoading = false;
     }
   }
 

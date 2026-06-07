@@ -29,6 +29,7 @@
     "redactTitle": "Redact — draw a permanent black box",
     "downloadLabel": "Download",
     "downloadTitle": "Download filled PDF",
+    "selectTitle": "Select / pointer mode (Esc)",
     "previewExportTitle": "Preview export positions",
     "watermarkTitle": "Watermark settings",
     "helpTitle": "Keyboard shortcuts (?)"
@@ -136,6 +137,11 @@
       "banner": "This is where your annotations will appear in the exported PDF.",
       "export": "Export PDF",
       "close": "Close Preview"
+    },
+    "restore": {
+      "message": "Found a saved session. What would you like to do?",
+      "restore": "Restore session",
+      "fresh": "Start fresh"
     }
   },
   "toast": {
@@ -194,5 +200,11 @@
     "emptyState": "Upload a PDF to get started",
     "ariaLabel": "PDF document viewer"
   },
-  "donePill": "✓ Done drawing"
+  "donePill": "✓ Done drawing",
+  "storageBanner": {
+    "ariaLabel": "Storage notice",
+    "text": "This tool saves your working session in your browser's local storage. No data is sent to any server.",
+    "privacyLink": "Privacy Policy",
+    "dismiss": "Got it"
+  }
 }

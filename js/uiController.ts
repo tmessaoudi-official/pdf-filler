@@ -94,6 +94,10 @@ export interface UIRefs {
   exportPreviewGhost:   HTMLElement;
   exportPreviewConfirm: HTMLButtonElement;
   exportPreviewClose:   HTMLButtonElement;
+  selectBtn:       HTMLButtonElement;
+  restoreDialog:   HTMLElement;
+  restoreYesBtn:   HTMLButtonElement;
+  restoreNoBtn:    HTMLButtonElement;
 }
 
 export class UIController {
@@ -191,6 +195,10 @@ export class UIController {
       exportPreviewGhost:   document.getElementById('exportPreviewGhost')   as HTMLElement,
       exportPreviewConfirm: document.getElementById('exportPreviewConfirm') as HTMLButtonElement,
       exportPreviewClose:   document.getElementById('exportPreviewClose')   as HTMLButtonElement,
+      selectBtn:      document.getElementById('selectBtn')      as HTMLButtonElement,
+      restoreDialog:  document.getElementById('restoreDialog')  as HTMLElement,
+      restoreYesBtn:  document.getElementById('restoreYesBtn')  as HTMLButtonElement,
+      restoreNoBtn:   document.getElementById('restoreNoBtn')   as HTMLButtonElement,
     };
   }
 
@@ -224,6 +232,7 @@ export class UIController {
   updateModeButtons(mode: ToolMode): void {
     const r = this.refs;
     r.canvas.style.touchAction = mode.startsWith('draw') ? 'none' : 'pan-x pan-y';
+    r.selectBtn.classList.toggle('active',       mode === 'select');
     r.addTextBtn.classList.toggle('active',      mode === 'addText');
     r.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
     r.addImageBtn.classList.toggle('active',     mode === 'addImage');
@@ -237,6 +246,7 @@ export class UIController {
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
 
     const toggles: [HTMLButtonElement, ToolMode][] = [
+      [r.selectBtn, 'select'],
       [r.addTextBtn, 'addText'], [r.addSignatureBtn, 'addSignature'], [r.addImageBtn, 'addImage'],
       [r.highlightBtn, 'drawHighlight'], [r.arrowBtn, 'drawArrow'], [r.rectBtn, 'drawRect'],
       [r.circleBtn, 'drawEllipse'], [r.freehandBtn, 'drawFreehand'], [r.commentBtn, 'addComment'],

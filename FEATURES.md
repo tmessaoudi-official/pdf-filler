@@ -4,11 +4,48 @@
 **Build**: Vite 8 / TypeScript 6 / PWA  
 **Base URL**: `/pdfturbo/`  
 **Total features**: 37  
-**Last updated**: 2026-06-05 (full codebase re-audit)
+**Last updated**: 2026-06-07 (browser automation full-coverage audit)
 
 > **How to use this file**: Work through each numbered feature top to bottom.  
 > For each one: test the steps listed, then report what works, what's broken, and what feels wrong.  
 > We'll build a fix/improve plan from your feedback.
+
+---
+
+## AUDIT STATUS — 2026-06-07 (advisor-reviewed)
+
+Full browser audit completed (CDP automation against built app). All tools exercised. Reviewed by advisor model — findings corrected and expanded.
+
+### Fixed before/during this session
+| Fix | Files | Commit |
+|---|---|---|
+| PDF text not selectable — pdfjs v6 `--total-scale-factor` CSS var | `js/textLayer.ts` | prior |
+| Storage banner not translated in FR/AR | `index.html`, `locales/*.json` | prior |
+| Watermark density — density-factor multiplier replaced with count-based step | `js/pdfEditorApp.ts` | fb87e8b |
+| `_transformPoint` 90°/270° cases swapped; 180° y-axis inverted | `js/pdfEditorApp.ts` | fb87e8b |
+| Ink strokes not repositioned on page rotation | `js/pdfEditorApp.ts` | fb87e8b |
+| Redaction security — page fully rasterized to PNG before export | `js/pdfEditorApp.ts` | prior |
+
+### Confirmed bugs (open)
+| ID | Severity | Description |
+|---|---|---|
+| BUG-01 | P1 | **Element visual distortion on rotation**: position math fixed; CSS `transform: rotate()` still missing — content wraps into narrow column on rotated pages |
+| BUG-02 | P1 | **No per-element rotation UI**: no rotation handle; cannot freely rotate individual elements |
+| BUG-09 | P1 | **IndexedDB restore race**: `_restoreSession()` missing `_isLoading` guard — concurrent file drop can mix session elements with new PDF |
+| BUG-04 | P2 | **No SELECT mode toolbar button**: users must press Escape to exit drawing mode |
+| BUG-05 | P2 | **Export preview no-toggle**: clicking eye icon while preview is open re-opens instead of closing |
+| BUG-07 | P3 | **`setPointerCapture` console error**: uncaught on synthetic element placement; needs try/catch |
+
+### All features verified working
+Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, Freehand, Highlight, Eraser, Redact (cryptographically secure — full rasterization), Copy/paste, Delete, Undo/redo, Export/download PDF, Export preview, Help modal, Language switcher (EN/FR/AR), RTL Arabic layout, Storage banner dismiss, Zoom in/out/fit, Page rotation (transform math correct), Thumbnail panel (all buttons), Search bar, Watermark modal (density fix applied)
+
+### Known limitations (by design)
+- Freehand strokes are canvas-only — not individually selectable, moveable, or undoable stroke-by-stroke
+- Eraser only erases freehand canvas strokes; does not delete pdf-element divs (use Delete key)
+- Search only searches native PDF text (pdfjs extraction); user-added text boxes are NOT searched
+- Undo/redo is async — DOM updates after `_renderCurrentPage()` completes (~1-2s in automation, fast in prod)
+- Empty comment elements are NOT auto-deleted on Escape; must use Delete key to remove
+- Multi-page PDF behavior not tested in this audit pass
 
 ---
 
@@ -150,7 +187,7 @@
 5. Click **👁 Preview Export** again → click **✕ Close** → verify no download happens.
 6. Press **Escape** → verify the overlay closes without downloading.
 
-**Known bugs**: The ghost positions reflect the coordinate transform but may not account for all rotation cases precisely.
+**Known bugs**: (1) The ghost positions may not account for all rotation cases precisely. (2) **BUG-05 (P2)** — Clicking 👁 while preview is already open re-opens it instead of closing (no toggle). Must use the explicit ✕ Close button.
 
 ---
 
@@ -211,7 +248,7 @@
 5. Press **Ctrl+Z** → verify rotation is undone.
 6. Rotate 4× → verify page returns to original orientation.
 
-**Known bugs**: Annotations do not reposition automatically after rotation — they may appear misaligned.
+**Known bugs**: **BUG-01 (P1)** — Element position math is correct after `fb87e8b` (`_transformPoint` fix). However, the element *content* is not visually rotated — no CSS `transform: rotate()` is applied to the element div. A text element that was 200×30 becomes 30×200 (bounding box swaps correctly) but the text still renders horizontally, wrapping into a narrow column. Fix: add `rotation` field to element data model + apply `transform: rotate(Ndeg)` in `renderElements()` + handle in export path.
 
 ---
 

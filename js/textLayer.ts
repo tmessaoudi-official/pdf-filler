@@ -27,6 +27,11 @@ export class TextLayerManager {
       width:  `${Math.round(viewport.width)}px`,
       height: `${Math.round(viewport.height)}px`,
     });
+    // pdfjs-dist v6 sizes the text layer via CSS round() functions that depend on
+    // --total-scale-factor. Without this variable the computed width/height is 0.
+    textDiv.style.setProperty('--total-scale-factor', `${viewport.scale}`);
+    textDiv.style.setProperty('--scale-round-x', '1px');
+    textDiv.style.setProperty('--scale-round-y', '1px');
     this._container.appendChild(textDiv);
     this._textDiv = textDiv;
 
