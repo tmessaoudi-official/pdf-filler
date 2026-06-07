@@ -21,7 +21,7 @@ import {
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
   MacroCmd, TransformAnnotationsCmd, ClearInkCmd,
 } from './historyManager';
-import type { ElementTransformSnapshot } from './historyManager';
+import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
 import { InkLayerHandler } from './inkLayerHandler';
 import { DocumentModel } from './documentModel';
@@ -247,7 +247,11 @@ export class PDFEditorApp {
     this.ui.fitBtn.addEventListener('click', () => this.fitToWidth());
     this.ui.undoBtn.addEventListener('click', () => this.undo());
     this.ui.redoBtn.addEventListener('click', () => this.redo());
-    this.ui.copyBtn.addEventListener('click', () => this._copySelectedElement());
+    this.ui.copyBtn.addEventListener('click', () => {
+      const sel = window.getSelection()?.toString();
+      if (sel) { navigator.clipboard.writeText(sel).catch(() => {}); return; }
+      this._copySelectedElement();
+    });
     this.ui.pasteBtn.addEventListener('click', () => this._pasteElement());
 
     this.ui.arrowBtn.addEventListener('click',    () => {
@@ -365,7 +369,7 @@ export class PDFEditorApp {
         this.renderElements(); this._autosave();
       }
     });
-    this.ui.textColorInput.addEventListener('change', (e) => {
+    this.ui.textColorInput.addEventListener('input', (e) => {
       if (this.selectedElement && this.selectedElement.type === 'text') {
         const te = this.selectedElement as TextElement;
         const before = { color: te.color };
@@ -709,7 +713,7 @@ export class PDFEditorApp {
         width: `${match.width * this.zoomScale}px`,
         height: `${match.height * this.zoomScale}px`,
         pointerEvents: 'none',
-        zIndex: '3',
+        zIndex: '25',
       });
       this.ui.container.appendChild(div);
       if (isActive) activeDiv = div;
@@ -850,7 +854,15 @@ export class PDFEditorApp {
       this._onPageStructureChange();
     });
 
-    if (!pageElements.length) {
+    // Capture ink stroke state before the early-return so ink-only pages also rotate.
+    const inkStrokes = this.inkLayer.getStrokes(pageId);
+    const inkBefore  = inkStrokes.map(s => s.points.map(p => ({ ...p })));
+    const inkAfter   = inkStrokes.map(s =>
+      s.points.map(p => this._transformCanvasPoint(p.x, p.y, W, H, fromRot, toRot))
+    );
+    const hasInk = inkStrokes.length > 0;
+
+    if (!pageElements.length && !hasInk) {
       this.historyManager.execute(rotateCmd);
       return;
     }
@@ -874,19 +886,21 @@ export class PDFEditorApp {
       after.set(el.id, snap);
     }
 
-    // Transform ink strokes so they stay in correct visual position after rotation.
-    const strokes = this.inkLayer.getStrokes(pageId);
-    for (const stroke of strokes) {
-      stroke.points = stroke.points.map(p => this._transformCanvasPoint(p.x, p.y, W, H, fromRot, toRot));
+    // Build command list — TransformAnnotationsCmd and ink cmd run before rotateCmd so
+    // elements/strokes are in correct positions when RotatePageCmd's onUpdate re-renders.
+    const cmds: Command[] = [];
+    if (pageElements.length) {
+      cmds.push(new TransformAnnotationsCmd(this.elements, before, after));
     }
+    if (hasInk) {
+      cmds.push({
+        execute: () => { inkStrokes.forEach((s, i) => { s.points = inkAfter[i].map(p => ({ ...p })); }); },
+        undo:    () => { inkStrokes.forEach((s, i) => { s.points = inkBefore[i].map(p => ({ ...p })); }); this.renderInkLayer(); },
+      });
+    }
+    cmds.push(rotateCmd);
 
-    // TransformAnnotationsCmd executes first so elements are in correct positions
-    // when RotatePageCmd's onUpdate triggers the re-render (async, so elements are
-    // already updated before renderElements() is called).
-    this.historyManager.execute(new MacroCmd([
-      new TransformAnnotationsCmd(this.elements, before, after),
-      rotateCmd,
-    ]));
+    this.historyManager.execute(cmds.length === 1 ? cmds[0] : new MacroCmd(cmds));
     this.showToast(t('toast.annotationsAdjusted'));
   }
 
