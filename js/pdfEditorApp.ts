@@ -31,6 +31,7 @@ import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from './formFieldOverlay';
 import { CommentElement } from './commentElement';
 import { t } from './i18n';
+import { trapFocus } from './focusTrap';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase';
 
@@ -74,6 +75,7 @@ export class PDFEditorApp {
   private _isFitMode = true;
   private _clipboard: ElementJSON | null = null;
   private _exportPreviewOpen = false;
+  private _trapCleanup: (() => void) | null = null;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -566,10 +568,17 @@ export class PDFEditorApp {
     this.ui.wmDensityDisplay.textContent = String(density);
     this.ui.watermarkModal.classList.add('active');
     this._updateWatermarkPreview();
+    this._trapCleanup?.();
+    this._trapCleanup = trapFocus(
+      this.ui.watermarkModal.querySelector('.watermark-content') as HTMLElement,
+      this.ui.watermarkBtn,
+    );
   }
 
   private _closeWatermarkModal(): void {
     this.ui.watermarkModal.classList.remove('active');
+    this._trapCleanup?.();
+    this._trapCleanup = null;
   }
 
   private _applyWatermark(): void {
@@ -1110,7 +1119,19 @@ export class PDFEditorApp {
     this.showToast(t('toast.annotationsCleared'));
   }
 
-  _toggleHelp(show?: boolean) { this.uiController.toggleHelp(show); }
+  _toggleHelp(show?: boolean) {
+    this.uiController.toggleHelp(show);
+    if (this.ui.helpModal.classList.contains('active')) {
+      this._trapCleanup?.();
+      this._trapCleanup = trapFocus(
+        this.ui.helpModal.querySelector('.help-content') as HTMLElement,
+        this.ui.helpBtn,
+      );
+    } else {
+      this._trapCleanup?.();
+      this._trapCleanup = null;
+    }
+  }
   showToast(msg: string, duration = 3000) { this.uiController.showToast(msg, duration); }
 
   private _enableFileMenuDocItems(): void {
@@ -1337,10 +1358,17 @@ export class PDFEditorApp {
     this.ui.signatureCanvas.width = w;
     this.ui.signatureCanvas.height = Math.round(w * 0.4);
     this.signaturePad.clear();
+    this._trapCleanup?.();
+    this._trapCleanup = trapFocus(
+      this.ui.signatureModal.querySelector('.signature-content') as HTMLElement,
+      this.ui.addSignatureBtn,
+    );
   }
 
   closeSignatureModal() {
     this.ui.signatureModal.classList.remove('active');
+    this._trapCleanup?.();
+    this._trapCleanup = null;
     this.setMode('select');
     this.ui.addSignatureBtn.classList.remove('active');
   }
@@ -1352,6 +1380,8 @@ export class PDFEditorApp {
     }
     this.currentSignature = this.signaturePad.getDataURL();
     this.ui.signatureModal.classList.remove('active');
+    this._trapCleanup?.();
+    this._trapCleanup = null;
     this.mode = 'addSignature';
     this.ui.addSignatureBtn.classList.add('active');
   }

@@ -65,7 +65,8 @@
     "nextTitle": "Next (Enter)",
     "keepHighlight": "🖊 Keep",
     "keepHighlightTitle": "Add as permanent highlight",
-    "closeTitle": "Close (Esc)"
+    "closeTitle": "Close (Esc)",
+    "inputAriaLabel": "Search text"
   },
   "badge": {
     "select": "SELECT",
@@ -190,7 +191,8 @@
     "addPagesTitle": "Add pages from PDF or image"
   },
   "canvas": {
-    "emptyState": "Upload a PDF to get started"
+    "emptyState": "Upload a PDF to get started",
+    "ariaLabel": "PDF document viewer"
   },
   "donePill": "✓ Done drawing"
 }

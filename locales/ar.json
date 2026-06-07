@@ -66,7 +66,8 @@
     "nextTitle": "التالي (Enter)",
     "keepHighlight": "🖊 احتفاظ",
     "keepHighlightTitle": "إضافة كتظليل دائم",
-    "closeTitle": "إغلاق (Esc)"
+    "closeTitle": "إغلاق (Esc)",
+    "inputAriaLabel": "البحث في النص"
   },
   "badge": {
     "select": "تحديد",
@@ -191,7 +192,8 @@
     "addPagesTitle": "إضافة صفحات من PDF أو صورة"
   },
   "canvas": {
-    "emptyState": "ارفع ملف PDF للبدء"
+    "emptyState": "ارفع ملف PDF للبدء",
+    "ariaLabel": "عارض مستندات PDF"
   },
   "donePill": "✓ انتهاء الرسم"
 }

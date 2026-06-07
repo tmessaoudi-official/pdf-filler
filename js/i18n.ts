@@ -23,10 +23,15 @@ export function applyTranslations(): void {
     el.textContent = t(el.dataset.i18n!);
   });
   document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach(el => {
-    el.title = t(el.dataset.i18nTitle!);
+    const val = t(el.dataset.i18nTitle!);
+    el.title = val;
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', val);
   });
   document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder!);
+  });
+  document.querySelectorAll<HTMLElement>('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria!));
   });
 }
 

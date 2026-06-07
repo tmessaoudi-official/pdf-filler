@@ -733,6 +733,44 @@
       pointer-events: none;
       opacity: 0.4;
     }
+    /* Footer */
+    .app-footer {
+      margin-top: 24px;
+      padding: 16px 0 8px;
+      border-top: 1px solid #dee2e6;
+      text-align: center;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    .app-footer a { color: #2563eb; text-decoration: none; }
+    .app-footer a:hover { text-decoration: underline; }
+    .footer-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+    /* Cookie/storage banner */
+    #storageBanner {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #1e293b;
+      color: #f1f5f9;
+      font-size: 13px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 9000;
+    }
+    #storageBanner a { color: #93c5fd; }
+    #storageBannerDismiss {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -769,22 +807,22 @@
     <div id="tbsep-break" class="toolbar-sep"></div>
     <div class="toolbar-sep" id="tbsep-1"></div>
     <div class="toolbar-group" id="tbg-edit">
-      <button id="addTextBtn" class="btn btn-secondary" disabled data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
-      <button id="addSignatureBtn" class="btn btn-secondary" disabled data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
-      <button id="addImageBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
+      <button id="addTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
+      <button id="addSignatureBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
+      <button id="addImageBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
-      <button id="highlightBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊 <span class="btn-label" data-i18n="toolbar.highlightLabel">Highlight</span></button>
-      <button id="commentBtn" class="btn btn-secondary" disabled data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬 <span class="btn-label" data-i18n="toolbar.commentLabel">Comment</span></button>
+      <button id="highlightBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊 <span class="btn-label" data-i18n="toolbar.highlightLabel">Highlight</span></button>
+      <button id="commentBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬 <span class="btn-label" data-i18n="toolbar.commentLabel">Comment</span></button>
       <button id="findBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.findTitle" title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-shapes">
-      <button id="arrowBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
-      <button id="rectBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
-      <button id="circleBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
-      <button id="freehandBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
-      <button id="eraserBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
-      <button id="redactBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
+      <button id="arrowBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
+      <button id="rectBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
+      <button id="circleBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
+      <button id="freehandBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
+      <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
+      <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
     </div>
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-actions">
@@ -845,8 +883,8 @@
   </div>
   <!-- Find bar — shown via Ctrl+F or 🔍 button -->
   <div id="findBar" class="find-bar" style="display:none">
-    <input type="text" id="findInput" data-i18n-placeholder="findbar.placeholder" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
-    <span id="findCount" class="find-count"></span>
+    <input type="text" id="findInput" data-i18n-placeholder="findbar.placeholder" data-i18n-aria="findbar.inputAriaLabel" placeholder="Search in page…" autocomplete="off" spellcheck="false" />
+    <span id="findCount" class="find-count" aria-live="polite" aria-atomic="true"></span>
     <button id="findCaseSensitive" class="btn btn-icon btn-sm find-toggle" data-i18n-title="findbar.caseSensitiveTitle" title="Case sensitive">Aa</button>
     <button id="findRegex" class="btn btn-icon btn-sm find-toggle" data-i18n-title="findbar.regexTitle" title="Use regular expression">.*</button>
     <button id="findPrev" class="btn btn-icon btn-sm" data-i18n-title="findbar.prevTitle" title="Previous (Shift+Enter)">↑</button>
@@ -858,7 +896,7 @@
     <div id="emptyState" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6c757d;font-size:18px;pointer-events:none;z-index:1;">
       <span data-i18n="canvas.emptyState">Upload a PDF to get started</span>
     </div>
-    <canvas id="pdfCanvas"></canvas>
+    <canvas id="pdfCanvas" role="img" data-i18n-aria="canvas.ariaLabel"></canvas>
     <div id="exportPreviewOverlay" class="export-preview-overlay" style="display:none">
       <div class="export-preview-banner">
         <span data-i18n="modal.exportPreview.banner">This is where your annotations will appear in the exported PDF.</span>
@@ -869,12 +907,28 @@
     </div>
   </div>
   <div id="pageThumbnailContainer" class="page-thumb-container" style="display:none"></div>
+  <footer class="app-footer">
+    <nav class="footer-links" aria-label="Legal">
+      <a href="./privacy.html">Privacy Policy</a>
+      <a href="./mentions-legales.html">Mentions légales</a>
+      <a href="./terms.html">Terms of Use</a>
+      <a href="./accessibility.html">Accessibility</a>
+    </nav>
+    <div>© 2026 Takieddine Messaoudi — <a href="https://github.com/tmessaoudi-official/pdfturbo" rel="noopener">GitHub</a></div>
+  </footer>
 </div>
 
-<div class="help-modal" id="helpModal">
+<div id="storageBanner" role="region" aria-label="Storage notice" style="display:none">
+  <span>This tool saves your working session in your browser's local storage. No data is sent to any server.
+    <a href="./privacy.html">Privacy Policy</a>
+  </span>
+  <button id="storageBannerDismiss">Got it</button>
+</div>
+
+<div class="help-modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
   <div class="help-content">
     <div class="help-header">
-      <h3 data-i18n="modal.help.title">Keyboard Shortcuts</h3>
+      <h3 id="helpModalTitle" data-i18n="modal.help.title">Keyboard Shortcuts</h3>
       <button id="closeHelp" class="btn btn-icon">×</button>
     </div>
     <table class="help-table">
@@ -904,9 +958,9 @@
   </div>
 </div>
 
-<div class="watermark-modal" id="watermarkModal">
+<div class="watermark-modal" id="watermarkModal" role="dialog" aria-modal="true" aria-labelledby="wmModalTitle">
   <div class="watermark-content">
-    <h3 data-i18n="modal.watermark.title">Watermark Settings</h3>
+    <h3 id="wmModalTitle" data-i18n="modal.watermark.title">Watermark Settings</h3>
     <div class="wm-field">
       <label><input type="checkbox" id="wmEnabled"> <span data-i18n="modal.watermark.enable">Enable watermark on all pages</span></label>
     </div>
@@ -943,9 +997,9 @@
   </div>
 </div>
 
-<div class="signature-modal" id="signatureModal">
+<div class="signature-modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="sigModalTitle">
   <div class="signature-content">
-    <h3 data-i18n="modal.signature.title">Draw Your Signature</h3>
+    <h3 id="sigModalTitle" data-i18n="modal.signature.title">Draw Your Signature</h3>
     <div class="signature-settings">
       <label>
         <span data-i18n="modal.signature.lineWidthLabel">Line Width:</span> <input type="number" id="sigLineWidth" value="2" min="1" max="10">

@@ -22,4 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (lang) changeLanguage(lang);
     });
   });
+
+  // Storage notice banner — show once, dismissed to localStorage
+  const banner = document.getElementById('storageBanner');
+  const dismissBtn = document.getElementById('storageBannerDismiss');
+  if (banner && !localStorage.getItem('pdfturbo_storage_notice')) {
+    banner.style.display = '';
+    dismissBtn?.addEventListener('click', () => {
+      banner.style.display = 'none';
+      localStorage.setItem('pdfturbo_storage_notice', '1');
+    });
+  }
 });

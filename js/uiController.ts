@@ -236,6 +236,14 @@ export class UIController {
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
 
+    const toggles: [HTMLButtonElement, ToolMode][] = [
+      [r.addTextBtn, 'addText'], [r.addSignatureBtn, 'addSignature'], [r.addImageBtn, 'addImage'],
+      [r.highlightBtn, 'drawHighlight'], [r.arrowBtn, 'drawArrow'], [r.rectBtn, 'drawRect'],
+      [r.circleBtn, 'drawEllipse'], [r.freehandBtn, 'drawFreehand'], [r.commentBtn, 'addComment'],
+      [r.redactBtn, 'drawRedaction'], [r.eraserBtn, 'drawErase'],
+    ];
+    toggles.forEach(([btn, m]) => btn.setAttribute('aria-pressed', String(mode === m)));
+
     const badgeKeys: Record<string, string> = {
       select: 'badge.select', addText: 'badge.addText', addSignature: 'badge.addSignature',
       addImage: 'badge.addImage', drawArrow: 'badge.drawArrow', drawRect: 'badge.drawRect',

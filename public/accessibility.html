@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Statement — PDFturbo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a2e; line-height: 1.6; }
+    .page { max-width: 760px; margin: 0 auto; background: white; min-height: 100vh; padding: 0 0 40px; }
+    header { background: #2563eb; color: white; padding: 16px 32px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    header a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; }
+    header a:hover { color: white; text-decoration: underline; }
+    header h1 { font-size: 20px; font-weight: 600; flex: 1; }
+    .lang-switcher { display: flex; gap: 6px; }
+    .lang-btn { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+    .lang-btn.active { background: white; color: #2563eb; }
+    main { padding: 32px; }
+    h2 { font-size: 22px; margin-bottom: 20px; color: #1a1a2e; }
+    h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; color: #1a1a2e; }
+    p, ul { font-size: 15px; margin-bottom: 12px; }
+    ul { padding-inline-start: 20px; }
+    li { margin-bottom: 4px; }
+    .updated { font-size: 12px; color: #6c757d; margin-bottom: 24px; }
+    .status-badge { display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 2px 8px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+    footer { text-align: center; font-size: 12px; color: #6c757d; padding: 16px 32px; border-top: 1px solid #dee2e6; margin-top: 24px; }
+    footer a { color: #2563eb; text-decoration: none; }
+    [lang="ar"] { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <a href="./">← PDFturbo</a>
+    <h1 class="lc lc-en">Accessibility Statement</h1>
+    <h1 class="lc lc-fr" style="display:none">Déclaration d'accessibilité</h1>
+    <h1 class="lc lc-ar" style="display:none">بيان إمكانية الوصول</h1>
+    <div class="lang-switcher">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="ar">ع</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ENGLISH -->
+    <div class="lc lc-en">
+      <p class="updated">Last updated: June 2026</p>
+      <h2>Accessibility Statement</h2>
+      <p class="status-badge">Partially conformant — WCAG 2.1 AA</p>
+      <p>We are committed to making PDFturbo accessible to as many users as possible, including those using assistive technologies. Our target is WCAG 2.1 Level AA conformance.</p>
+      <h3>What we have done</h3>
+      <ul>
+        <li>All toolbar buttons have accessible names via <code>aria-label</code> and/or visible text.</li>
+        <li>Tool-mode toggle buttons expose their state via <code>aria-pressed</code>.</li>
+        <li>All modal dialogs use <code>role="dialog"</code>, <code>aria-modal="true"</code>, and <code>aria-labelledby</code>.</li>
+        <li>Focus is trapped inside open modals (Tab / Shift+Tab cycles within) and returns to the trigger on close.</li>
+        <li>The find-bar result count is announced via <code>aria-live="polite"</code>.</li>
+        <li>The app supports keyboard-only navigation (all tools accessible via keyboard shortcuts).</li>
+        <li>The UI supports right-to-left layouts for Arabic.</li>
+        <li>Color contrast meets WCAG AA for all interactive controls.</li>
+      </ul>
+      <h3>Known limitations</h3>
+      <ul>
+        <li><strong>PDF text layer</strong>: the selectable text layer over PDF content is not yet implemented. This means screen readers cannot access native PDF text (only annotated text elements added by the user).</li>
+        <li>The drawing canvas for signatures and freehand drawing is not fully accessible to screen-reader users.</li>
+      </ul>
+      <h3>Feedback and contact</h3>
+      <p>If you encounter accessibility barriers, please contact us at: <a href="mailto:takieddine.messaoudi.official@gmail.com">takieddine.messaoudi.official@gmail.com</a></p>
+      <p>We aim to respond within 10 business days.</p>
+    </div>
+
+    <!-- FRENCH -->
+    <div class="lc lc-fr" style="display:none">
+      <p class="updated">Dernière mise à jour : juin 2026</p>
+      <h2>Déclaration d'accessibilité</h2>
+      <p class="status-badge">Partiellement conforme — WCAG 2.1 AA</p>
+      <p>Nous nous engageons à rendre PDFturbo accessible au plus grand nombre, y compris aux utilisateurs ayant recours à des technologies d'assistance. Notre objectif est la conformité WCAG 2.1 Niveau AA.</p>
+      <h3>Ce que nous avons mis en place</h3>
+      <ul>
+        <li>Tous les boutons de la barre d'outils disposent d'un nom accessible via <code>aria-label</code> et/ou du texte visible.</li>
+        <li>Les boutons de mode basculent leur état via <code>aria-pressed</code>.</li>
+        <li>Toutes les boîtes de dialogue utilisent <code>role="dialog"</code>, <code>aria-modal="true"</code> et <code>aria-labelledby</code>.</li>
+        <li>Le focus est piégé dans les modales ouvertes (Tab / Maj+Tab cycles interne) et retourne au déclencheur à la fermeture.</li>
+        <li>Le nombre de résultats de recherche est annoncé via <code>aria-live="polite"</code>.</li>
+        <li>L'application supporte la navigation au clavier uniquement.</li>
+        <li>L'interface supporte les mises en page de droite à gauche (arabe).</li>
+        <li>Le contraste des couleurs respecte le niveau AA pour tous les contrôles interactifs.</li>
+      </ul>
+      <h3>Limitations connues</h3>
+      <ul>
+        <li><strong>Couche de texte PDF</strong> : la couche de texte sélectionnable sur le contenu PDF n'est pas encore implémentée. Les lecteurs d'écran ne peuvent donc pas accéder au texte natif du PDF.</li>
+        <li>Le canvas de dessin (signatures et tracé libre) n'est pas entièrement accessible aux utilisateurs de lecteurs d'écran.</li>
+      </ul>
+      <h3>Retours et contact</h3>
+      <p>Si vous rencontrez des obstacles à l'accessibilité, contactez-nous à : <a href="mailto:takieddine.messaoudi.official@gmail.com">takieddine.messaoudi.official@gmail.com</a></p>
+      <p>Nous visons à répondre dans un délai de 10 jours ouvrés.</p>
+    </div>
+
+    <!-- ARABIC -->
+    <div class="lc lc-ar" dir="rtl" style="display:none">
+      <p class="updated">آخر تحديث: يونيو 2026</p>
+      <h2>بيان إمكانية الوصول</h2>
+      <p class="status-badge">مطابقة جزئية — WCAG 2.1 AA</p>
+      <p>نلتزم بجعل PDFturbo في متناول أكبر عدد ممكن من المستخدمين، بمن فيهم من يستخدمون التقنيات المساعدة. هدفنا هو الامتثال لمعيار WCAG 2.1 المستوى AA.</p>
+      <h3>ما تم تطبيقه</h3>
+      <ul>
+        <li>جميع أزرار شريط الأدوات لها أسماء يمكن الوصول إليها عبر <code>aria-label</code> أو نص مرئي.</li>
+        <li>أزرار وضع الأدوات تُظهر حالتها عبر <code>aria-pressed</code>.</li>
+        <li>جميع مربعات الحوار تستخدم <code>role="dialog"</code> و<code>aria-modal="true"</code> و<code>aria-labelledby</code>.</li>
+        <li>يُحبس التركيز داخل مربعات الحوار المفتوحة ويعود إلى العنصر المُشغِّل عند الإغلاق.</li>
+        <li>عدد نتائج البحث يُعلَن عبر <code>aria-live="polite"</code>.</li>
+        <li>التطبيق يدعم التنقل بالكيبورد فقط.</li>
+        <li>الواجهة تدعم تخطيطات من اليمين إلى اليسار للغة العربية.</li>
+        <li>تباين الألوان يلبي مستوى AA لجميع عناصر التحكم التفاعلية.</li>
+      </ul>
+      <h3>القيود المعروفة</h3>
+      <ul>
+        <li><strong>طبقة نص PDF</strong>: طبقة النص القابلة للتحديد فوق محتوى PDF لم تُطبَّق بعد. وهذا يعني أن قارئات الشاشة لا تستطيع الوصول إلى النص الأصلي لملف PDF.</li>
+        <li>لوحة الرسم (التوقيعات والرسم الحر) ليست متاحة بالكامل لمستخدمي قارئات الشاشة.</li>
+      </ul>
+      <h3>التعليقات والتواصل</h3>
+      <p>إذا واجهت عوائق في إمكانية الوصول، يرجى التواصل معنا على: <a href="mailto:takieddine.messaoudi.official@gmail.com">takieddine.messaoudi.official@gmail.com</a></p>
+      <p>نهدف إلى الرد في غضون 10 أيام عمل.</p>
+    </div>
+  </main>
+
+  <footer>
+    © 2026 Takieddine Messaoudi —
+    <a href="./privacy.html">Privacy</a> ·
+    <a href="./mentions-legales.html">Mentions légales</a> ·
+    <a href="./terms.html">Terms</a> ·
+    <a href="./accessibility.html">Accessibility</a>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var stored = localStorage.getItem('i18nextLng');
+    var lang = stored ? stored.split('-')[0] : (navigator.language || 'en').split('-')[0];
+    if (!['en', 'fr', 'ar'].includes(lang)) lang = 'en';
+    setLang(lang);
+
+    function setLang(l) {
+      document.documentElement.lang = l;
+      document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+      document.querySelectorAll('.lc').forEach(function (el) {
+        var classes = Array.from(el.classList);
+        var lcClass = classes.find(function (c) { return c.startsWith('lc-') && c !== 'lc'; });
+        if (lcClass) el.style.display = (lcClass === 'lc-' + l) ? '' : 'none';
+      });
+      document.querySelectorAll('.lang-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.lang === l);
+      });
+      localStorage.setItem('i18nextLng', l);
+    }
+
+    document.querySelectorAll('.lang-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { setLang(btn.dataset.lang); });
+    });
+  })();
+</script>
+</body>
+</html>

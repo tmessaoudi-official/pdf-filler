@@ -65,7 +65,8 @@
     "nextTitle": "Suivant (Entrée)",
     "keepHighlight": "🖊 Garder",
     "keepHighlightTitle": "Ajouter comme surlignage permanent",
-    "closeTitle": "Fermer (Échap)"
+    "closeTitle": "Fermer (Échap)",
+    "inputAriaLabel": "Rechercher du texte"
   },
   "badge": {
     "select": "SÉLECT.",
@@ -190,7 +191,8 @@
     "addPagesTitle": "Ajouter des pages depuis un PDF ou une image"
   },
   "canvas": {
-    "emptyState": "Téléchargez un PDF pour commencer"
+    "emptyState": "Téléchargez un PDF pour commencer",
+    "ariaLabel": "Visionneuse de document PDF"
   },
   "donePill": "✓ Fin du dessin"
 }
