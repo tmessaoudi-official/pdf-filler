@@ -310,14 +310,9 @@ export class PDFEditorApp {
 
     this.ui.colorSwatches.querySelectorAll('.color-swatch').forEach(swatch => {
       swatch.addEventListener('click', () => {
-        const color = (swatch as HTMLElement).dataset["color"] ?? '#000000';
-        if (!this.ui.textColorInput.disabled) {
-          this.ui.textColorInput.value = color;
-          this.ui.textColorInput.dispatchEvent(new Event('change'));
-        } else if (!this.ui.shapeColor.disabled) {
-          this.ui.shapeColor.value = color;
-          this.ui.shapeColor.dispatchEvent(new Event('input'));
-        }
+        if (this.ui.shapeColor.disabled) return;
+        this.ui.shapeColor.value = (swatch as HTMLElement).dataset["color"] ?? '#000000';
+        this.ui.shapeColor.dispatchEvent(new Event('input'));
       });
     });
 
