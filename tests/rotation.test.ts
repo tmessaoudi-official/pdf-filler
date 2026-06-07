@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { PDFElement, ElementJSON } from '../js/pdfElement';
 import { TextElement } from '../js/textElement';
 import { RotateElementCmd, TransformAnnotationsCmd, ElementTransformSnapshot } from '../js/historyManager';
 import { ElementFactory } from '../js/elementFactory';
