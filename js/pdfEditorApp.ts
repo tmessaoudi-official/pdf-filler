@@ -1895,6 +1895,11 @@ export class PDFEditorApp {
         rgb: libs.rgb, degrees, pdfDoc: tempDoc, StandardFonts: libs.StandardFonts,
       });
     }
+    const inkDataUrlRast = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
+    if (inkDataUrlRast) {
+      const inkImg = await tempDoc.embedPng(this._dataUrlToUint8Array(inkDataUrlRast));
+      tempPage.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+    }
 
     // 2. Rasterize via pdf.js at 2× scale
     const tempBytes  = await tempDoc.save({ useObjectStreams: false });
@@ -2153,6 +2158,11 @@ export class PDFEditorApp {
       }
       if (this.documentModel.watermark.enabled) {
         await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+      }
+      const inkDataUrlImg = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
+      if (inkDataUrlImg) {
+        const inkImg = await pdfDoc.embedPng(this._dataUrlToUint8Array(inkDataUrlImg));
+        page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
       }
 
       // Rasterize via pdf.js at 2× scale
