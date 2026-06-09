@@ -10,7 +10,7 @@
 
 **Please do not report security vulnerabilities in public GitHub issues.**
 
-Use GitHub's private [security advisory](https://github.com/tmessaoudi-official/pdf-filler/security/advisories/new) to report vulnerabilities confidentially.
+Use GitHub's private [security advisory](https://github.com/tmessaoudi-official/pdfturbo/security/advisories/new) to report vulnerabilities confidentially.
 
 Include:
 - A description of the vulnerability
@@ -22,7 +22,7 @@ You can expect an acknowledgment within 48 hours and a resolution within 14 days
 
 ## Scope
 
-This is a **client-side only** application — no server, no database, no user accounts. All PDF processing happens in your browser. No data is sent to any server except when loading CDN dependencies (pdf.js, pdf-lib).
+This is a **client-side only** application — no server, no database, no user accounts. All PDF processing happens in your browser. All libraries (pdf.js, pdf-lib, and others) are bundled via npm — no CDN dependencies, no external network requests at runtime.
 
 Security concerns most relevant to this project:
 - XSS via malicious PDF content

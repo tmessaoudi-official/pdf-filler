@@ -4,40 +4,53 @@ Edit, annotate, sign and fill PDFs entirely in your browser — nothing uploaded
 
 ## How to run
 
-**Option 1 — npm:**
 ```bash
-npm start
-# opens at http://localhost:3000
+npm run dev
+# opens at http://localhost:5173/pdfturbo/
 ```
 
-**Option 2 — Python:**
+To preview the production build locally:
 ```bash
-python3 -m http.server 8080
-# opens at http://localhost:8080
+npm run build
+npm run preview
 ```
 
-> **Do not open `index.html` by double-clicking** — browsers block ES module
-> imports from `file://` URLs. Always serve via HTTP.
+> **Do not open `index.html` by double-clicking** — the app is a Vite/TypeScript
+> project and requires a dev server or built output to run. `npm run dev` handles this automatically.
 
 ## Deploy to GitHub Pages (free, HTTPS, always-on)
 
-1. **Create a GitHub repo** at github.com → New repository (e.g. `pdf-fill-sign`)
-2. **Add the remote and push:**
-   ```bash
-   git remote add github https://github.com/YOUR_USERNAME/pdf-fill-sign.git
-   git push -u github master
-   ```
-3. **Enable Pages:** repo Settings → Pages → Source: `Deploy from a branch` → Branch: `master` → folder: `/ (root)` → Save
-4. Your app is live at `https://YOUR_USERNAME.github.io/pdf-fill-sign/`
+A GitHub Actions workflow (`.github/workflows/deploy.yml`) handles deployment automatically:
+
+1. **Fork or push** to a repo named `pdfturbo` on your GitHub account.
+2. **Enable Pages:** repo Settings → Pages → Source: `GitHub Actions`.
+3. Push to the `master` branch — the workflow runs `type-check → lint → test → build` and deploys the `dist/` folder to Pages.
+4. Your app is live at `https://YOUR_USERNAME.github.io/pdfturbo/`
 
 > **Install on Android:** visit the URL in Chrome → three-dot menu → "Add to Home screen"
 > **Install on iOS:** visit in Safari → Share → "Add to Home Screen"
 
 ## Features
 
-- Upload any PDF and fill/sign it on mobile or desktop
-- Add text, draw shapes (arrow, rect, circle, freehand), place signatures
+- Upload any PDF, fill form fields, annotate, sign, and export
+- **Text tool** — place editable text boxes with font/size/bold/italic/color controls
+- **Edit PDF text** — click any word in the PDF to overlay and edit it in place
+- **Shapes** — arrow, rectangle, ellipse, freehand draw
+- **Highlight** — semi-transparent highlight over existing text
+- **Eraser** — erase freehand strokes or delete any element by brushing over it
+- **Signature pad** — draw a signature on a canvas, then place it anywhere
+- **Image overlay** — insert PNG/JPEG/WebP images
+- **Comment / sticky note** — place resizable sticky notes
+- **Redaction** — permanent black-box redaction via full page rasterization (text unextractable)
+- **Watermark** — tiled repeating watermark on export with configurable text, opacity, angle, density
+- **Text search** — find text in the PDF with highlighted matches and Add Highlight action
+- **Form field fill** — auto-detect and fill AcroForm text fields (Tx type)
+- **Page management** — add pages from another PDF, delete, reorder, rotate pages
+- **Undo / Redo** — 50-command history (Ctrl+Z / Ctrl+Y)
+- **Session persistence** — auto-saves to IndexedDB, restores on reload
+- **Export options** — full PDF, single page PDF, page as PNG image
+- **Export preview** — see annotation positions before downloading
 - Pinch-to-zoom on mobile; Ctrl+Wheel on desktop
-- Navigate multi-page PDFs
-- Download the filled PDF with vector shapes and text preserved
+- Keyboard shortcuts for all major tools
 - PWA: installable, works offline for the app shell
+- Full EN / FR / AR (RTL) localisation

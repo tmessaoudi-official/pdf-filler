@@ -8,10 +8,10 @@ Captured 2026-06-04. Ideas that surfaced during development — not yet planned 
 
 | # | Report | Status |
 |---|--------|--------|
-| B1 | Add PDF — file chooser opens but PDF not appended to document | Re-verify (prev. test said OK) |
-| B2 | Watermark appears only in centre of page, not tiled/repeated | Confirmed broken |
-| B3 | Can delete a highlight but not a single comment | Missing delete-per-comment |
-| B4 | Delete Page button in toolbar does not work | Re-verify |
+| B1 | Add PDF — file chooser opens but PDF not appended to document | Works — `_handleAddPdfUpload` implemented in pdfEditorApp.ts |
+| B2 | Watermark appears only in centre of page, not tiled/repeated | Fixed — density-based tiling added (commit fb87e8b) |
+| B3 | Can delete a highlight but not a single comment | Fixed — `createControls()` in base PDFElement provides delete button on all element types |
+| B4 | Delete Page button in toolbar does not work | Works — `_deletePage(pageId)` implemented in pdfEditorApp.ts |
 
 ---
 
@@ -75,4 +75,4 @@ Other annotation types beyond AcroForm widgets: links, free text, stamps, file a
 
 ## Parked
 
-- **Dependency upgrades** (TypeScript 5→6, Vite 5→8, pdfjs-dist 3→6, ESLint 9→10): Phase 0 research complete. Strategy: 3 sequential branches (Cluster 1: TS+ESLint → Cluster 2: Vite+PWA → Cluster 3: pdfjs). Deferred until active bugs are cleared.
+- ~~**Dependency upgrades** (TypeScript 5→6, Vite 5→8, pdfjs-dist 3→6, ESLint 9→10)~~ **Done** — all three upgrades are complete (package.json: `typescript ^6.0.0`, `vite ^8.0.0`, `pdfjs-dist ^6.0.0`).

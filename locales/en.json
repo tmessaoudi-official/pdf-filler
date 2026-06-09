@@ -32,7 +32,9 @@
     "selectTitle": "Select / pointer mode (Esc)",
     "previewExportTitle": "Preview export positions",
     "watermarkTitle": "Watermark settings",
-    "helpTitle": "Keyboard shortcuts (?)"
+    "helpTitle": "Keyboard shortcuts (?)",
+    "editTextLabel": "Edit Text",
+    "editTextTitle": "Edit PDF text — click a word to overlay and edit it"
   },
   "formatting": {
     "textLabel": "Text",
@@ -85,7 +87,8 @@
     "drawHighlight": "🖊 HIGHLIGHT",
     "addComment": "💬 COMMENT",
     "drawRedaction": "⬛ REDACT",
-    "drawErase": "⌫ ERASE"
+    "drawErase": "⌫ ERASE",
+    "editText": "✎ EDIT TEXT"
   },
   "modal": {
     "watermark": {
@@ -188,7 +191,8 @@
       "drawHighlight": "Highlight tool — drag to mark. Press Esc to exit.",
       "addComment": "Comment tool — click to place. Press Esc to cancel.",
       "drawRedaction": "Redact tool — drag to black out. Press Esc to exit.",
-      "drawErase": "Eraser — swipe to erase elements. Press Esc to exit."
+      "drawErase": "Eraser — swipe to erase elements. Press Esc to exit.",
+      "editText": "Edit Text — click on any word to overlay and edit it. Press Esc to exit."
     }
   },
   "thumbnail": {

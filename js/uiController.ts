@@ -1,6 +1,7 @@
 import type { PDFElement } from './pdfElement';
 import type { TextElement } from './textElement';
 import type { ShapeElement } from './shapeElement';
+import type { RedactionElement } from './redactionElement';
 import type { ToolMode } from './pdfEditorApp';
 import { t } from './i18n';
 
@@ -17,7 +18,7 @@ export interface UIRefs {
   signatureModal: HTMLElement;
   signatureCanvas: HTMLCanvasElement;
   fontSizeInput: HTMLInputElement;
-  textColorInput: HTMLInputElement;
+  colorInput: HTMLInputElement;
   sigLineWidthInput: HTMLInputElement;
   sigColorInput: HTMLInputElement;
   zoomOutBtn: HTMLButtonElement;
@@ -45,7 +46,7 @@ export interface UIRefs {
   rectBtn: HTMLButtonElement;
   circleBtn: HTMLButtonElement;
   freehandBtn: HTMLButtonElement;
-  shapeColor: HTMLInputElement;
+  redactColorInput: HTMLInputElement;
   shapeWidth: HTMLInputElement;
   fontSizeDownBtn: HTMLButtonElement;
   fontSizeUpBtn: HTMLButtonElement;
@@ -97,6 +98,7 @@ export interface UIRefs {
   restoreDialog:   HTMLElement;
   restoreYesBtn:   HTMLButtonElement;
   restoreNoBtn:    HTMLButtonElement;
+  editTextBtn:     HTMLButtonElement;
 }
 
 export class UIController {
@@ -117,7 +119,7 @@ export class UIController {
       signatureModal:   document.getElementById('signatureModal')   as HTMLElement,
       signatureCanvas:  document.getElementById('signatureCanvas')  as HTMLCanvasElement,
       fontSizeInput:    document.getElementById('fontSize')         as HTMLInputElement,
-      textColorInput:   document.getElementById('textColor')        as HTMLInputElement,
+      colorInput:       document.getElementById('color')            as HTMLInputElement,
       sigLineWidthInput:document.getElementById('sigLineWidth')     as HTMLInputElement,
       sigColorInput:    document.getElementById('sigColor')         as HTMLInputElement,
       zoomOutBtn:       document.getElementById('zoomOutBtn')       as HTMLButtonElement,
@@ -145,7 +147,7 @@ export class UIController {
       rectBtn:          document.getElementById('rectBtn')          as HTMLButtonElement,
       circleBtn:        document.getElementById('circleBtn')        as HTMLButtonElement,
       freehandBtn:      document.getElementById('freehandBtn')      as HTMLButtonElement,
-      shapeColor:       document.getElementById('shapeColor')       as HTMLInputElement,
+      redactColorInput: document.getElementById('redactColor')      as HTMLInputElement,
       shapeWidth:       document.getElementById('shapeWidth')       as HTMLInputElement,
       fontSizeDownBtn:  document.getElementById('fontSizeDownBtn')  as HTMLButtonElement,
       fontSizeUpBtn:    document.getElementById('fontSizeUpBtn')    as HTMLButtonElement,
@@ -193,10 +195,11 @@ export class UIController {
       exportPreviewGhost:   document.getElementById('exportPreviewGhost')   as HTMLElement,
       exportPreviewConfirm: document.getElementById('exportPreviewConfirm') as HTMLButtonElement,
       exportPreviewClose:   document.getElementById('exportPreviewClose')   as HTMLButtonElement,
-      selectBtn:      document.getElementById('selectBtn')      as HTMLButtonElement,
-      restoreDialog:  document.getElementById('restoreDialog')  as HTMLElement,
-      restoreYesBtn:  document.getElementById('restoreYesBtn')  as HTMLButtonElement,
-      restoreNoBtn:   document.getElementById('restoreNoBtn')   as HTMLButtonElement,
+      selectBtn:       document.getElementById('selectBtn')       as HTMLButtonElement,
+      restoreDialog:   document.getElementById('restoreDialog')   as HTMLElement,
+      restoreYesBtn:   document.getElementById('restoreYesBtn')   as HTMLButtonElement,
+      restoreNoBtn:    document.getElementById('restoreNoBtn')    as HTMLButtonElement,
+      editTextBtn:     document.getElementById('editTextBtn')     as HTMLButtonElement,
     };
   }
 
@@ -225,6 +228,7 @@ export class UIController {
     r.redactBtn.disabled      = false;
     r.eraserBtn.disabled      = false;
     r.previewExportBtn.disabled = false;
+    r.editTextBtn.disabled    = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -242,13 +246,14 @@ export class UIController {
     r.commentBtn.classList.toggle('active',      mode === 'addComment');
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
+    r.editTextBtn.classList.toggle('active',   mode === 'editText');
 
     const toggles: [HTMLButtonElement, ToolMode][] = [
       [r.selectBtn, 'select'],
       [r.addTextBtn, 'addText'], [r.addSignatureBtn, 'addSignature'], [r.addImageBtn, 'addImage'],
       [r.highlightBtn, 'drawHighlight'], [r.arrowBtn, 'drawArrow'], [r.rectBtn, 'drawRect'],
       [r.circleBtn, 'drawEllipse'], [r.freehandBtn, 'drawFreehand'], [r.commentBtn, 'addComment'],
-      [r.redactBtn, 'drawRedaction'], [r.eraserBtn, 'drawErase'],
+      [r.redactBtn, 'drawRedaction'], [r.eraserBtn, 'drawErase'], [r.editTextBtn, 'editText'],
     ];
     toggles.forEach(([btn, m]) => btn.setAttribute('aria-pressed', String(mode === m)));
 
@@ -258,14 +263,15 @@ export class UIController {
       drawEllipse: 'badge.drawEllipse', drawFreehand: 'badge.drawFreehand',
       drawHighlight: 'badge.drawHighlight', addComment: 'badge.addComment',
       drawRedaction: 'badge.drawRedaction', drawErase: 'badge.drawErase',
+      editText: 'badge.editText',
     };
     r.modeBadge.textContent = t(badgeKeys[mode] ?? 'badge.select');
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
     r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
 
-    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction';
-    r.shapeColor.disabled = !isShapeMode || mode === 'drawErase';
+    const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase' && mode !== 'drawHighlight';
+    r.colorInput.disabled = !isShapeMode;
     r.shapeWidth.disabled = !isShapeMode;
   }
 
@@ -280,24 +286,28 @@ export class UIController {
     r.fontSizeInput.disabled   = !isText;
     r.fontSizeDownBtn.disabled = !isText;
     r.fontSizeUpBtn.disabled   = !isText;
-    r.textColorInput.disabled  = !isText;
     if (isText) {
       r.fontFamily.value = (el as TextElement).fontFamily || 'Arial';
       r.boldBtn.classList.toggle('btn-active-fmt',   !!(el as TextElement).bold);
       r.italicBtn.classList.toggle('btn-active-fmt', !!(el as TextElement).italic);
-      r.fontSizeInput.value  = String((el as TextElement).fontSize);
-      r.textColorInput.value = (el as TextElement).color;
+      r.fontSizeInput.value = String((el as TextElement).fontSize);
+      r.colorInput.value    = (el as TextElement).color;
     } else {
       r.boldBtn.classList.remove('btn-active-fmt');
       r.italicBtn.classList.remove('btn-active-fmt');
     }
 
-    const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight');
-    r.shapeColor.disabled = !shapeActive || mode === 'drawErase';
+    const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
+    r.colorInput.disabled = !isText && !shapeActive;
     r.shapeWidth.disabled = !shapeActive;
     if (isShape) {
-      r.shapeColor.value = (el as ShapeElement).strokeColor;
+      r.colorInput.value = (el as ShapeElement).strokeColor;
       r.shapeWidth.value = String((el as ShapeElement).strokeWidth);
+    }
+
+    const isRedaction = el?.type === 'redaction';
+    if (isRedaction) {
+      r.redactColorInput.value = (el as RedactionElement).color;
     }
   }
 

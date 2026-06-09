@@ -214,7 +214,10 @@ export class InteractionHandler {
     if (!el) return;
     const angle = Math.atan2(e.clientY - this._rotCenterY, e.clientX - this._rotCenterX) * 180 / Math.PI;
     const delta = angle - this._rotStartAngle;
-    el.rotation = ((this._rotStartRotation + delta) % 360 + 360) % 360;
+    let rot = ((this._rotStartRotation + delta) % 360 + 360) % 360;
+    if (e.shiftKey)     rot = Math.round(rot / 45) * 45 % 360;
+    else if (e.ctrlKey) rot = Math.round(rot / 5)  * 5  % 360;
+    el.rotation = rot;
     this.app.renderElements();
   }
 

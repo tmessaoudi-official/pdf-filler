@@ -65,6 +65,7 @@ export class TextElement extends PDFElement {
     div.style.top = (canvasOffset.top + this.y * scale) + 'px';
     div.style.width = (this.width * scale) + 'px';
     div.style.height = (this.height * scale) + 'px';
+    div.style.zIndex = '16';
   }
 
   override toJSON(): ElementJSON {

@@ -1,5 +1,9 @@
 # Code Review — PDFturbo
 
+> **Historical document** — reflects codebase state as of **2026-06-02**. The following findings have since been resolved:
+> - **P0-1 (Redaction cosmetic)** — Fixed. `_rasterizePageWithRedactions()` in `pdfEditorApp.ts` fully rasterizes pages containing redaction elements to PNG at 2× scale before export; original text layer is destroyed.
+> - **P3-3 (favicon.ico 404)** — Fixed. `public/favicon.ico` regenerated from `icon.svg` at 16×32 px (5.3 KB). `index.html` uses `./icon.svg` as the primary icon; `.ico` is the legacy-browser fallback.
+
 **Reviewer**: Senior automated review  
 **Date**: 2026-06-02  
 **Scope**: Full codebase — 22 TypeScript source files, 3,657 lines  

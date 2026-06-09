@@ -1,4 +1,5 @@
 // Main entry point
+import './polyfills';
 import { PDFEditorApp } from './pdfEditorApp';
 import { initI18n, changeLanguage, onLanguageChanged } from './i18n';
 

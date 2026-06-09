@@ -3,8 +3,8 @@
 **Version**: 1.0.0  
 **Build**: Vite 8 / TypeScript 6 / PWA  
 **Base URL**: `/pdfturbo/`  
-**Total features**: 37  
-**Last updated**: 2026-06-07 (browser automation full-coverage audit)
+**Total features**: 38  
+**Last updated**: 2026-06-08 (doc accuracy sweep)
 
 > **How to use this file**: Work through each numbered feature top to bottom.  
 > For each one: test the steps listed, then report what works, what's broken, and what feels wrong.  
@@ -66,7 +66,7 @@ Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, F
 10. [Page Rotation](#10-page-rotation)
 11. [Page Reorder](#11-page-reorder)
 
-**Annotation Tools (11)**
+**Annotation Tools (12)**
 12. [Element Controls](#12-element-controls-all-annotations)
 13. [Text Tool + Formatting](#13-text-tool--formatting)
 14. [Arrow Shape](#14-arrow-shape)
@@ -79,6 +79,7 @@ Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, F
 21. [Highlight](#21-highlight)
 22. [Comment / Sticky Note](#22-comment--sticky-note)
 23. [Redaction](#23-redaction)
+38. [Edit Text Tool](#38-edit-text-tool)
 
 **Search & Forms (2)**
 24. [Text Search / Find](#24-text-search--find)
@@ -299,11 +300,9 @@ Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, F
 | Font size | Spinner + A−/A+ | 8–72 px |
 | Bold | **B** button | toggle |
 | Italic | **I** button | toggle |
-| Color | Color picker + 6 swatches | any hex |
+| Color | Color picker (native) | any hex |
 
 Empty text elements are removed automatically on deselect. Text changes debounced 500ms into undo history. Multi-line text supported (press Enter in the text box).
-
-**Color swatches**: Black, Red, Blue, Green, Orange, White.
 
 **Test steps**:
 1. Click **T Text** or press `T` → verify cursor becomes crosshair, mode badge shows "+ TEXT".
@@ -314,7 +313,7 @@ Empty text elements are removed automatically on deselect. Text changes debounce
 6. Change font to "Times New Roman" → verify font updates live.
 7. Click **B** → verify text becomes bold. Click again → verify bold removed.
 8. Click **I** → verify italic. Change font size to 24 → verify.
-9. Click a red color swatch → verify text color changes to red.
+9. Click the color picker → select a color → verify text color changes live.
 10. Press `T` again → verify mode toggles off (returns to SELECT).
 11. Place a text element, don't type anything, click away → verify empty element is removed.
 12. Place text, type "line1\nline2" (press Enter) → verify two lines render.
@@ -470,7 +469,7 @@ Empty text elements are removed automatically on deselect. Text changes debounce
 
 ## 22. Comment / Sticky Note
 
-**How it works**: Activate with **💬 Comment** button. Click anywhere on the canvas → places a 200×120 px pastel-yellow sticky note. Type directly into the note. Resize via handle. Background color fixed at `#FFFDE7`.
+**How it works**: Activate with **💬 Comment** button or `N` key. Click anywhere on the canvas → places a 200×120 px pastel-yellow sticky note. Type directly into the note. Resize via handle. Background color fixed at `#FFFDE7`.
 
 **Test steps**:
 1. Click **💬 Comment** → verify mode badge shows "💬 COMMENT".
@@ -668,6 +667,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 | `C` | Toggle Circle/Ellipse mode |
 | `D` or `F` | Toggle Freehand Draw mode |
 | `H` | Toggle Highlight mode |
+| `N` | Toggle Comment mode |
 | `E` | Toggle Eraser mode |
 | `?` | Toggle Help modal |
 | `Escape` | Return to SELECT mode; close modals/find bar |
@@ -695,7 +695,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 9. Press `Ctrl+→` / `Ctrl+←` → verify page navigation.
 10. Press `?` → verify help modal opens/closes.
 
-**Known bugs**: `E` for eraser and `F` for freehand are not listed in the help modal (see §32).
+**Known bugs**: None.
 
 ---
 
@@ -709,7 +709,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 3. Click the backdrop (outside the white box) → verify modal closes.
 4. Check the shortcuts table matches what actually works.
 
-**Known bugs**: The `E` (eraser) and `F` (freehand alt) shortcuts are not listed in the help modal table even though they work.
+**Known bugs**: None. All working shortcuts (`E`, `F`, `N`, and others) are listed in the help modal.
 
 ---
 
@@ -745,6 +745,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 | addComment | `💬 COMMENT` (blue) |
 | drawRedaction | `⬛ REDACT` (blue) |
 | drawErase | `⌫ ERASE` (blue) |
+| editText | `✎ EDIT TEXT` (blue) |
 
 **Test steps**:
 1. Verify badge shows "SELECT" in grey on load.
@@ -778,7 +779,6 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 - Pinch zoom: two-finger pinch handled in DrawingHandler; CSS transform applied during gesture, `applyZoom` called on finger lift.
 - Minimum zoom 0.65× enforced on mobile.
 - Touch targets are 40px minimum on mobile.
-- Color swatches hidden on mobile (too wide).
 - Toast moves to top of screen on mobile (keyboard covers bottom).
 - First/last page buttons hidden on mobile to save space.
 
@@ -798,9 +798,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 
 ## 37. PWA / Offline Support
 
-**How it works**: `vite-plugin-pwa` with `autoUpdate`. Service worker (Workbox `generateSW`) precaches all JS/CSS/HTML/SVG. Large chunks (pdf.js worker, pdf-lib) use `CacheFirst` with 30-day TTL. Max precache file size: 6 MB. Manifest: name "PDFturbo", `standalone` display, blue theme.
-
-> ⚠️ **H-14 Bug**: `index.html` hardcodes `<link rel="manifest" href="./manifest.json">` but vite-plugin-pwa generates `manifest.webmanifest`. Both links present in built HTML; browsers use the first (which 404s in production). PWA install prompt silently fails.
+**How it works**: `vite-plugin-pwa` with `autoUpdate`. Service worker (Workbox `generateSW`) precaches all JS/CSS/HTML/SVG. Large chunks (pdf.js worker, pdf-lib) use `CacheFirst` with 30-day TTL. Max precache file size: 6 MB. Manifest: name "PDFturbo", `standalone` display, blue theme. `vite.config.ts` sets `manifestFilename: 'manifest.json'` so the generated filename matches the `<link>` tag in `index.html`.
 
 **Test steps** (requires `npm run build` + serving the built output):
 1. Build: `npm run build` → serve `dist/` folder.
@@ -809,7 +807,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 4. Go offline (DevTools → Network → Offline) → reload → verify app still loads.
 5. Check for the PWA install banner in the browser URL bar.
 
-**Known bugs**: PWA install prompt fails in production due to manifest URL collision (H-14).
+**Known bugs**: None. (H-14 manifest URL collision was fixed by `manifestFilename: 'manifest.json'` in `vite.config.ts`.)
 
 ---
 
@@ -819,21 +817,45 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 |----------|-------|
 | File I/O | 6 |
 | Page Management | 5 |
-| Annotation Tools | 11 |
+| Annotation Tools | 12 |
 | Search & Forms | 2 |
 | Document Settings | 3 |
 | Session & State | 2 |
 | UX & Misc | 7 |
-| **Total** | **37** |
+| **Total** | **38** |
 
 ### Known bugs (pre-existing)
 | # | Severity | Description |
 |---|----------|-------------|
 | B1 | P1 | Highlight color parse: `|| fallback` zeroes out channels → non-yellow colors render wrong |
 | B2 | P2 | Eraser uses bbox intersection for non-freehand elements → large elements deleted by edge touch |
-| B3 | P2 | Help modal missing `E` (eraser) and `F` (freehand alt) shortcuts |
-| B4 | P2 | PWA manifest URL collision (H-14) → install prompt fails in production |
+| ~~B3~~ | ~~P2~~ | ~~Help modal missing `E` (eraser) and `F` (freehand alt) shortcuts~~ **Fixed** — both appear in all locale files under `modal.help.actions` |
+| ~~B4~~ | ~~P2~~ | ~~PWA manifest URL collision (H-14) → install prompt fails in production~~ **Fixed** — `manifestFilename: 'manifest.json'` in `vite.config.ts` |
 | B5 | P3 | Annotations don't reposition after page rotation |
 | B6 | P3 | Thumbnails don't reflect placed annotations |
 | B7 | P3 | Toast notifications don't stack (second replaces first) |
 | B8 | P3 | Signature pad: can't reuse same signature without redrawing |
+
+---
+
+## 38. Edit Text Tool
+
+**How it works**: Activate with **✎ Edit Text** button. Click any word in the PDF to overlay and edit it in place. The handler:
+1. Reads the pdf.js text layer at the click position (12 px tolerance hitbox).
+2. Samples the canvas background color at the click point.
+3. Places a `RedactionElement` (colored to match the background) to cover the original word.
+4. Places a `TextElement` pre-filled with the word's text, font, size, bold, and italic — positioned exactly over the original.
+5. Immediately enters SELECT mode and focuses the new text element for editing.
+
+This is a non-destructive overlay: the original PDF text is visually covered by the background-colored box, and the editable text element sits on top. Fully undoable (single `MacroCmd` wrapping both elements).
+
+**Test steps**:
+1. Load a text-based PDF (must have a text layer — scanned images won't work).
+2. Click **✎ Edit Text** → verify mode badge shows "✎ EDIT TEXT".
+3. Click on a word in the PDF → verify a text box appears over it, pre-filled with the word's text.
+4. Edit the text → verify the new text replaces the original visually.
+5. Press **Ctrl+Z** → verify both the cover element and the text element are removed.
+6. Click on whitespace (no text nearby) → verify nothing is placed.
+7. Download the PDF → verify the edited word appears correctly in the export.
+
+**Known bugs**: Works only on PDFs with a text layer (pdfjs extraction required). Scanned image PDFs have no text layer and will not respond to clicks.

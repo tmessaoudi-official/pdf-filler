@@ -893,6 +893,7 @@
       <input type="file" id="addImageInput" accept="image/*">
       <button id="highlightBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊 <span class="btn-label" data-i18n="toolbar.highlightLabel">Highlight</span></button>
       <button id="commentBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬 <span class="btn-label" data-i18n="toolbar.commentLabel">Comment</span></button>
+      <button id="editTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.editTextTitle" title="Edit PDF text (overlay)">✎ <span class="btn-label" data-i18n="toolbar.editTextLabel">Edit Text</span></button>
       <button id="findBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.findTitle" title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
@@ -911,6 +912,7 @@
       <button id="freehandBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
       <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
       <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
+      <input type="color" id="redactColor" value="#000000" class="toolbar-color" title="Redact color">
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
@@ -928,12 +930,11 @@
       <button id="fontSizeDownBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeDownTitle" title="Decrease font size (A-)">A−</button>
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
       <button id="fontSizeUpBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeUpTitle" title="Increase font size (A+)">A+</button>
-      <input type="color" id="textColor" value="#000000" class="toolbar-color" disabled>
+      <input type="color" id="color" value="#000000" class="toolbar-color" disabled>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
       <span class="toolbar-label" data-i18n="formatting.shapeLabel">Shape</span>
-      <input type="color" id="shapeColor" value="#ef4444" class="toolbar-color" disabled>
       <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
     </div>
     <div class="toolbar-sep"></div>

@@ -58,7 +58,7 @@ export class ElementFactory {
       return applyBase(el);
     }
     if (data['type'] === 'redaction') {
-      const el = new RedactionElement(data['x'], data['y'], data['width'], data['height'], pageId);
+      const el = new RedactionElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] as string | undefined);
       return applyBase(el);
     }
     return null;

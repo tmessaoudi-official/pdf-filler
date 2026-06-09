@@ -9,6 +9,7 @@ import type { MatchResult } from './textSearchHandler';
 import { SignaturePad } from './signaturePad';
 import { InteractionHandler } from './interactionHandler';
 import { ShapeElement } from './shapeElement';
+import { RedactionElement } from './redactionElement';
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
 import { ElementFactory } from './elementFactory';
@@ -33,8 +34,9 @@ import { TextLayerManager } from './textLayer';
 import { CommentElement } from './commentElement';
 import { t } from './i18n';
 import { trapFocus } from './focusTrap';
+import { TextEditHandler } from './textEditHandler';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
@@ -78,6 +80,7 @@ export class PDFEditorApp {
   private _clipboard: ElementJSON | null = null;
   private _exportPreviewOpen = false;
   private _trapCleanup: (() => void) | null = null;
+  private _textEditHandler = new TextEditHandler();
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -193,6 +196,10 @@ export class PDFEditorApp {
       if (e.key === 'Escape') { e.preventDefault(); this._closeFindBar(); }
     });
     this.ui.downloadBtn.addEventListener('click', () => this.downloadPDF());
+    this.ui.editTextBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'editText' ? 'select' : 'editText');
+    });
     this.ui.prevPageBtn.addEventListener('click', () => this.prevPage());
     this.ui.nextPageBtn.addEventListener('click', () => this.nextPage());
     this.ui.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
@@ -370,12 +377,26 @@ export class PDFEditorApp {
         this.renderElements(); this._autosave();
       }
     });
-    this.ui.textColorInput.addEventListener('input', (e) => {
-      if (this.selectedElement && this.selectedElement.type === 'text') {
+    this.ui.colorInput.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (this.selectedElement?.type === 'text') {
         const te = this.selectedElement as TextElement;
         const before = { color: te.color };
-        te.color = (e.target as HTMLInputElement).value;
-        this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { color: te.color }));
+        te.color = val;
+        this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { color: val }));
+        this.renderElements(); this._autosave();
+      } else if (this.selectedElement?.type === 'shape') {
+        (this.selectedElement as ShapeElement).strokeColor = val;
+        this.renderElements(); this._autosave();
+      }
+    });
+    this.ui.redactColorInput.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (this.selectedElement?.type === 'redaction') {
+        const re = this.selectedElement as RedactionElement;
+        const before = { color: re.color };
+        re.color = val;
+        this.historyManager.record(new MoveResizeCmd(this.elements, re, before, { color: val }));
         this.renderElements(); this._autosave();
       }
     });
@@ -398,12 +419,6 @@ export class PDFEditorApp {
       this.historyManager.record(new MoveResizeCmd(this.elements, te, before, { fontSize: newSize }));
       this.ui.fontSizeInput.value = String(newSize);
       this.renderElements(); this._autosave();
-    });
-    this.ui.shapeColor.addEventListener('input', (e) => {
-      if (this.selectedElement?.type === 'shape') {
-        (this.selectedElement as ShapeElement).strokeColor = (e.target as HTMLInputElement).value;
-        this.renderElements(); this._autosave();
-      }
     });
     this.ui.shapeWidth.addEventListener('change', (e) => {
       if (this.selectedElement?.type === 'shape') {
@@ -1391,6 +1406,8 @@ export class PDFEditorApp {
     this.eraserHandler.cancel();
     this.inkLayerHandler.cancel();
     this.mode = mode;
+    const pe = mode === 'select' ? 'auto' : 'none';
+    this.ui.container.querySelectorAll<HTMLElement>('.pdf-element').forEach(el => { el.style.pointerEvents = pe; });
     this.uiController.updateModeButtons(mode);
     this._formFieldOverlay.setPointerEvents(mode === 'select');
     this._textLayerManager.setPointerEvents(mode === 'select');
@@ -1402,7 +1419,7 @@ export class PDFEditorApp {
       drawRect: 'toast.modeHint.drawRect', drawEllipse: 'toast.modeHint.drawEllipse',
       drawFreehand: 'toast.modeHint.drawFreehand', drawHighlight: 'toast.modeHint.drawHighlight',
       addComment: 'toast.modeHint.addComment', drawRedaction: 'toast.modeHint.drawRedaction',
-      drawErase: 'toast.modeHint.drawErase',
+      drawErase: 'toast.modeHint.drawErase', editText: 'toast.modeHint.editText',
     };
     const hintKey = modeHintKeys[mode];
     if (hintKey) this.uiController.showToast(t(hintKey), 1500);
@@ -1462,6 +1479,8 @@ export class PDFEditorApp {
     if (this.mode === 'addText') {
       this.addTextAtPosition(e);
       this.setMode('select');
+    } else if (this.mode === 'editText') {
+      void this._textEditHandler.handleCanvasClick(e, this);
     } else if (this.mode === 'addSignature' && this.currentSignature) {
       this.addSignatureAtPosition(e);
       this.mode = 'select';
@@ -1496,7 +1515,7 @@ export class PDFEditorApp {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const options = { fontSize: parseInt(this.ui.fontSizeInput.value), color: this.ui.textColorInput.value };
+    const options = { fontSize: parseInt(this.ui.fontSizeInput.value), color: this.ui.colorInput.value };
     const textElement = new TextElement(x, y, pageId, options);
     textElement.x -= textElement.width / 2;
     textElement.y -= textElement.height / 2;
@@ -1552,8 +1571,10 @@ export class PDFEditorApp {
     if (!currentPageId) return;
     const canvasOffset = { left: this.ui.canvas.offsetLeft, top: this.ui.canvas.offsetTop };
     const currentPageElements = this.elements.filter(el => el.pageId === currentPageId);
+    const interactable = this.mode === 'select';
     currentPageElements.forEach(element => {
       const div = element.render(this.ui.container, canvasOffset, this.zoomScale);
+      div.style.pointerEvents = interactable ? 'auto' : 'none';
       if (element.rotation) {
         div.style.transform = `rotate(${element.rotation}deg)`;
         div.style.transformOrigin = 'center center';
@@ -1624,7 +1645,7 @@ export class PDFEditorApp {
       ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = this.ui.shapeColor.value;
+      ctx.strokeStyle = this.ui.colorInput.value;
     }
     ctx.moveTo(points[0].x * this.zoomScale, points[0].y * this.zoomScale);
     for (let i = 1; i < points.length; i++) {
@@ -1917,8 +1938,8 @@ export class PDFEditorApp {
     await renderPage.render({ canvas: offscreen, viewport: vp }).promise;
 
     // 3. Paint redaction boxes onto the canvas (permanently covers content)
-    ctx.fillStyle = '#000000';
     for (const el of elements.filter(e => e.type === 'redaction')) {
+      ctx.fillStyle = (el as { color?: string }).color ?? '#000000';
       ctx.fillRect(
         Math.round(el.x * SCALE),
         Math.round(el.y * SCALE),
@@ -2384,7 +2405,8 @@ export class PDFEditorApp {
       const eh = swapDims ? element.width : element.height;
       const corner = tp(element.x, element.y + element.height);
       const a = _anchorForCenter(corner.x, corner.y, ew, eh);
-      page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, color: rgb(0, 0, 0), borderWidth: 0, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
+      const redCol = this.hexToRgbValues((element as { color?: string }).color ?? '#000000');
+      page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, color: rgb(redCol.r, redCol.g, redCol.b), borderWidth: 0, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     }
   }
 

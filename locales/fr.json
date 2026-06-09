@@ -32,7 +32,9 @@
     "selectTitle": "Mode sélection / pointeur (Échap)",
     "previewExportTitle": "Aperçu des positions d'export",
     "watermarkTitle": "Paramètres du filigrane",
-    "helpTitle": "Raccourcis clavier (?)"
+    "helpTitle": "Raccourcis clavier (?)",
+    "editTextLabel": "Éditer texte",
+    "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer"
   },
   "formatting": {
     "textLabel": "Texte",
@@ -85,7 +87,8 @@
     "drawHighlight": "🖊 SURLIGN.",
     "addComment": "💬 COMMENT.",
     "drawRedaction": "⬛ CAVIAR.",
-    "drawErase": "⌫ GOMME"
+    "drawErase": "⌫ GOMME",
+    "editText": "✎ ÉDITER"
   },
   "modal": {
     "watermark": {
@@ -188,7 +191,8 @@
       "drawHighlight": "Outil surligneur — faites glisser pour marquer. Appuyez sur Échap pour quitter.",
       "addComment": "Outil commentaire — cliquez pour placer. Appuyez sur Échap pour annuler.",
       "drawRedaction": "Outil caviardage — faites glisser pour caviarder. Appuyez sur Échap pour quitter.",
-      "drawErase": "Gomme — balayez pour effacer des éléments. Appuyez sur Échap pour quitter."
+      "drawErase": "Gomme — balayez pour effacer des éléments. Appuyez sur Échap pour quitter.",
+      "editText": "Éditer texte — cliquez sur un mot pour le superposer et l'éditer. Appuyez sur Échap pour quitter."
     }
   },
   "thumbnail": {

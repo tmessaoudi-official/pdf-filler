@@ -1,13 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { DocumentModel } from './documentModel';
+// ?worker&url tells Vite to bundle this entry (polyfills + pdfjs worker) into a hashed
+// worker chunk and return its URL — needed to polyfill Math.sumPrecise in the worker scope.
+// @ts-ignore — Vite-specific query suffix, unknown to TypeScript
+import pdfjsWorkerShimUrl from './pdf-worker-shim?worker&url';
 
-// Use Vite's ?url import to copy the worker to dist/ and get its hashed URL
-// Note: pdfjs-dist v4+ uses .mjs extension (ESM-only build)
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).href;
+// Worker shim polyfills Math.sumPrecise before pdfjs worker code, ensuring correct font
+// rendering in browsers without native support (Chrome/Edge <137).
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerShimUrl as string;
 
 export class PDFRenderer {
   canvas: HTMLCanvasElement;

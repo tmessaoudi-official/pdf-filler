@@ -67,7 +67,7 @@ export class InkLayerHandler {
       type: this._strokeType,
       points: [...this._currentPoints],
       width: this._strokeType === 'erase' ? Math.max(12, sw * 4) : sw,
-      color: this.app.ui.shapeColor.value,
+      color: this.app.ui.colorInput.value,
     };
     this._currentPoints = [];
 

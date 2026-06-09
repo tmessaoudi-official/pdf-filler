@@ -21,6 +21,8 @@
     "highlightTitle": "فرشاة التظليل (H)",
     "commentLabel": "تعليق",
     "commentTitle": "إضافة تعليق / ملاحظة (N)",
+    "editTextLabel": "تحرير النص",
+    "editTextTitle": "تحرير نص PDF — انقر على كلمة لتراكبها وتعديلها",
     "findTitle": "البحث في الصفحة (Ctrl+F)",
     "arrowTitle": "سهم (A)",
     "rectTitle": "مستطيل (R)",
@@ -86,7 +88,8 @@
     "drawHighlight": "🖊 تظليل",
     "addComment": "💬 تعليق",
     "drawRedaction": "⬛ تعتيم",
-    "drawErase": "⌫ محو"
+    "drawErase": "⌫ محو",
+    "editText": "✎ تحرير"
   },
   "modal": {
     "watermark": {
@@ -189,7 +192,8 @@
       "drawHighlight": "أداة التظليل — اسحب للتحديد. اضغط Esc للخروج.",
       "addComment": "أداة التعليق — انقر للوضع. اضغط Esc للإلغاء.",
       "drawRedaction": "أداة التعتيم — اسحب للتعتيم. اضغط Esc للخروج.",
-      "drawErase": "الممحاة — امسح للحذف. اضغط Esc للخروج."
+      "drawErase": "الممحاة — امسح للحذف. اضغط Esc للخروج.",
+      "editText": "تحرير النص — انقر على أي كلمة لتراكبها وتعديلها. اضغط Esc للخروج."
     }
   },
   "thumbnail": {

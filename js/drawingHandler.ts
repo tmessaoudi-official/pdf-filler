@@ -165,7 +165,7 @@ export class DrawingHandler {
     const rect = this.app.ui.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left) / this.app.zoomScale;
     const endY = (e.clientY - rect.top)  / this.app.zoomScale;
-    const col    = this.app.ui.shapeColor.value;
+    const col    = this.app.ui.colorInput.value;
     const sw     = parseInt(this.app.ui.shapeWidth.value) || 2;
     const opts   = { strokeColor: col, strokeWidth: sw };
     const start  = this._drawStart;
@@ -224,12 +224,13 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      const redEl = new RedactionElement(x, y, w, h, pageId);
+      const redEl = new RedactionElement(x, y, w, h, pageId, this.app.ui.redactColorInput.value);
       this._drawStart = null;
       this._drawPoints = [];
       this.app.historyManager.execute(new AddElementCmd(this.app.elements, redEl));
       this.app._autosave();
-      this.app.renderElements();
+      this.app.setMode('select');
+      this.app.selectElement(redEl);
       return;
     }
 
@@ -269,7 +270,7 @@ export class DrawingHandler {
     const s   = this.app.zoomScale;
     const ox  = this.app.ui.canvas.offsetLeft;
     const oy  = this.app.ui.canvas.offsetTop;
-    const col = this.app.ui.shapeColor.value;
+    const col = this.app.ui.colorInput.value;
     const sw  = (parseInt(this.app.ui.shapeWidth.value) || 2) * s;
 
     const sx0 = this._drawStart.x * s + ox;
@@ -352,7 +353,8 @@ export class DrawingHandler {
       el.setAttribute('y', String(Math.min(sy0, syC)));
       el.setAttribute('width', String(Math.abs(sxC - sx0)));
       el.setAttribute('height', String(Math.abs(syC - sy0)));
-      el.setAttribute('fill', 'rgba(0,0,0,0.8)');
+      el.setAttribute('fill', this.app.ui.redactColorInput.value);
+      el.setAttribute('fill-opacity', '0.8');
       el.setAttribute('stroke', '#c00');
       el.setAttribute('stroke-width', '2');
       el.setAttribute('stroke-dasharray', '6,3');
