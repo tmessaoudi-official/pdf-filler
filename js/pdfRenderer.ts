@@ -3,7 +3,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { DocumentModel } from './documentModel';
 // ?worker&url tells Vite to bundle this entry (polyfills + pdfjs worker) into a hashed
 // worker chunk and return its URL — needed to polyfill Math.sumPrecise in the worker scope.
-// @ts-ignore — Vite-specific query suffix, unknown to TypeScript
+// @ts-expect-error — Vite-specific query suffix, unknown to TypeScript
 import pdfjsWorkerShimUrl from './pdf-worker-shim?worker&url';
 
 // Worker shim polyfills Math.sumPrecise before pdfjs worker code, ensuring correct font
