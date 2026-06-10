@@ -1,7 +1,7 @@
-import type { PDFEditorApp } from './pdfEditorApp';
-import type { PDFElement } from './pdfElement';
-import type { ShapeElement } from './shapeElement';
-import { MoveResizeCmd, RotateElementCmd } from './historyManager';
+import type { PDFEditorApp } from '../core/pdfEditorApp';
+import type { PDFElement } from '../elements/pdfElement';
+import type { ShapeElement } from '../elements/shapeElement';
+import { MoveResizeCmd, RotateElementCmd } from '../core/historyManager';
 
 interface PendingTouchDrag {
   element: PDFElement;

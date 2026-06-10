@@ -1,6 +1,6 @@
 import type { PDFRenderer } from './pdfRenderer';
 import type { DocumentModel } from './documentModel';
-import { t } from './i18n';
+import { t } from '../utils/i18n';
 
 export class PageThumbnailPanel {
   private container: HTMLElement;

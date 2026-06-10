@@ -1,6 +1,6 @@
-import type { PDFEditorApp } from './pdfEditorApp';
-import type { InkStroke } from './inkLayer';
-import { InkStrokeCmd } from './historyManager';
+import type { PDFEditorApp } from '../core/pdfEditorApp';
+import type { InkStroke } from '../core/inkLayer';
+import { InkStrokeCmd } from '../core/historyManager';
 
 export class InkLayerHandler {
   private _drawing = false;

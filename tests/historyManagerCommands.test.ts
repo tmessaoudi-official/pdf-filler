@@ -22,12 +22,12 @@ import {
   AddPagesCmd,
   RotatePageCmd,
   type ElementTransformSnapshot,
-} from '../src/historyManager';
-import { TextElement } from '../src/textElement';
-import { PDFElement } from '../src/pdfElement';
-import { InkLayer } from '../src/inkLayer';
-import type { InkStroke } from '../src/inkLayer';
-import { DocumentModel } from '../src/documentModel';
+} from '../src/core/historyManager';
+import { TextElement } from '../src/elements/textElement';
+import { PDFElement } from '../src/elements/pdfElement';
+import { InkLayer } from '../src/core/inkLayer';
+import type { InkStroke } from '../src/core/inkLayer';
+import { DocumentModel } from '../src/core/documentModel';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 beforeEach(() => { PDFElement._nextId = 1; });

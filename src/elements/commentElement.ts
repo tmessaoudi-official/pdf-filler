@@ -1,6 +1,6 @@
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
-import { t } from './i18n';
+import { t } from '../utils/i18n';
 
 export interface CommentOptions {
   color?: string;

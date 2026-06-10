@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { PDFRenderer } from '../src/pdfRenderer';
-import { DocumentModel } from '../src/documentModel';
+import { PDFRenderer } from '../src/core/pdfRenderer';
+import { DocumentModel } from '../src/core/documentModel';
 
 type RendererTestable = {
   _renderPdfPage(doc: PDFDocumentProxy, pageNum: number): Promise<void>;

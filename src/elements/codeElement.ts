@@ -1,6 +1,6 @@
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
-import type { QRStyleOptions, BwipOptions } from './codeGenerator';
+import type { QRStyleOptions, BwipOptions } from '../utils/codeGenerator';
 
 export interface CodeElementOptions {
   codeType: string;

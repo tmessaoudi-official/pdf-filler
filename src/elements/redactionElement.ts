@@ -1,4 +1,4 @@
-import { t } from './i18n';
+import { t } from '../utils/i18n';
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
 

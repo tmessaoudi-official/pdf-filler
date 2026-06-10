@@ -1,10 +1,10 @@
-import type { PDFEditorApp } from './pdfEditorApp';
-import type { PDFElement } from './pdfElement';
-import { ShapeElement } from './shapeElement';
-import type { Command } from './historyManager';
-import { BulkDeleteCmd, SplitStrokeCmd, MacroCmd } from './historyManager';
-import { bboxIntersectsPolyline, splitFreehandAtErase } from './eraserGeometry';
-import type { Point } from './eraserGeometry';
+import type { PDFEditorApp } from '../core/pdfEditorApp';
+import type { PDFElement } from '../elements/pdfElement';
+import { ShapeElement } from '../elements/shapeElement';
+import type { Command } from '../core/historyManager';
+import { BulkDeleteCmd, SplitStrokeCmd, MacroCmd } from '../core/historyManager';
+import { bboxIntersectsPolyline, splitFreehandAtErase } from '../utils/eraserGeometry';
+import type { Point } from '../utils/eraserGeometry';
 
 export class EraserHandler {
   private _drawing = false;

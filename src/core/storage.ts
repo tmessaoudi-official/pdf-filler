@@ -1,5 +1,5 @@
 import type { DocumentPage, WatermarkSettings } from './documentModel';
-import type { ElementJSON } from './pdfElement';
+import type { ElementJSON } from '../elements/pdfElement';
 import type { InkStroke } from './inkLayer';
 
 export interface SavedState {

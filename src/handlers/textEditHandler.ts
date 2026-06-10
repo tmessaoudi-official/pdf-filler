@@ -1,7 +1,7 @@
-import { RedactionElement } from './redactionElement';
-import { TextElement } from './textElement';
-import { AddElementCmd, MacroCmd } from './historyManager';
-import type { PDFEditorApp } from './pdfEditorApp';
+import { RedactionElement } from '../elements/redactionElement';
+import { TextElement } from '../elements/textElement';
+import { AddElementCmd, MacroCmd } from '../core/historyManager';
+import type { PDFEditorApp } from '../core/pdfEditorApp';
 
 export class TextEditHandler {
   async handleCanvasClick(e: MouseEvent, app: PDFEditorApp): Promise<void> {

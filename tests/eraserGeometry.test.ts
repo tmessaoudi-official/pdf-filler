@@ -3,8 +3,8 @@ import {
   segmentsIntersect,
   bboxIntersectsPolyline,
   splitFreehandAtErase,
-} from '../src/eraserGeometry';
-import type { Point } from '../src/eraserGeometry';
+} from '../src/utils/eraserGeometry';
+import type { Point } from '../src/utils/eraserGeometry';
 
 describe('segmentsIntersect', () => {
   it('detects a simple crossing', () => {

@@ -1,8 +1,8 @@
-import type { PDFEditorApp } from './pdfEditorApp';
-import { ShapeElement } from './shapeElement';
-import { HighlightElement } from './highlightElement';
-import { RedactionElement } from './redactionElement';
-import { AddElementCmd } from './historyManager';
+import type { PDFEditorApp } from '../core/pdfEditorApp';
+import { ShapeElement } from '../elements/shapeElement';
+import { HighlightElement } from '../elements/highlightElement';
+import { RedactionElement } from '../elements/redactionElement';
+import { AddElementCmd } from '../core/historyManager';
 
 export class DrawingHandler {
   private _drawing = false;

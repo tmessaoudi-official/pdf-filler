@@ -1,7 +1,7 @@
 // Main entry point
-import './polyfills';
-import { PDFEditorApp } from './pdfEditorApp';
-import { initI18n, changeLanguage, onLanguageChanged } from './i18n';
+import './utils/polyfills';
+import { PDFEditorApp } from './core/pdfEditorApp';
+import { initI18n, changeLanguage, onLanguageChanged } from './utils/i18n';
 
 declare global {
   interface Window { app: PDFEditorApp; }

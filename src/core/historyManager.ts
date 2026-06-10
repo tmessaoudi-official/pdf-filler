@@ -1,5 +1,5 @@
-import { ElementFactory } from './elementFactory';
-import type { PDFElement } from './pdfElement';
+import { ElementFactory } from '../utils/elementFactory';
+import type { PDFElement } from '../elements/pdfElement';
 import type { DocumentModel, DocumentPage, SourcePdf } from './documentModel';
 import type { InkLayer, InkStroke } from './inkLayer';
 

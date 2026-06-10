@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PDFElement } from '../src/pdfElement';
-import { TextElement } from '../src/textElement';
-import { ElementFactory } from '../src/elementFactory';
-import { HistoryManager, AddElementCmd, MoveResizeCmd } from '../src/historyManager';
+import { PDFElement } from '../src/elements/pdfElement';
+import { TextElement } from '../src/elements/textElement';
+import { ElementFactory } from '../src/utils/elementFactory';
+import { HistoryManager, AddElementCmd, MoveResizeCmd } from '../src/core/historyManager';
 
 describe('PDFElement monotonic IDs', () => {
   beforeEach(() => {

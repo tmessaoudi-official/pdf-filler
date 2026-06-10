@@ -1,22 +1,22 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFRenderer } from './pdfRenderer';
-import { TextElement } from './textElement';
-import { SignatureElement } from './signatureElement';
-import { ImageElement } from './imageElement';
-import { HighlightElement } from './highlightElement';
-import { TextSearchHandler } from './textSearchHandler';
-import type { MatchResult } from './textSearchHandler';
-import { SignaturePad } from './signaturePad';
-import { InteractionHandler } from './interactionHandler';
-import { ShapeElement } from './shapeElement';
-import { RedactionElement } from './redactionElement';
-import { PDFElement } from './pdfElement';
-import type { ElementJSON } from './pdfElement';
-import { ElementFactory } from './elementFactory';
+import { TextElement } from '../elements/textElement';
+import { SignatureElement } from '../elements/signatureElement';
+import { ImageElement } from '../elements/imageElement';
+import { HighlightElement } from '../elements/highlightElement';
+import { TextSearchHandler } from '../handlers/textSearchHandler';
+import type { MatchResult } from '../handlers/textSearchHandler';
+import { SignaturePad } from '../utils/signaturePad';
+import { InteractionHandler } from '../handlers/interactionHandler';
+import { ShapeElement } from '../elements/shapeElement';
+import { RedactionElement } from '../elements/redactionElement';
+import { PDFElement } from '../elements/pdfElement';
+import type { ElementJSON } from '../elements/pdfElement';
+import { ElementFactory } from '../utils/elementFactory';
 import { UIController } from './uiController';
 import type { UIRefs } from './uiController';
-import { DrawingHandler } from './drawingHandler';
-import { EraserHandler } from './eraserHandler';
+import { DrawingHandler } from '../handlers/drawingHandler';
+import { EraserHandler } from '../handlers/eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
@@ -24,20 +24,20 @@ import {
 } from './historyManager';
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
-import { InkLayerHandler } from './inkLayerHandler';
+import { InkLayerHandler } from '../handlers/inkLayerHandler';
 import { DocumentModel, PAGE_SIZES } from './documentModel';
 import type { WatermarkSettings } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
-import { FormFieldOverlay } from './formFieldOverlay';
-import { TextLayerManager } from './textLayer';
-import { CommentElement } from './commentElement';
-import { t } from './i18n';
-import { trapFocus } from './focusTrap';
-import { TextEditHandler } from './textEditHandler';
-import { CodeElement } from './codeElement';
-import { generateCodeDataUrl, getCodeFormat } from './codeGenerator';
-import type { QRStyleOptions, BwipOptions } from './codeGenerator';
+import { FormFieldOverlay } from '../utils/formFieldOverlay';
+import { TextLayerManager } from '../utils/textLayer';
+import { CommentElement } from '../elements/commentElement';
+import { t } from '../utils/i18n';
+import { trapFocus } from '../utils/focusTrap';
+import { TextEditHandler } from '../handlers/textEditHandler';
+import { CodeElement } from '../elements/codeElement';
+import { generateCodeDataUrl, getCodeFormat } from '../utils/codeGenerator';
+import type { QRStyleOptions, BwipOptions } from '../utils/codeGenerator';
 
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'addCode' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
 

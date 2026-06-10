@@ -1,9 +1,9 @@
-import type { PDFElement } from './pdfElement';
-import type { TextElement } from './textElement';
-import type { ShapeElement } from './shapeElement';
-import type { RedactionElement } from './redactionElement';
+import type { PDFElement } from '../elements/pdfElement';
+import type { TextElement } from '../elements/textElement';
+import type { ShapeElement } from '../elements/shapeElement';
+import type { RedactionElement } from '../elements/redactionElement';
 import type { ToolMode } from './pdfEditorApp';
-import { t } from './i18n';
+import { t } from '../utils/i18n';
 
 export interface UIRefs {
   fileInput: HTMLInputElement;

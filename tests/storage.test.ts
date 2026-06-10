@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';   // patches globalThis.indexedDB before imports
-import { saveState, loadState, clearState } from '../src/storage';
-import type { SavedState } from '../src/storage';
+import { saveState, loadState, clearState } from '../src/core/storage';
+import type { SavedState } from '../src/core/storage';
 
 const makeState = (override: Partial<SavedState> = {}): SavedState => ({
   elements: [],
