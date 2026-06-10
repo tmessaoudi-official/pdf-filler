@@ -60,33 +60,57 @@ export class TextEditHandler {
 
     const pageId = docPage.id;
 
-    // Sample canvas background color at click position.
-    // Use an offscreen 1×1 canvas with willReadFrequently so we don't trigger the
-    // browser warning on the main pdfjs-owned canvas context.
+    // Sample background color at the 4 corners of the text bounding box and pick
+    // the lightest pixel (highest R+G+B sum). Sampling corners avoids hitting glyph
+    // pixels (dark) that occur when sampling at the click point inside a character.
     let bgColor = '#ffffff';
     const offscreen = document.createElement('canvas');
     offscreen.width = 1; offscreen.height = 1;
     const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
     if (offCtx) {
-      const px = Math.round(e.clientX - rect.left);
-      const py = Math.round(e.clientY - rect.top);
-      offCtx.drawImage(app.ui.canvas, px, py, 1, 1, 0, 0, 1, 1);
-      const d = offCtx.getImageData(0, 0, 1, 1).data;
-      bgColor = `#${d[0].toString(16).padStart(2, '0')}${d[1].toString(16).padStart(2, '0')}${d[2].toString(16).padStart(2, '0')}`;
+      const s = app.zoomScale;
+      const INSET = 2;
+      const corners = [
+        { x: Math.round(annX * s) + INSET,       y: Math.round(annY * s) + INSET },
+        { x: Math.round((annX + w) * s) - INSET,  y: Math.round(annY * s) + INSET },
+        { x: Math.round(annX * s) + INSET,       y: Math.round((annY + h) * s) - INSET },
+        { x: Math.round((annX + w) * s) - INSET,  y: Math.round((annY + h) * s) - INSET },
+      ];
+      let bestBrightness = -1;
+      let bestRgb = { r: 255, g: 255, b: 255 };
+      for (const pt of corners) {
+        offCtx.drawImage(app.ui.canvas, pt.x, pt.y, 1, 1, 0, 0, 1, 1);
+        const d = offCtx.getImageData(0, 0, 1, 1).data;
+        const brightness = d[0] + d[1] + d[2];
+        if (brightness > bestBrightness) { bestBrightness = brightness; bestRgb = { r: d[0], g: d[1], b: d[2] }; }
+      }
+      bgColor = `#${bestRgb.r.toString(16).padStart(2, '0')}${bestRgb.g.toString(16).padStart(2, '0')}${bestRgb.b.toString(16).padStart(2, '0')}`;
     }
 
-    // Detect font family from pdfjs styles
+    // Detect font family from pdfjs styles and embedded font name heuristics
     const pdfjsFontFamily = styles[best.fontName]?.fontFamily ?? '';
+    const ff = pdfjsFontFamily.toLowerCase();
+    const fn = best.fontName.toLowerCase();
     let fontFamily = 'Arial';
-    if (/times|serif/i.test(pdfjsFontFamily) || /times/i.test(best.fontName)) {
+    if (/times|roman/i.test(ff) || /times|roman/i.test(fn)) {
       fontFamily = 'Times New Roman';
-    } else if (/courier|mono/i.test(pdfjsFontFamily) || /courier/i.test(best.fontName)) {
+    } else if (/courier|typewriter/i.test(ff) || /cour/i.test(fn)) {
       fontFamily = 'Courier New';
+    } else if (/helvetica/i.test(ff) || /helv/i.test(fn)) {
+      fontFamily = 'Helvetica';
+    } else if (/georgia/i.test(ff) || /georgia/i.test(fn)) {
+      fontFamily = 'Georgia';
+    } else if (/\bmono\b/i.test(ff)) {
+      fontFamily = 'Courier New';
+    } else if (/\bserif\b/i.test(ff)) {
+      fontFamily = 'Times New Roman';
     }
 
-    // Font size from the affine transform matrix (handles rotation)
+    // Font size from the affine transform matrix (handles rotation); clamp to valid range
     const detectedFontSize = Math.round(Math.hypot(best.transform[0], best.transform[1]));
-    const fontSize = Math.max(8, detectedFontSize || Math.round(h * 0.82));
+    const fontSize = detectedFontSize >= 6 && detectedFontSize <= 144
+      ? detectedFontSize
+      : Math.max(8, Math.round(h * 0.82));
 
     // Bold / italic from fontName heuristics
     const bold   = /bold/i.test(best.fontName);

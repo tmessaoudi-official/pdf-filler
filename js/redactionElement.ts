@@ -26,6 +26,10 @@ export class RedactionElement extends PDFElement {
       zIndex:     '15',
     });
 
+    const burnLabel = document.createElement('span');
+    burnLabel.className = 'redaction-burn-label';
+    burnLabel.textContent = '⚠ Burn on export';
+    wrapper.appendChild(burnLabel);
     wrapper.appendChild(this.createRotationHandle());
     wrapper.appendChild(this.createControls());
     wrapper.appendChild(this.createResizeHandle());

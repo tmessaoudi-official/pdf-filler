@@ -127,6 +127,9 @@
         "E": "Eraser",
         "H": "Highlight",
         "N": "Add comment / note",
+        "X": "Edit text",
+        "K": "Redact",
+        "W": "Watermark",
         "Esc": "Select mode / cancel / close modal",
         "Del": "Remove selected element",
         "Arrows": "Nudge selected 1px",
@@ -208,6 +211,9 @@
   "canvas": {
     "emptyState": "Upload a PDF to get started",
     "ariaLabel": "PDF document viewer"
+  },
+  "comment": {
+    "placeholder": "Add a note…"
   },
   "donePill": "✓ Done drawing",
   "storageBanner": {

@@ -81,6 +81,7 @@ export class PDFEditorApp {
   private _exportPreviewOpen = false;
   private _trapCleanup: (() => void) | null = null;
   private _textEditHandler = new TextEditHandler();
+  private _placementGhost: HTMLDivElement | null = null;
 
   get ui(): UIRefs { return this.uiController.refs; }
 
@@ -217,11 +218,11 @@ export class PDFEditorApp {
       this._autosave();
     });
 
-    /* eslint-disable @typescript-eslint/no-non-null-assertion */
+     
     document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
     document.getElementById('cancelSignature')!.addEventListener('click', () => this.closeSignatureModal());
     document.getElementById('saveSignature')!.addEventListener('click', () => this.saveSignature());
-    /* eslint-enable @typescript-eslint/no-non-null-assertion */
+     
 
     this.ui.sigLineWidthInput.addEventListener('change', (e) => {
       this.signaturePad.setLineWidth(parseInt((e.target as HTMLInputElement).value));
@@ -235,6 +236,7 @@ export class PDFEditorApp {
       this.drawingHandler.handlePointerMove(e);
       this.eraserHandler.handlePointerMove(e);
       this.inkLayerHandler.handlePointerMove(e);
+      this._updatePlacementGhost(e);
     });
     document.addEventListener('pointerup', (e) => {
       this.interactionHandler.handlePointerUp(e);
@@ -316,7 +318,7 @@ export class PDFEditorApp {
       this._clearSave();
     });
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
 
@@ -399,6 +401,15 @@ export class PDFEditorApp {
         this.historyManager.record(new MoveResizeCmd(this.elements, re, before, { color: val }));
         this.renderElements(); this._autosave();
       }
+    });
+    document.getElementById('redactEyedropperBtn')?.addEventListener('click', async () => {
+      if (!('EyeDropper' in window)) { this.showToast('Eyedropper not supported in this browser'); return; }
+      try {
+        const dropper = new (window as { EyeDropper: new() => { open(): Promise<{ sRGBHex: string }> } }).EyeDropper();
+        const result = await dropper.open();
+        this.ui.redactColorInput.value = result.sRGBHex;
+        this.ui.redactColorInput.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch { /* user cancelled */ }
     });
     this.ui.fontSizeDownBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
@@ -497,6 +508,15 @@ export class PDFEditorApp {
           break;
         case 'e': case 'E':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawErase' ? 'select' : 'drawErase');
+          break;
+        case 'x': case 'X':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'editText' ? 'select' : 'editText');
+          break;
+        case 'k': case 'K':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'drawRedaction' ? 'select' : 'drawRedaction');
+          break;
+        case 'w': case 'W':
+          if (this.documentModel.pageCount) this._openWatermarkModal();
           break;
         case '?': this._toggleHelp(); break;
         case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight':
@@ -1149,7 +1169,7 @@ export class PDFEditorApp {
       await this._renderCurrentPage();
       this.enableUI();
       this._enableFileMenuDocItems();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+       
       document.getElementById('emptyState')!.style.display = 'none';
       this.ui.pageThumbnailContainer.style.display = '';
       await this._thumbnailPanel?.render();
@@ -1244,7 +1264,7 @@ export class PDFEditorApp {
 
     this.ui.pageThumbnailContainer.style.display = 'none';
     this.ui.pageThumbnailContainer.innerHTML = '';
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     document.getElementById('emptyState')!.style.display = 'flex';
     this._disableFileMenuDocItems();
     this.renderElements(); // clear annotation DOM nodes after model is reset
@@ -1356,7 +1376,7 @@ export class PDFEditorApp {
       this.documentModel.addPagesFrom(src.id);
       this.renderer.pdfDoc = doc;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+       
       document.getElementById('emptyState')!.style.display = 'none';
       this._isFitMode = true;
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
@@ -1421,8 +1441,17 @@ export class PDFEditorApp {
       addComment: 'toast.modeHint.addComment', drawRedaction: 'toast.modeHint.drawRedaction',
       drawErase: 'toast.modeHint.drawErase', editText: 'toast.modeHint.editText',
     };
+    const placementModes: ToolMode[] = ['addText', 'addComment', 'addImage', 'addSignature'];
+    if (!placementModes.includes(mode) && this._placementGhost) {
+      this._placementGhost.style.display = 'none';
+    }
+
     const hintKey = modeHintKeys[mode];
-    if (hintKey) this.uiController.showToast(t(hintKey), 1500);
+    if (hintKey) {
+      this.uiController.showToast(t(hintKey), 1500);
+    } else {
+      this.uiController.clearToast();
+    }
   }
 
   _isShapeMode() { return this.mode.startsWith('draw'); }
@@ -1479,6 +1508,7 @@ export class PDFEditorApp {
     if (this.mode === 'addText') {
       this.addTextAtPosition(e);
       this.setMode('select');
+      this._updateFormattingToolbar();
     } else if (this.mode === 'editText') {
       void this._textEditHandler.handleCanvasClick(e, this);
     } else if (this.mode === 'addSignature' && this.currentSignature) {
@@ -1801,6 +1831,7 @@ export class PDFEditorApp {
 
     this._exportPreviewOpen = true;
     this.ui.previewExportBtn.classList.add('active');
+    this.ui.previewExportBtn.setAttribute('aria-pressed', 'true');
     this.ui.exportPreviewOverlay.style.display = '';
   }
 
@@ -1831,6 +1862,7 @@ export class PDFEditorApp {
   private _hideExportPreview(): void {
     this._exportPreviewOpen = false;
     this.ui.previewExportBtn.classList.remove('active');
+    this.ui.previewExportBtn.setAttribute('aria-pressed', 'false');
     this.ui.exportPreviewOverlay.style.display = 'none';
     this.ui.exportPreviewGhost.innerHTML = '';
   }
@@ -1933,7 +1965,7 @@ export class PDFEditorApp {
     const offscreen    = document.createElement('canvas');
     offscreen.width    = Math.round(vp.width);
     offscreen.height   = Math.round(vp.height);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const ctx          = offscreen.getContext('2d')!;
     await renderPage.render({ canvas: offscreen, viewport: vp }).promise;
 
@@ -2483,5 +2515,33 @@ export class PDFEditorApp {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return { r: 0, g: 0, b: 0 };
     return { r: parseInt(result[1], 16) / 255, g: parseInt(result[2], 16) / 255, b: parseInt(result[3], 16) / 255 };
+  }
+
+  private _updatePlacementGhost(e: PointerEvent): void {
+    const placementModes: ToolMode[] = ['addText', 'addComment', 'addImage', 'addSignature'];
+    if (!placementModes.includes(this.mode)) {
+      if (this._placementGhost) this._placementGhost.style.display = 'none';
+      return;
+    }
+    if (!this._placementGhost) {
+      const ghost = document.createElement('div');
+      ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;border:2px dashed rgba(0,100,255,0.7);background:rgba(0,100,255,0.07);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(0,100,255,0.8);box-sizing:border-box;';
+      document.body.appendChild(ghost);
+      this._placementGhost = ghost;
+    }
+    const ghost = this._placementGhost;
+    const cfg: Record<string, { icon: string; w: number; h: number }> = {
+      addText:    { icon: 'T', w: 80, h: 28 },
+      addComment: { icon: '🗒', w: 80, h: 60 },
+      addImage:   { icon: '🖼', w: 60, h: 60 },
+      addSignature: { icon: '✍', w: 80, h: 40 },
+    };
+    const c = cfg[this.mode] ?? { icon: '+', w: 40, h: 40 };
+    ghost.textContent = c.icon;
+    ghost.style.width  = c.w + 'px';
+    ghost.style.height = c.h + 'px';
+    ghost.style.left   = (e.clientX + 12) + 'px';
+    ghost.style.top    = (e.clientY + 12) + 'px';
+    ghost.style.display = 'flex';
   }
 }

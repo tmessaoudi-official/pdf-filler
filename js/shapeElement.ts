@@ -58,7 +58,7 @@ export class ShapeElement extends PDFElement {
     div.appendChild(svg);
     div.appendChild(this.createRotationHandle());
     div.appendChild(this.createControls());
-    if (this.shapeType !== 'freehand') div.appendChild(this.createResizeHandle());
+    if (this.shapeType !== 'freehand' && this.shapeType !== 'arrow') div.appendChild(this.createResizeHandle());
     return div;
   }
 

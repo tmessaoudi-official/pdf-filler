@@ -248,6 +248,20 @@
     .pdf-element.selected .element-controls { opacity: 1; }
     /* Comments: delete button lives inside the element at top-right corner */
     .comment-element .element-controls { opacity: 1; top: 4px; inset-inline-end: 4px; }
+    /* Redaction burn-on-export label */
+    .redaction-burn-label {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      white-space: nowrap;
+      color: #fff;
+      background: rgba(0,0,0,0.5);
+      border-radius: 2px;
+      padding: 0 3px;
+      pointer-events: none;
+    }
     /* Touch: prevent container scroll while dragging an element */
     .pdf-element { touch-action: none; }
     /* Signature canvas fills its container, JS sets intrinsic size */
@@ -913,6 +927,7 @@
       <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
       <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
       <input type="color" id="redactColor" value="#000000" class="toolbar-color" title="Redact color">
+      <button id="redactEyedropperBtn" class="btn btn-icon btn-sm" disabled title="Pick color from screen (eyedropper)">🖊</button>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
@@ -1012,7 +1027,7 @@
 <div class="help-modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
   <div class="help-content">
     <div class="help-header">
-      <h3 id="helpModalTitle" data-i18n="modal.help.title">Keyboard Shortcuts</h3>
+      <h2 id="helpModalTitle" data-i18n="modal.help.title">Keyboard Shortcuts</h2>
       <button id="closeHelp" class="btn btn-icon">×</button>
     </div>
     <table class="help-table">
@@ -1027,6 +1042,9 @@
       <tr><td>E</td><td data-i18n="modal.help.actions.E">Eraser</td></tr>
       <tr><td>H</td><td data-i18n="modal.help.actions.H">Highlight</td></tr>
       <tr><td>N</td><td data-i18n="modal.help.actions.N">Add comment / note</td></tr>
+      <tr><td>X</td><td data-i18n="modal.help.actions.X">Edit text</td></tr>
+      <tr><td>K</td><td data-i18n="modal.help.actions.K">Redact</td></tr>
+      <tr><td>W</td><td data-i18n="modal.help.actions.W">Watermark</td></tr>
       <tr><td>Esc</td><td data-i18n="modal.help.actions.Esc">Select mode / cancel / close modal</td></tr>
       <tr><td>Del / Backspace</td><td data-i18n="modal.help.actions.Del">Remove selected element</td></tr>
       <tr><td>←↑→↓</td><td data-i18n="modal.help.actions.Arrows">Nudge selected 1px</td></tr>
@@ -1045,7 +1063,7 @@
 
 <div class="watermark-modal" id="watermarkModal" role="dialog" aria-modal="true" aria-labelledby="wmModalTitle">
   <div class="watermark-content">
-    <h3 id="wmModalTitle" data-i18n="modal.watermark.title">Watermark Settings</h3>
+    <h2 id="wmModalTitle" data-i18n="modal.watermark.title">Watermark Settings</h2>
     <div class="wm-field">
       <label><input type="checkbox" id="wmEnabled"> <span data-i18n="modal.watermark.enable">Enable watermark on all pages</span></label>
     </div>
@@ -1084,7 +1102,7 @@
 
 <div class="signature-modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="sigModalTitle">
   <div class="signature-content">
-    <h3 id="sigModalTitle" data-i18n="modal.signature.title">Draw Your Signature</h3>
+    <h2 id="sigModalTitle" data-i18n="modal.signature.title">Draw Your Signature</h2>
     <div class="signature-settings">
       <label>
         <span data-i18n="modal.signature.lineWidthLabel">Line Width:</span> <input type="number" id="sigLineWidth" value="2" min="1" max="10">

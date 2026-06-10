@@ -1,5 +1,6 @@
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
+import { t } from './i18n';
 
 export interface CommentOptions {
   color?: string;
@@ -49,7 +50,7 @@ export class CommentElement extends PDFElement {
       boxSizing: 'border-box',
     });
     textarea.value = this.text;
-    textarea.placeholder = 'Add a note…';
+    textarea.placeholder = t('comment.placeholder');
     textarea.addEventListener('input', () => {
       this.text = textarea.value;
       textarea.dispatchEvent(

@@ -242,8 +242,11 @@ export class DrawingHandler {
       this.app._autosave();
       if (this.app.mode === 'drawFreehand') {
         this.app.selectedElement = null;
+        this.app.renderElements();
+      } else {
+        this.app.setMode('select');
+        this.app.selectElement(shape);
       }
-      this.app.renderElements();
     }
   }
 

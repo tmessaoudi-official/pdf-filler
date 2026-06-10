@@ -127,6 +127,9 @@
         "E": "Gomme",
         "H": "Surligneur",
         "N": "Ajouter un commentaire / note",
+        "X": "Modifier le texte",
+        "K": "Caviarder",
+        "W": "Filigrane",
         "Esc": "Mode sélection / annuler / fermer le modal",
         "Del": "Supprimer l'élément sélectionné",
         "Arrows": "Déplacer de 1px",
@@ -208,6 +211,9 @@
   "canvas": {
     "emptyState": "Téléchargez un PDF pour commencer",
     "ariaLabel": "Visionneuse de document PDF"
+  },
+  "comment": {
+    "placeholder": "Ajouter une note…"
   },
   "donePill": "✓ Fin du dessin",
   "storageBanner": {

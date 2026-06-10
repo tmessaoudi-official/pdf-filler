@@ -229,6 +229,8 @@ export class UIController {
     r.eraserBtn.disabled      = false;
     r.previewExportBtn.disabled = false;
     r.editTextBtn.disabled    = false;
+    const eyedropper = document.getElementById('redactEyedropperBtn') as HTMLButtonElement | null;
+    if (eyedropper) eyedropper.disabled = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -290,11 +292,15 @@ export class UIController {
       r.fontFamily.value = (el as TextElement).fontFamily || 'Arial';
       r.boldBtn.classList.toggle('btn-active-fmt',   !!(el as TextElement).bold);
       r.italicBtn.classList.toggle('btn-active-fmt', !!(el as TextElement).italic);
+      r.boldBtn.setAttribute('aria-pressed',   String(!!(el as TextElement).bold));
+      r.italicBtn.setAttribute('aria-pressed', String(!!(el as TextElement).italic));
       r.fontSizeInput.value = String((el as TextElement).fontSize);
       r.colorInput.value    = (el as TextElement).color;
     } else {
       r.boldBtn.classList.remove('btn-active-fmt');
       r.italicBtn.classList.remove('btn-active-fmt');
+      r.boldBtn.setAttribute('aria-pressed', 'false');
+      r.italicBtn.setAttribute('aria-pressed', 'false');
     }
 
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
@@ -333,7 +339,14 @@ export class UIController {
     this.refs.toast.classList.add('show');
     this._toastTimer = setTimeout(() => {
       this.refs.toast.classList.remove('show');
+      this.refs.toast.textContent = '';
     }, duration);
+  }
+
+  clearToast(): void {
+    clearTimeout(this._toastTimer ?? undefined);
+    this.refs.toast.classList.remove('show');
+    this.refs.toast.textContent = '';
   }
 
   toggleHelp(show?: boolean): void {
