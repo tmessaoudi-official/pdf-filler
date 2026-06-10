@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   HistoryManager, AddElementCmd, ClearAllCmd, TextEditCmd,
-} from '../src/core/historyManager';
-import { TextElement } from '../src/elements/textElement';
-import { PDFElement } from '../src/elements/pdfElement';
+} from '../../src/core/historyManager';
+import { TextElement } from '../../src/elements/textElement';
+import { PDFElement } from '../../src/elements/pdfElement';
 
 function makeMgr() {
   const onChange = vi.fn();

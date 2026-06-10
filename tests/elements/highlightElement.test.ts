@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HighlightElement } from '../src/elements/highlightElement';
+import { HighlightElement } from '../../src/elements/highlightElement';
 
 function getRenderedBackground(el: HighlightElement): string {
   const div = el.render(document.body, { left: 0, top: 0 }, 1);

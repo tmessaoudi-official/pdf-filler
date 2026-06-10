@@ -3,11 +3,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { HighlightElement } from '../src/elements/highlightElement';
-import { RedactionElement } from '../src/elements/redactionElement';
-import { ShapeElement } from '../src/elements/shapeElement';
-import { PDFElement } from '../src/elements/pdfElement';
-import { HistoryManager, AddElementCmd } from '../src/core/historyManager';
+import { HighlightElement } from '../../src/elements/highlightElement';
+import { RedactionElement } from '../../src/elements/redactionElement';
+import { ShapeElement } from '../../src/elements/shapeElement';
+import { PDFElement } from '../../src/elements/pdfElement';
+import { HistoryManager, AddElementCmd } from '../../src/core/historyManager';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PDFPageProxy, PageViewport } from 'pdfjs-dist';
-import { TextSearchHandler } from '../src/handlers/textSearchHandler';
+import { TextSearchHandler } from '../../src/handlers/textSearchHandler';
 
 function makePage(text: string) {
   return {

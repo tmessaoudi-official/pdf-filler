@@ -3,15 +3,15 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ElementFactory } from '../src/utils/elementFactory';
-import { PDFElement } from '../src/elements/pdfElement';
-import { TextElement } from '../src/elements/textElement';
-import { SignatureElement } from '../src/elements/signatureElement';
-import { ShapeElement } from '../src/elements/shapeElement';
-import { ImageElement } from '../src/elements/imageElement';
-import { HighlightElement } from '../src/elements/highlightElement';
-import { CommentElement } from '../src/elements/commentElement';
-import { RedactionElement } from '../src/elements/redactionElement';
+import { ElementFactory } from '../../src/utils/elementFactory';
+import { PDFElement } from '../../src/elements/pdfElement';
+import { TextElement } from '../../src/elements/textElement';
+import { SignatureElement } from '../../src/elements/signatureElement';
+import { ShapeElement } from '../../src/elements/shapeElement';
+import { ImageElement } from '../../src/elements/imageElement';
+import { HighlightElement } from '../../src/elements/highlightElement';
+import { CommentElement } from '../../src/elements/commentElement';
+import { RedactionElement } from '../../src/elements/redactionElement';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 
