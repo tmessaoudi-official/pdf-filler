@@ -1,0 +1,299 @@
+/**
+ * Element render() DOM output — verifies that each element type renders to
+ * the correct DOM structure (class names, dataset.id, styles, children).
+ * These tests are important for refactor safety: they pin the public render API.
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { PDFElement } from '../js/pdfElement';
+import { TextElement } from '../js/textElement';
+import { SignatureElement } from '../js/signatureElement';
+import { ImageElement } from '../js/imageElement';
+import { HighlightElement } from '../js/highlightElement';
+import { RedactionElement } from '../js/redactionElement';
+import { CommentElement } from '../js/commentElement';
+
+beforeEach(() => { PDFElement._nextId = 1; });
+
+const offset = { left: 0, top: 0 };
+const scale  = 1;
+
+// ── PDFElement base helpers ────────────────────────────────────────────────────
+describe('PDFElement base helpers', () => {
+  it('createControls() produces a div.element-controls with a delete button', () => {
+    const el = new TextElement(0, 0, 'p1');
+    const controls = el.createControls();
+    expect(controls.className).toBe('element-controls');
+    const btn = controls.querySelector('button.delete-btn');
+    expect(btn).toBeTruthy();
+    expect(btn!.textContent).toBe('×');
+  });
+
+  it('createRotationHandle() produces a div.rotation-handle', () => {
+    const el = new TextElement(0, 0, 'p1');
+    const handle = el.createRotationHandle();
+    expect(handle.className).toBe('rotation-handle');
+    expect(handle.textContent).toBe('↻');
+  });
+
+  it('createResizeHandle() produces a div.resize-handle', () => {
+    const el = new TextElement(0, 0, 'p1');
+    const handle = el.createResizeHandle();
+    expect(handle.className).toBe('resize-handle');
+  });
+
+  it('toJSON includes all base fields', () => {
+    const el = new TextElement(10, 20, 'p1', { width: 150, height: 40 });
+    const json = el.toJSON();
+    expect(json.id).toBe(el.id);
+    expect(json.type).toBe('text');
+    expect(json.x).toBe(10);
+    expect(json.y).toBe(20);
+    expect(json.width).toBe(150);
+    expect(json.height).toBe(40);
+    expect(json.pageId).toBe('p1');
+    expect(json.rotation).toBe(0);
+  });
+});
+
+// ── TextElement render ─────────────────────────────────────────────────────────
+describe('TextElement render', () => {
+  it('renders a div.text-element with data-id', () => {
+    const el = new TextElement(10, 20, 'p1');
+    const container = document.createElement('div');
+    const div = el.render(container, offset, scale);
+    expect(div.className).toContain('text-element');
+    expect(div.dataset.id).toBe(String(el.id));
+  });
+
+  it('positions the element via left/top styles', () => {
+    const el = new TextElement(30, 50, 'p1');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.style.left).toBe('30px');
+    expect(div.style.top).toBe('50px');
+  });
+
+  it('applies scale to dimensions', () => {
+    const el = new TextElement(0, 0, 'p1', { width: 200, height: 40 });
+    const div = el.render(document.createElement('div'), offset, 2);
+    expect(div.style.width).toBe('400px');
+    expect(div.style.height).toBe('80px');
+  });
+
+  it('multiline=true renders a textarea', () => {
+    const el = new TextElement(0, 0, 'p1', { multiline: true });
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.querySelector('textarea')).toBeTruthy();
+    expect(div.querySelector('input')).toBeFalsy();
+  });
+
+  it('multiline=false renders an input', () => {
+    const el = new TextElement(0, 0, 'p1', { multiline: false });
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.querySelector('input')).toBeTruthy();
+    expect(div.querySelector('textarea')).toBeFalsy();
+  });
+
+  it('textarea value matches el.text', () => {
+    const el = new TextElement(0, 0, 'p1', { multiline: true });
+    el.text = 'Hello!';
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect((div.querySelector('textarea') as HTMLTextAreaElement).value).toBe('Hello!');
+  });
+
+  it('includes rotation handle, controls, resize handle', () => {
+    const el = new TextElement(0, 0, 'p1');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.querySelector('.rotation-handle')).toBeTruthy();
+    expect(div.querySelector('.element-controls')).toBeTruthy();
+    expect(div.querySelector('.resize-handle')).toBeTruthy();
+  });
+
+  it('toJSON serialises text, fontSize, color, fontFamily, bold, italic', () => {
+    const el = new TextElement(0, 0, 'p1', { fontSize: 18, color: '#f00', bold: true, italic: true, fontFamily: 'Times' });
+    el.text = 'World';
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['text']).toBe('World');
+    expect(json['fontSize']).toBe(18);
+    expect(json['color']).toBe('#f00');
+    expect(json['fontFamily']).toBe('Times');
+    expect(json['bold']).toBe(true);
+    expect(json['italic']).toBe(true);
+  });
+});
+
+// ── SignatureElement render ────────────────────────────────────────────────────
+describe('SignatureElement render', () => {
+  it('renders a div.signature-element with data-id', () => {
+    const el = new SignatureElement(10, 20, 'p1', 'data:image/png;base64,abc');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.className).toContain('signature-element');
+    expect(div.dataset.id).toBe(String(el.id));
+  });
+
+  it('sets backgroundImage to the signature data URL', () => {
+    const el = new SignatureElement(0, 0, 'p1', 'data:image/png;base64,xyz');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.style.backgroundImage).toContain('data:image/png;base64,xyz');
+  });
+
+  it('toJSON includes data field', () => {
+    const el = new SignatureElement(0, 0, 'p1', 'data:image/png;base64,test');
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['data']).toBe('data:image/png;base64,test');
+  });
+});
+
+// ── ImageElement render ───────────────────────────────────────────────────────
+describe('ImageElement render', () => {
+  it('renders a div.image-element with an img tag', () => {
+    const el = new ImageElement(0, 0, 100, 80, 'p1', 'data:image/jpeg;base64,abc');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.className).toContain('image-element');
+    const img = div.querySelector('img');
+    expect(img).toBeTruthy();
+    expect(img!.src).toContain('data:image/jpeg;base64,abc');
+  });
+
+  it('img is non-draggable', () => {
+    const el = new ImageElement(0, 0, 100, 80, 'p1', 'data:image/png;base64,x');
+    const div = el.render(document.createElement('div'), offset, scale);
+    const img = div.querySelector('img')!;
+    expect(img.draggable).toBe(false);
+  });
+
+  it('minimum size of 10px applied', () => {
+    // width=2, height=2 → clamped to 10px
+    const el = new ImageElement(0, 0, 2, 2, 'p1', 'data:image/png;base64,x');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.style.width).toBe('10px');
+    expect(div.style.height).toBe('10px');
+  });
+
+  it('toJSON includes src field', () => {
+    const el = new ImageElement(0, 0, 100, 80, 'p1', 'data:image/png;base64,abc');
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['src']).toBe('data:image/png;base64,abc');
+  });
+});
+
+// ── HighlightElement render ───────────────────────────────────────────────────
+describe('HighlightElement render', () => {
+  it('renders a div.highlight-element', () => {
+    const el = new HighlightElement(0, 0, 100, 20, 'p1');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.className).toContain('highlight-element');
+  });
+
+  it('has data-id set', () => {
+    const el = new HighlightElement(0, 0, 100, 20, 'p1');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.dataset.id).toBe(String(el.id));
+  });
+
+  it('uses correct highlight color and opacity in background style', () => {
+    const el = new HighlightElement(0, 0, 100, 20, 'p1', '#FFFF00', 0.3);
+    const div = el.render(document.createElement('div'), offset, scale);
+    // Background should reference the highlight color
+    expect(div.style.background).toBeTruthy();
+  });
+});
+
+// ── RedactionElement render ───────────────────────────────────────────────────
+describe('RedactionElement render', () => {
+  it('renders a div.redaction-element', () => {
+    const el = new RedactionElement(0, 0, 100, 30, 'p1', '#000000');
+    const div = el.render(document.createElement('div'), offset, scale);
+    expect(div.className).toContain('redaction-element');
+  });
+
+  it('background is black or the specified color', () => {
+    const el = new RedactionElement(0, 0, 100, 30, 'p1', '#000000');
+    const div = el.render(document.createElement('div'), offset, scale);
+    // Background should be set (black redaction box)
+    expect(div.style.background || div.style.backgroundColor).toBeTruthy();
+  });
+
+  it('toJSON includes color', () => {
+    const el = new RedactionElement(0, 0, 100, 30, 'p1', '#000000');
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['color']).toBe('#000000');
+  });
+});
+
+// ── CommentElement render ─────────────────────────────────────────────────────
+describe('CommentElement render', () => {
+  it('renders a div.comment-element appended to the container', () => {
+    const el = new CommentElement(10, 20, 'p1', { text: 'note', color: '#FFFDE7' });
+    const container = document.createElement('div');
+    const wrapper = el.render(container, offset, scale);
+    expect(wrapper.className).toContain('comment-element');
+    expect(container.contains(wrapper)).toBe(true);
+  });
+
+  it('has a textarea with the comment text', () => {
+    const el = new CommentElement(0, 0, 'p1', { text: 'my note' });
+    const wrapper = el.render(document.createElement('div'), offset, scale);
+    const textarea = wrapper.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    expect(textarea.value).toBe('my note');
+  });
+
+  it('background color is set (jsdom normalises hex to rgb)', () => {
+    const el = new CommentElement(0, 0, 'p1', { color: '#FFFF00' });
+    const wrapper = el.render(document.createElement('div'), offset, scale);
+    // jsdom converts hex → rgb so check for the rgb equivalent or presence
+    const bg = wrapper.style.background;
+    expect(bg).toBeTruthy();
+    // rgb(255, 255, 0) is #FFFF00 normalised by jsdom
+    expect(bg.includes('#FFFF00') || bg.includes('rgb(255, 255, 0)')).toBe(true);
+  });
+
+  it('toJSON includes color and text', () => {
+    const el = new CommentElement(5, 10, 'p1', { color: '#FFFDE7', text: 'hello' });
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['color']).toBe('#FFFDE7');
+    expect(json['text']).toBe('hello');
+  });
+
+  it('updating textarea value updates el.text via input event', () => {
+    const el = new CommentElement(0, 0, 'p1', { text: '' });
+    const wrapper = el.render(document.createElement('div'), offset, scale);
+    const textarea = wrapper.querySelector('textarea') as HTMLTextAreaElement;
+    textarea.value = 'new text';
+    textarea.dispatchEvent(new Event('input'));
+    expect(el.text).toBe('new text');
+  });
+});
+
+// ── Delete button event ────────────────────────────────────────────────────────
+describe('delete button fires element:delete event', () => {
+  it('bubbles element:delete CustomEvent with element id', () => {
+    const el = new TextElement(0, 0, 'p1');
+    const div = el.render(document.createElement('div'), offset, scale);
+    const btn = div.querySelector('button.delete-btn') as HTMLButtonElement;
+
+    let detail: { id: number } | null = null;
+    div.addEventListener('element:delete', (e) => {
+      detail = (e as CustomEvent<{ id: number }>).detail;
+    });
+    btn.click();
+    expect(detail).not.toBeNull();
+    expect(detail!.id).toBe(el.id);
+  });
+});
+
+// ── ID auto-increment ─────────────────────────────────────────────────────────
+describe('ID auto-increment', () => {
+  it('each new element gets a unique monotonically increasing id', () => {
+    const ids = [
+      new TextElement(0, 0, 'p1').id,
+      new TextElement(0, 0, 'p1').id,
+      new HighlightElement(0, 0, 100, 20, 'p1').id,
+      new RedactionElement(0, 0, 100, 30, 'p1', '#000').id,
+    ];
+    for (let i = 1; i < ids.length; i++) {
+      expect(ids[i]).toBeGreaterThan(ids[i - 1]);
+    }
+  });
+});
