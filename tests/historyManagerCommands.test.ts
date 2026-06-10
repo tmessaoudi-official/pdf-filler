@@ -16,12 +16,19 @@ import {
   InkStrokeCmd,
   ClearInkCmd,
   TransformAnnotationsCmd,
+  SnapshotCmd,
+  ReorderPagesCmd,
+  DeletePageCmd,
+  AddPagesCmd,
+  RotatePageCmd,
   type ElementTransformSnapshot,
 } from '../src/historyManager';
 import { TextElement } from '../src/textElement';
 import { PDFElement } from '../src/pdfElement';
 import { InkLayer } from '../src/inkLayer';
 import type { InkStroke } from '../src/inkLayer';
+import { DocumentModel } from '../src/documentModel';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 
@@ -396,5 +403,238 @@ describe('TransformAnnotationsCmd', () => {
     const cmd = new TransformAnnotationsCmd(arr, new Map(), new Map());
     cmd.execute();
     expect(el.x).toBe(99);
+  });
+});
+
+// ── SnapshotCmd ────────────────────────────────────────────────────────────────
+describe('SnapshotCmd', () => {
+  function makeDocProxy(n = 1) {
+    return { numPages: n, getPage: async () => ({}) } as unknown as PDFDocumentProxy;
+  }
+
+  it('execute restores elements from captureAfter snapshot', () => {
+    const el = mkEl();
+    el.x = 10;
+    const arr = [el];
+    const cmd = new SnapshotCmd(arr);
+    el.x = 99;
+    cmd.captureAfter();
+    el.x = 0;
+    cmd.execute();
+    expect(arr[0].x).toBe(99);
+  });
+
+  it('execute is a no-op before captureAfter is called', () => {
+    const el = mkEl();
+    el.x = 5;
+    const arr = [el];
+    const cmd = new SnapshotCmd(arr);
+    el.x = 50;
+    cmd.execute(); // captureAfter not called — should be a no-op
+    expect(arr[0].x).toBe(50);
+  });
+
+  it('undo restores elements from before snapshot', () => {
+    const el = mkEl();
+    el.x = 10;
+    const arr = [el];
+    const cmd = new SnapshotCmd(arr);
+    el.x = 99;
+    cmd.captureAfter();
+    cmd.execute();
+    cmd.undo();
+    expect(arr[0].x).toBe(10);
+  });
+
+  it('full undo/redo cycle via HistoryManager', () => {
+    const mgr = mkMgr();
+    const el = mkEl();
+    el.x = 5;
+    const arr = [el];
+    const cmd = new SnapshotCmd(arr);
+    el.x = 55;
+    cmd.captureAfter();
+    mgr.record(cmd);
+    mgr.undo();
+    expect(arr[0].x).toBe(5);
+    mgr.redo();
+    expect(arr[0].x).toBe(55);
+  });
+
+  it('makeDocProxy helper is only used for page commands — standalone SnapshotCmd does not need it', () => {
+    expect(makeDocProxy().numPages).toBe(1);
+  });
+});
+
+// ── ReorderPagesCmd ────────────────────────────────────────────────────────────
+describe('ReorderPagesCmd', () => {
+  function makeModel3() {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 3, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    model.addPagesFrom(src.id);
+    return model;
+  }
+
+  it('execute reorders pages to the new order', () => {
+    const model = makeModel3();
+    const [a, b, c] = model.pages.map(p => p.id);
+    const onUpdate = vi.fn();
+    const cmd = new ReorderPagesCmd(model, [a, b, c], [c, a, b], onUpdate);
+    cmd.execute();
+    expect(model.pages.map(p => p.id)).toEqual([c, a, b]);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('undo restores the original order', () => {
+    const model = makeModel3();
+    const [a, b, c] = model.pages.map(p => p.id);
+    const onUpdate = vi.fn();
+    const cmd = new ReorderPagesCmd(model, [a, b, c], [c, a, b], onUpdate);
+    cmd.execute();
+    cmd.undo();
+    expect(model.pages.map(p => p.id)).toEqual([a, b, c]);
+    expect(onUpdate).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── DeletePageCmd ──────────────────────────────────────────────────────────────
+describe('DeletePageCmd', () => {
+  function makeModel2() {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 2, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    model.addPagesFrom(src.id);
+    return { model, srcId: src.id };
+  }
+
+  it('execute removes the page and its elements', () => {
+    const { model } = makeModel2();
+    const [p1, p2] = model.pages;
+    const el1 = mkEl(p1.id), el2 = mkEl(p2.id);
+    const elements = [el1, el2];
+    const cmd = new DeletePageCmd(model, elements, p1.id, vi.fn());
+    cmd.execute();
+    expect(model.pageCount).toBe(1);
+    expect(model.pages[0].id).toBe(p2.id);
+    expect(elements).toHaveLength(1);
+    expect(elements[0].id).toBe(el2.id);
+  });
+
+  it('undo restores the page and its elements', () => {
+    const { model } = makeModel2();
+    const [p1] = model.pages;
+    const el1 = mkEl(p1.id);
+    const elements = [el1];
+    const cmd = new DeletePageCmd(model, elements, p1.id, vi.fn());
+    cmd.execute();
+    cmd.undo();
+    expect(model.pageCount).toBe(2);
+    expect(elements).toHaveLength(1);
+    expect(elements[0].id).toBe(el1.id);
+  });
+
+  it('undo is a no-op when execute was never called', () => {
+    const { model } = makeModel2();
+    const elements: PDFElement[] = [];
+    const cmd = new DeletePageCmd(model, elements, 'nonexistent', vi.fn());
+    expect(() => cmd.undo()).not.toThrow(); // removedPage is null
+    expect(model.pageCount).toBe(2);
+  });
+});
+
+// ── AddPagesCmd ────────────────────────────────────────────────────────────────
+describe('AddPagesCmd', () => {
+  it('execute adds pages from source PDF', () => {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 3, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    const onUpdate = vi.fn();
+    const cmd = new AddPagesCmd(model, src.id, undefined, onUpdate);
+    cmd.execute();
+    expect(model.pageCount).toBe(3);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('undo removes the added pages', () => {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 2, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    const onUpdate = vi.fn();
+    const cmd = new AddPagesCmd(model, src.id, undefined, onUpdate);
+    cmd.execute();
+    expect(model.pageCount).toBe(2);
+    cmd.undo();
+    expect(model.pageCount).toBe(0);
+    expect(onUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('adds only specified page numbers when pageNums is provided', () => {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 5, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    const cmd = new AddPagesCmd(model, src.id, [1, 3], vi.fn());
+    cmd.execute();
+    expect(model.pageCount).toBe(2);
+    expect(model.pages[0].sourcePageNum).toBe(1);
+    expect(model.pages[1].sourcePageNum).toBe(3);
+  });
+});
+
+// ── RotatePageCmd ──────────────────────────────────────────────────────────────
+describe('RotatePageCmd', () => {
+  function makeModelWithPage() {
+    const model = new DocumentModel();
+    const src = model.addSourcePdf(
+      { numPages: 1, getPage: async () => ({}) } as unknown as PDFDocumentProxy,
+      new Uint8Array(), 'test.pdf'
+    );
+    model.addPagesFrom(src.id);
+    return model;
+  }
+
+  it('execute rotates the page by delta', () => {
+    const model = makeModelWithPage();
+    const pageId = model.pages[0].id;
+    const cmd = new RotatePageCmd(model, pageId, 90, vi.fn());
+    cmd.execute();
+    expect(model.pages[0].rotation).toBe(90);
+  });
+
+  it('undo restores the original rotation', () => {
+    const model = makeModelWithPage();
+    const pageId = model.pages[0].id;
+    model.pages[0].rotation = 180;
+    const cmd = new RotatePageCmd(model, pageId, 90, vi.fn());
+    cmd.execute();
+    expect(model.pages[0].rotation).toBe(270);
+    cmd.undo();
+    expect(model.pages[0].rotation).toBe(180);
+  });
+
+  it('is a no-op when pageId does not exist', () => {
+    const model = makeModelWithPage();
+    const cmd = new RotatePageCmd(model, 'nonexistent', 90, vi.fn());
+    expect(() => cmd.execute()).not.toThrow();
+    expect(() => cmd.undo()).not.toThrow();
+  });
+
+  it('rotation wraps around 360 correctly', () => {
+    const model = makeModelWithPage();
+    const pageId = model.pages[0].id;
+    model.pages[0].rotation = 270;
+    const cmd = new RotatePageCmd(model, pageId, 90, vi.fn());
+    cmd.execute();
+    expect(model.pages[0].rotation).toBe(0); // 270+90=360→0
   });
 });

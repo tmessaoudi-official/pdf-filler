@@ -299,6 +299,65 @@ describe('ID auto-increment', () => {
   });
 });
 
+// ── ShapeElement arrow/freehand render ────────────────────────────────────────
+describe('ShapeElement arrow/freehand render', () => {
+  it('renders arrow: SVG contains a line and a polygon', () => {
+    const el = new ShapeElement('arrow', 10, 10, 100, 60, 'p1', {
+      strokeColor: '#ff0000', strokeWidth: 2, x1: 10, y1: 10, x2: 110, y2: 70,
+    });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    const line = div.querySelector('line');
+    const polygon = div.querySelector('polygon');
+    expect(line).toBeTruthy();
+    expect(polygon).toBeTruthy();
+    expect(line!.getAttribute('stroke')).toBe('#ff0000');
+    expect(polygon!.getAttribute('fill')).toBe('#ff0000');
+  });
+
+  it('renders freehand: SVG contains a polyline', () => {
+    const pts = [{ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 20, y: 5 }];
+    const el = new ShapeElement('freehand', 0, 0, 20, 10, 'p1', {
+      strokeColor: '#0000ff', strokeWidth: 3, points: pts,
+    });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    const pl = div.querySelector('polyline');
+    expect(pl).toBeTruthy();
+    expect(pl!.getAttribute('stroke')).toBe('#0000ff');
+    expect(pl!.getAttribute('fill')).toBe('none');
+  });
+
+  it('freehand with fewer than 2 points renders no polyline', () => {
+    const el = new ShapeElement('freehand', 0, 0, 20, 10, 'p1', {
+      strokeColor: '#000', strokeWidth: 2, points: [{ x: 5, y: 5 }],
+    });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    expect(div.querySelector('polyline')).toBeNull();
+  });
+
+  it('arrow has no resize handle (only rect/ellipse get one)', () => {
+    const el = new ShapeElement('arrow', 0, 0, 100, 60, 'p1', {
+      strokeColor: '#000', strokeWidth: 2, x1: 0, y1: 0, x2: 100, y2: 60,
+    });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    expect(div.querySelector('.resize-handle')).toBeNull();
+  });
+
+  it('freehand has no resize handle', () => {
+    const el = new ShapeElement('freehand', 0, 0, 50, 30, 'p1', {
+      strokeColor: '#000', strokeWidth: 2, points: [{ x: 0, y: 0 }, { x: 50, y: 30 }],
+    });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    expect(div.querySelector('.resize-handle')).toBeNull();
+  });
+
+  it('rect and ellipse do have a resize handle', () => {
+    const rect = new ShapeElement('rect', 0, 0, 100, 50, 'p1');
+    const ellipse = new ShapeElement('ellipse', 0, 0, 100, 50, 'p1');
+    expect(rect.render(document.createElement('div'), { left: 0, top: 0 }, 1).querySelector('.resize-handle')).toBeTruthy();
+    expect(ellipse.render(document.createElement('div'), { left: 0, top: 0 }, 1).querySelector('.resize-handle')).toBeTruthy();
+  });
+});
+
 // ── ShapeElement fill color ────────────────────────────────────────────────────
 describe('ShapeElement fillColor', () => {
   it('defaults to undefined (no fill)', () => {

@@ -2,7 +2,7 @@
  * InkLayer — strokes, JSON round-trip, rendering, toDataURL.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InkLayer } from '../src/inkLayer';
 import type { InkStroke } from '../src/inkLayer';
 
@@ -248,5 +248,137 @@ describe('renderToCanvas', () => {
     canvas.width = 400;
     canvas.height = 400;
     expect(() => layer.renderToCanvas('p1', canvas, 2)).not.toThrow();
+  });
+});
+
+// ── renderToCanvas with mocked context (covers lines 50-70) ────────────────────
+describe('renderToCanvas — with mocked canvas context', () => {
+  function makeCtxCanvas() {
+    const ctx = {
+      clearRect: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      lineCap: '' as CanvasLineCap,
+      lineJoin: '' as CanvasLineJoin,
+      lineWidth: 0,
+      globalCompositeOperation: '' as GlobalCompositeOperation,
+      strokeStyle: '' as string | CanvasGradient | CanvasPattern,
+    };
+    const canvas = document.createElement('canvas');
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    return { canvas, ctx };
+  }
+
+  it('calls clearRect once at the start of render', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    layer.addStroke('p1', mkStroke());
+    layer.renderToCanvas('p1', canvas, 1);
+    expect(ctx.clearRect).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls stroke() once per multi-point stroke', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    layer.addStroke('p1', mkStroke());
+    layer.addStroke('p1', mkStroke({ color: '#f00' }));
+    layer.renderToCanvas('p1', canvas, 1);
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips single-point strokes (no stroke call)', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    const single: InkStroke = { type: 'ink', points: [{ x: 5, y: 5 }], width: 2, color: '#000' };
+    layer.addStroke('p1', single);
+    layer.renderToCanvas('p1', canvas, 1);
+    expect(ctx.stroke).not.toHaveBeenCalled();
+    expect(ctx.clearRect).toHaveBeenCalledTimes(1); // clearRect still runs
+  });
+
+  it('uses destination-out composite op for erase strokes', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    const eraseStroke: InkStroke = { type: 'erase', points: [{ x: 0, y: 0 }, { x: 10, y: 10 }], width: 5, color: '#f00' };
+    layer.addStroke('p1', eraseStroke);
+    layer.renderToCanvas('p1', canvas, 1);
+    expect(ctx.globalCompositeOperation).toBe('destination-out');
+    expect(ctx.strokeStyle).toBe('rgba(0,0,0,1)');
+  });
+
+  it('uses source-over composite op for ink strokes', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    layer.addStroke('p1', mkStroke({ color: '#0000ff' }));
+    layer.renderToCanvas('p1', canvas, 1);
+    expect(ctx.globalCompositeOperation).toBe('source-over');
+    expect(ctx.strokeStyle).toBe('#0000ff');
+  });
+
+  it('scales coordinates by the scale factor', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    const lineToCalls: Array<[number, number]> = [];
+    ctx.lineTo = vi.fn((x: number, y: number) => lineToCalls.push([x, y]));
+    layer.addStroke('p1', { type: 'ink', points: [{ x: 10, y: 20 }, { x: 30, y: 40 }], width: 2, color: '#000' });
+    layer.renderToCanvas('p1', canvas, 2);
+    expect(lineToCalls[0]).toEqual([60, 80]); // 30*2, 40*2
+  });
+
+  it('renders nothing when page has no strokes but still clears', () => {
+    const { canvas, ctx } = makeCtxCanvas();
+    layer.renderToCanvas('empty', canvas, 1);
+    expect(ctx.clearRect).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).not.toHaveBeenCalled();
+  });
+});
+
+// ── toDataURL with mocked canvas (covers lines 85-88) ──────────────────────────
+describe('toDataURL — with mocked canvas context', () => {
+  function mockCanvasCreate(alphaValue: number, dataUrlResult = 'data:image/png;base64,FAKE') {
+    const pixelData = new Uint8ClampedArray(4 * 4); // 2x2 canvas, 4 bytes per pixel
+    if (alphaValue > 0) pixelData[3] = alphaValue; // set alpha of first pixel
+    const mockCtx = {
+      clearRect: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      lineCap: '',
+      lineJoin: '',
+      lineWidth: 0,
+      globalCompositeOperation: '',
+      strokeStyle: '',
+      getImageData: vi.fn().mockReturnValue({ data: pixelData }),
+    };
+    const origCreate = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') {
+        const c = origCreate('canvas') as HTMLCanvasElement;
+        c.getContext = vi.fn().mockReturnValue(mockCtx) as typeof c.getContext;
+        c.toDataURL = vi.fn().mockReturnValue(dataUrlResult) as typeof c.toDataURL;
+        return c;
+      }
+      return origCreate(tag);
+    });
+    return { spy, mockCtx };
+  }
+
+  it('returns null when all pixels are fully transparent', () => {
+    const { spy } = mockCanvasCreate(0);
+    layer.addStroke('p1', mkStroke());
+    const result = layer.toDataURL('p1', 10, 10);
+    expect(result).toBeNull();
+    vi.restoreAllMocks();
+    spy.mockRestore();
+  });
+
+  it('returns data URL when at least one pixel has alpha > 0', () => {
+    const { spy } = mockCanvasCreate(255, 'data:image/png;base64,VISIBLE');
+    layer.addStroke('p1', mkStroke());
+    const result = layer.toDataURL('p1', 10, 10);
+    expect(result).toBe('data:image/png;base64,VISIBLE');
+    vi.restoreAllMocks();
+    spy.mockRestore();
   });
 });

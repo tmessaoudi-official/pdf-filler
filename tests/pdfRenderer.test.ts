@@ -96,6 +96,78 @@ describe('PDFRenderer pending queue fix (BUG-08)', () => {
   });
 });
 
+describe('PDFRenderer setScale and getPageInfo', () => {
+  it('setScale clamps to minimum 0.25', () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    renderer.setScale(0.1);
+    expect(renderer.scale).toBe(0.25);
+  });
+
+  it('setScale clamps to maximum 3.0', () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    renderer.setScale(10);
+    expect(renderer.scale).toBe(3.0);
+  });
+
+  it('setScale accepts a value in the valid range', () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    renderer.setScale(1.5);
+    expect(renderer.scale).toBe(1.5);
+  });
+
+  it('getPageInfo returns current=1 and total=0 when no model or doc set', () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    const info = renderer.getPageInfo();
+    expect(info.current).toBe(1);  // (0+1)
+    expect(info.total).toBe(0);
+  });
+
+  it('getPageInfo reflects model page count', () => {
+    const canvas = makeCanvas();
+    const renderer = new PDFRenderer(canvas);
+    const model = new DocumentModel();
+    model.addBlankPage(595, 842);
+    model.addBlankPage(595, 842);
+    renderer.setModel(model);
+    const info = renderer.getPageInfo();
+    expect(info.total).toBe(2);
+    expect(info.current).toBe(1);
+  });
+});
+
+describe('PDFRenderer computeFitScale — legacy fallback (no model, no pdfDoc)', () => {
+  it('returns 1.0 when no pdfDoc and no model are set', async () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    const scale = await renderer.computeFitScale(800);
+    expect(scale).toBe(1.0);
+  });
+});
+
+describe('PDFRenderer renderPageAtIndex', () => {
+  it('dispatches to _renderBlankPage for a blank page at given index', async () => {
+    const canvas = makeCanvas();
+    const { ctx } = (() => {
+      const fills: unknown[] = [];
+      return { ctx: { fillStyle: '' as string, fillRect: vi.fn(() => fills.push(1)) }, fills };
+    })();
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    const renderer = new PDFRenderer(canvas);
+    const model = new DocumentModel();
+    model.addBlankPage(595, 842);
+    model.addBlankPage(612, 792);
+    renderer.setModel(model);
+
+    const blankSpy = vi.spyOn(renderer as unknown as RendererTestable, '_renderBlankPage');
+    await renderer.renderPageAtIndex(1); // index 1 = Letter
+    expect(blankSpy).toHaveBeenCalledWith(612, 792);
+  });
+
+  it('is a no-op (no throw) when no model is set and no pdfDoc', async () => {
+    const renderer = new PDFRenderer(makeCanvas());
+    await expect(renderer.renderPageAtIndex(0)).resolves.toBeUndefined();
+  });
+});
+
 describe('PDFRenderer blank page support', () => {
   function makeCtx() {
     const fills: { x: number; y: number; w: number; h: number; style: string }[] = [];

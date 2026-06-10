@@ -3,7 +3,7 @@
  * Does NOT import codeGenerator or bwip-js (no canvas in JSDOM).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CodeElement } from '../src/codeElement';
 import { ElementFactory } from '../src/elementFactory';
 import { PDFElement } from '../src/pdfElement';
@@ -103,6 +103,79 @@ describe('ElementFactory.fromJSON — code type', () => {
       codeType: 'code128', data: 'ABC',
     }) as CodeElement;
     expect(el.cachedDataUrl).toBe('');
+  });
+});
+
+// ── render() ──────────────────────────────────────────────────────────────────
+describe('CodeElement — render()', () => {
+  const offset = { left: 0, top: 0 };
+
+  it('returns a div with class code-element', () => {
+    const el = new CodeElement(10, 20, 'p1', { codeType: 'qrcode', data: 'https://example.com' }, FAKE_URL, { w: 150, h: 150 });
+    const div = el.render(document.createElement('div'), offset, 1);
+    expect(div.className).toContain('code-element');
+    expect(div.dataset.id).toBe(String(el.id));
+  });
+
+  it('positions the element via left/top styles with canvas offset applied', () => {
+    const el = new CodeElement(30, 50, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL, { w: 100, h: 100 });
+    const div = el.render(document.createElement('div'), { left: 10, top: 5 }, 1);
+    expect(div.style.left).toBe('40px'); // 10 + 30*1
+    expect(div.style.top).toBe('55px');  // 5 + 50*1
+  });
+
+  it('scales dimensions by the scale factor', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL, { w: 100, h: 80 });
+    const div = el.render(document.createElement('div'), offset, 2);
+    expect(div.style.width).toBe('200px');
+    expect(div.style.height).toBe('160px');
+  });
+
+  it('clamps rendered size to at least 10px', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL, { w: 3, h: 4 });
+    const div = el.render(document.createElement('div'), offset, 1);
+    expect(div.style.width).toBe('10px');
+    expect(div.style.height).toBe('10px');
+  });
+
+  it('contains an img element with the cachedDataUrl as src', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL);
+    const div = el.render(document.createElement('div'), offset, 1);
+    const img = div.querySelector('img') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toContain(FAKE_URL);
+    expect(img.draggable).toBe(false);
+  });
+
+  it('contains rotation handle, element controls, and resize handle', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL);
+    const div = el.render(document.createElement('div'), offset, 1);
+    expect(div.querySelector('.rotation-handle')).toBeTruthy();
+    expect(div.querySelector('.element-controls')).toBeTruthy();
+    expect(div.querySelector('.resize-handle')).toBeTruthy();
+  });
+
+  it('dispatches code-element-edit CustomEvent on dblclick', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL);
+    const div = el.render(document.createElement('div'), offset, 1);
+    let detail: { id: number } | null = null;
+    div.addEventListener('code-element-edit', (e) => {
+      detail = (e as CustomEvent<{ id: number }>).detail;
+    });
+    div.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    expect(detail).not.toBeNull();
+    expect(detail!.id).toBe(el.id);
+  });
+
+  it('dblclick stops propagation (does not bubble past the div)', () => {
+    const el = new CodeElement(0, 0, 'p1', { codeType: 'qrcode', data: 'hi' }, FAKE_URL);
+    const container = document.createElement('div');
+    const div = el.render(container, offset, 1);
+    container.appendChild(div);
+    const propagated = vi.fn();
+    container.addEventListener('dblclick', propagated);
+    div.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    expect(propagated).not.toHaveBeenCalled();
   });
 });
 
