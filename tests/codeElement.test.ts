@@ -164,7 +164,7 @@ describe('CodeElement — render()', () => {
     });
     div.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(detail).not.toBeNull();
-    expect(detail!.id).toBe(el.id);
+    expect((detail as { id: number }).id).toBe(el.id);
   });
 
   it('dblclick stops propagation (does not bubble past the div)', () => {

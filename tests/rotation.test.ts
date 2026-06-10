@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TextElement } from '../src/textElement';
 import { RotateElementCmd, TransformAnnotationsCmd, ElementTransformSnapshot } from '../src/historyManager';
 import { ElementFactory } from '../src/elementFactory';
+import type { PDFElement } from '../src/pdfElement';
 
 function makeEl() {
   return new TextElement(10, 20, 'p1');
@@ -82,7 +83,7 @@ describe('ElementFactory.fromJSON rotation', () => {
       text: 'hello', rotation: 45,
     });
     expect(el).not.toBeNull();
-    expect(el!.rotation).toBe(45);
+    expect((el as PDFElement).rotation).toBe(45);
   });
 
   it('defaults to 0 when rotation absent', () => {
@@ -91,6 +92,6 @@ describe('ElementFactory.fromJSON rotation', () => {
       text: 'hello',
     });
     expect(el).not.toBeNull();
-    expect(el!.rotation).toBe(0);
+    expect((el as PDFElement).rotation).toBe(0);
   });
 });

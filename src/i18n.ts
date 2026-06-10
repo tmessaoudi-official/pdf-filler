@@ -20,18 +20,18 @@ export function t(key: string, opts?: Record<string, string | number>): string {
 /** Apply translations to all [data-i18n*] elements in the document. */
 export function applyTranslations(): void {
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(el => {
-    el.textContent = t(el.dataset.i18n!);
+    el.textContent = t(el.dataset.i18n ?? '');
   });
   document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach(el => {
-    const val = t(el.dataset.i18nTitle!);
+    const val = t(el.dataset.i18nTitle ?? '');
     el.title = val;
     if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', val);
   });
   document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach(el => {
-    el.placeholder = t(el.dataset.i18nPlaceholder!);
+    el.placeholder = t(el.dataset.i18nPlaceholder ?? '');
   });
   document.querySelectorAll<HTMLElement>('[data-i18n-aria]').forEach(el => {
-    el.setAttribute('aria-label', t(el.dataset.i18nAria!));
+    el.setAttribute('aria-label', t(el.dataset.i18nAria ?? ''));
   });
 }
 

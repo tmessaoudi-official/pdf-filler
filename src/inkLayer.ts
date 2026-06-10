@@ -14,7 +14,7 @@ export class InkLayer {
 
   addStroke(pageId: string, stroke: InkStroke): void {
     if (!this._strokes.has(pageId)) this._strokes.set(pageId, []);
-    this._strokes.get(pageId)!.push(stroke);
+    (this._strokes.get(pageId) as InkStroke[]).push(stroke);
   }
 
   removeLastStroke(pageId: string): void {
@@ -81,7 +81,9 @@ export class InkLayer {
     c.width  = Math.round(pdfWidth);
     c.height = Math.round(pdfHeight);
     this.renderToCanvas(pageId, c, 1);
-    const data = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    const ctx2d = c.getContext('2d');
+    if (!ctx2d) return null;
+    const data = ctx2d.getImageData(0, 0, c.width, c.height).data;
     for (let i = 3; i < data.length; i += 4) {
       if (data[i] > 0) return c.toDataURL('image/png');
     }

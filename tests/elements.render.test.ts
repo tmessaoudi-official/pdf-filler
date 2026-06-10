@@ -27,7 +27,7 @@ describe('PDFElement base helpers', () => {
     expect(controls.className).toBe('element-controls');
     const btn = controls.querySelector('button.delete-btn');
     expect(btn).toBeTruthy();
-    expect(btn!.textContent).toBe('×');
+    expect((btn as HTMLButtonElement).textContent).toBe('×');
   });
 
   it('createRotationHandle() produces a div.rotation-handle', () => {
@@ -153,13 +153,13 @@ describe('ImageElement render', () => {
     expect(div.className).toContain('image-element');
     const img = div.querySelector('img');
     expect(img).toBeTruthy();
-    expect(img!.src).toContain('data:image/jpeg;base64,abc');
+    expect((img as HTMLImageElement).src).toContain('data:image/jpeg;base64,abc');
   });
 
   it('img is non-draggable', () => {
     const el = new ImageElement(0, 0, 100, 80, 'p1', 'data:image/png;base64,x');
     const div = el.render(document.createElement('div'), offset, scale);
-    const img = div.querySelector('img')!;
+    const img = div.querySelector('img') as HTMLImageElement;
     expect(img.draggable).toBe(false);
   });
 
@@ -280,7 +280,7 @@ describe('delete button fires element:delete event', () => {
     });
     btn.click();
     expect(detail).not.toBeNull();
-    expect(detail!.id).toBe(el.id);
+    expect((detail as { id: number }).id).toBe(el.id);
   });
 });
 
@@ -310,8 +310,8 @@ describe('ShapeElement arrow/freehand render', () => {
     const polygon = div.querySelector('polygon');
     expect(line).toBeTruthy();
     expect(polygon).toBeTruthy();
-    expect(line!.getAttribute('stroke')).toBe('#ff0000');
-    expect(polygon!.getAttribute('fill')).toBe('#ff0000');
+    expect((line as SVGLineElement).getAttribute('stroke')).toBe('#ff0000');
+    expect((polygon as SVGPolygonElement).getAttribute('fill')).toBe('#ff0000');
   });
 
   it('renders freehand: SVG contains a polyline', () => {
@@ -322,8 +322,8 @@ describe('ShapeElement arrow/freehand render', () => {
     const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
     const pl = div.querySelector('polyline');
     expect(pl).toBeTruthy();
-    expect(pl!.getAttribute('stroke')).toBe('#0000ff');
-    expect(pl!.getAttribute('fill')).toBe('none');
+    expect((pl as SVGPolylineElement).getAttribute('stroke')).toBe('#0000ff');
+    expect((pl as SVGPolylineElement).getAttribute('fill')).toBe('none');
   });
 
   it('freehand with fewer than 2 points renders no polyline', () => {

@@ -4,13 +4,14 @@ import {
   bboxIntersectsPolyline,
   splitFreehandAtErase,
 } from '../src/eraserGeometry';
+import type { Point } from '../src/eraserGeometry';
 
 describe('segmentsIntersect', () => {
   it('detects a simple crossing', () => {
     const r = segmentsIntersect({x:0,y:5},{x:10,y:5}, {x:5,y:0},{x:5,y:10});
     expect(r.intersects).toBe(true);
-    expect(r.point!.x).toBeCloseTo(5);
-    expect(r.point!.y).toBeCloseTo(5);
+    expect((r.point as Point).x).toBeCloseTo(5);
+    expect((r.point as Point).y).toBeCloseTo(5);
   });
 
   it('returns false for parallel segments', () => {

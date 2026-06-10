@@ -182,7 +182,7 @@ describe('_getPageCropBox fallback logic', () => {
     const mockPage = { getCropBox: () => mockCropBox, getSize: () => ({ width: 703, height: 950 }) };
 
     // Inline the production logic
-    let result: { x: number; y: number; width: number; height: number };
+    let result: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
     try {
       const cb = mockPage.getCropBox?.();
       if (cb && typeof cb.width === 'number') {
@@ -195,10 +195,10 @@ describe('_getPageCropBox fallback logic', () => {
       result = { x: 0, y: 0, width, height };
     }
 
-    expect(result!.x).toBeCloseTo(28.3465);
-    expect(result!.y).toBeCloseTo(28.3465);
-    expect(result!.width).toBeCloseTo(646.307);
-    expect(result!.height).toBeCloseTo(893.307);
+    expect(result.x).toBeCloseTo(28.3465);
+    expect(result.y).toBeCloseTo(28.3465);
+    expect(result.width).toBeCloseTo(646.307);
+    expect(result.height).toBeCloseTo(893.307);
   });
 
   it('falls back to MediaBox when getCropBox throws', () => {
@@ -207,7 +207,7 @@ describe('_getPageCropBox fallback logic', () => {
       getSize: () => ({ width: 703, height: 950 }),
     };
 
-    let result: { x: number; y: number; width: number; height: number };
+    let result: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
     try {
       const cb = mockPage.getCropBox?.();
       if (cb && typeof cb.width === 'number') {
@@ -220,10 +220,10 @@ describe('_getPageCropBox fallback logic', () => {
       result = { x: 0, y: 0, width, height };
     }
 
-    expect(result!.x).toBe(0);
-    expect(result!.y).toBe(0);
-    expect(result!.width).toBe(703);
-    expect(result!.height).toBe(950);
+    expect(result.x).toBe(0);
+    expect(result.y).toBe(0);
+    expect(result.width).toBe(703);
+    expect(result.height).toBe(950);
   });
 
   it('falls back when getCropBox returns null-ish', () => {
@@ -232,7 +232,7 @@ describe('_getPageCropBox fallback logic', () => {
       getSize: () => ({ width: 595, height: 842 }),
     };
 
-    let result: { x: number; y: number; width: number; height: number };
+    let result: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
     try {
       const cb = mockPage.getCropBox?.();
       if (cb && typeof cb.width === 'number') {
@@ -245,10 +245,10 @@ describe('_getPageCropBox fallback logic', () => {
       result = { x: 0, y: 0, width, height };
     }
 
-    expect(result!.x).toBe(0);
-    expect(result!.y).toBe(0);
-    expect(result!.width).toBe(595);
-    expect(result!.height).toBe(842);
+    expect(result.x).toBe(0);
+    expect(result.y).toBe(0);
+    expect(result.width).toBe(595);
+    expect(result.height).toBe(842);
   });
 });
 

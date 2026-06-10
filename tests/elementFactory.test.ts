@@ -59,7 +59,7 @@ describe('fromJSON — text', () => {
       id: 5, type: 'text', x: 0, y: 0, width: 100, height: 30, pageId: 'p1',
       text: '', fontSize: 14, color: '#000', rotation: 45,
     });
-    expect(el!.rotation).toBe(45);
+    expect((el as PDFElement).rotation).toBe(45);
   });
 
   it('uses page field as fallback for pageId', () => {
@@ -67,7 +67,7 @@ describe('fromJSON — text', () => {
       id: 1, type: 'text', x: 0, y: 0, width: 100, height: 30, page: 3,
       text: '', fontSize: 14, color: '#000',
     });
-    expect(el!.pageId).toBe('3');
+    expect((el as PDFElement).pageId).toBe('3');
   });
 });
 

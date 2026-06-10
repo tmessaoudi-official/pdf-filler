@@ -27,7 +27,7 @@ export class TextSearchHandler {
   async buildIndex(page: any, pageId: string): Promise<void> {
     if (this._cache.has(pageId)) {
       // LRU promotion: move to end of Map insertion order
-      const items = this._cache.get(pageId)!;
+      const items = this._cache.get(pageId) as RawTextItem[];
       this._cache.delete(pageId);
       this._cache.set(pageId, items);
       return;

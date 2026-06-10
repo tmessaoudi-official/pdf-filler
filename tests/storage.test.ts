@@ -37,16 +37,16 @@ describe('saveState / loadState round-trip', () => {
     await saveState(state);
     const loaded = await loadState();
     expect(loaded).not.toBeNull();
-    expect(loaded!.currentPageIndex).toBe(0);
-    expect(loaded!.pages).toHaveLength(1);
-    expect(loaded!.pages[0].id).toBe('p1');
+    expect((loaded as SavedState).currentPageIndex).toBe(0);
+    expect((loaded as SavedState).pages).toHaveLength(1);
+    expect((loaded as SavedState).pages[0].id).toBe('p1');
   });
 
   it('overwrites previous state on second save', async () => {
     await saveState(makeState({ currentPageIndex: 0 }));
     await saveState(makeState({ currentPageIndex: 3 }));
     const loaded = await loadState();
-    expect(loaded!.currentPageIndex).toBe(3);
+    expect((loaded as SavedState).currentPageIndex).toBe(3);
   });
 
   it('preserves elements array', async () => {
@@ -59,10 +59,10 @@ describe('saveState / loadState round-trip', () => {
     });
     await saveState(state);
     const loaded = await loadState();
-    expect(loaded!.elements).toHaveLength(1);
-    expect(loaded!.elements[0].type).toBe('text');
+    expect((loaded as SavedState).elements).toHaveLength(1);
+    expect((loaded as SavedState).elements[0].type).toBe('text');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((loaded!.elements[0] as any).text).toBe('hello');
+    expect(((loaded as SavedState).elements[0] as any).text).toBe('hello');
   });
 
   it('preserves watermark settings', async () => {
@@ -71,11 +71,11 @@ describe('saveState / loadState round-trip', () => {
     });
     await saveState(state);
     const loaded = await loadState();
-    expect(loaded!.watermark.enabled).toBe(true);
-    expect(loaded!.watermark.text).toBe('DRAFT');
-    expect(loaded!.watermark.color).toBe('#FF0000');
-    expect(loaded!.watermark.fontSize).toBe(60);
-    expect(loaded!.watermark.angle).toBe(45);
+    expect((loaded as SavedState).watermark.enabled).toBe(true);
+    expect((loaded as SavedState).watermark.text).toBe('DRAFT');
+    expect((loaded as SavedState).watermark.color).toBe('#FF0000');
+    expect((loaded as SavedState).watermark.fontSize).toBe(60);
+    expect((loaded as SavedState).watermark.angle).toBe(45);
   });
 
   it('preserves inkData when provided', async () => {
@@ -86,17 +86,17 @@ describe('saveState / loadState round-trip', () => {
     });
     await saveState(state);
     const loaded = await loadState();
-    expect(loaded!.inkData).toBeDefined();
-    expect(loaded!.inkData!['p1']).toHaveLength(1);
-    expect(loaded!.inkData!['p1'][0].color).toBe('#000');
+    expect((loaded as SavedState).inkData).toBeDefined();
+    expect((loaded as SavedState).inkData?.['p1']).toHaveLength(1);
+    expect((loaded as SavedState).inkData?.['p1'][0].color).toBe('#000');
   });
 
   it('preserves formValues when provided', async () => {
     const state = makeState({ formValues: { p1: { field1: 'value1', field2: 'value2' } } });
     await saveState(state);
     const loaded = await loadState();
-    expect(loaded!.formValues).toBeDefined();
-    expect(loaded!.formValues!['p1']['field1']).toBe('value1');
+    expect((loaded as SavedState).formValues).toBeDefined();
+    expect((loaded as SavedState).formValues?.['p1']?.['field1']).toBe('value1');
   });
 
   it('preserves multiple pages', async () => {
@@ -110,9 +110,9 @@ describe('saveState / loadState round-trip', () => {
     });
     await saveState(state);
     const loaded = await loadState();
-    expect(loaded!.pages).toHaveLength(3);
-    expect(loaded!.currentPageIndex).toBe(2);
-    expect(loaded!.pages[1].rotation).toBe(90);
+    expect((loaded as SavedState).pages).toHaveLength(3);
+    expect((loaded as SavedState).currentPageIndex).toBe(2);
+    expect((loaded as SavedState).pages[1].rotation).toBe(90);
   });
 });
 
@@ -143,7 +143,7 @@ describe('SavedState interface', () => {
     };
     await saveState(minimal);
     const loaded = await loadState();
-    expect(loaded!.formValues).toBeUndefined();
-    expect(loaded!.inkData).toBeUndefined();
+    expect((loaded as SavedState).formValues).toBeUndefined();
+    expect((loaded as SavedState).inkData).toBeUndefined();
   });
 });

@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { DocumentModel } from '../src/documentModel';
+import type { DocumentPage } from '../src/documentModel';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeDoc(numPages: number): any {
@@ -96,7 +97,7 @@ describe('restorePage', () => {
     model.addPagesFrom(src.id);
     const removedPage = model.deletePage(model.pages[0].id);
     // restorePage at index 99 — should splice at end
-    model.restorePage(removedPage!, 99);
+    model.restorePage(removedPage as DocumentPage, 99);
     expect(model.pages[model.pages.length - 1]).toBe(removedPage);
   });
 });
@@ -140,7 +141,7 @@ describe('deletePage', () => {
     model.addPagesFrom(src.id);
     const pageId = model.pages[0].id;
     const removed = model.deletePage(pageId);
-    expect(removed!.id).toBe(pageId);
+    expect((removed as DocumentPage).id).toBe(pageId);
   });
 
   it('clamps currentPageIndex when deleting last page', () => {

@@ -42,23 +42,23 @@ import type { QRStyleOptions, BwipOptions } from './codeGenerator';
 export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'addCode' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
 
 export class PDFEditorApp {
-  renderer!: PDFRenderer;
-  documentModel!: DocumentModel;
+  renderer: PDFRenderer;
+  documentModel: DocumentModel;
   elements: PDFElement[] = [];
-  interactionHandler!: InteractionHandler;
-  signaturePad!: SignaturePad;
+  interactionHandler: InteractionHandler;
+  signaturePad: SignaturePad;
   mode: ToolMode = 'select';
   zoomScale = 1.0;
   selectedElement: PDFElement | null = null;
-  historyManager!: HistoryManager;
+  historyManager: HistoryManager;
   _textChangeTimer: ReturnType<typeof setTimeout> | null = null;
   private _pendingTextBefore: string | null = null;
   private _pendingTextElementId: number | null = null;
   currentFilename: string | null = null;
   currentSignature: string | null = null;
-  uiController!: UIController;
-  drawingHandler!: DrawingHandler;
-  eraserHandler!: EraserHandler;
+  uiController: UIController;
+  drawingHandler: DrawingHandler;
+  eraserHandler: EraserHandler;
   private _thumbnailPanel: PageThumbnailPanel | null = null;
   private _pendingImageSrc: string | null = null;
   private _pendingImageNatural: { w: number; h: number } | null = null;
@@ -79,8 +79,8 @@ export class PDFEditorApp {
   private _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private _findCaseSensitive = false;
   private _findRegex = false;
-  private _formFieldOverlay!: FormFieldOverlay;
-  private _textLayerManager!: TextLayerManager;
+  private _formFieldOverlay: FormFieldOverlay;
+  private _textLayerManager: TextLayerManager;
   private _formValues: Record<string, Record<string, string>> = {};
   private _warnedUnsupportedFields = false;
   private _formFieldGen = 0;
@@ -88,9 +88,9 @@ export class PDFEditorApp {
   private _pageUpdatePending = false;
   private _pendingPasswordResolve: ((password: string | null) => void) | null = null;
   private _exportPassword: { user: string; owner: string } | null = null;
-  inkLayer!: InkLayer;
-  inkLayerHandler!: InkLayerHandler;
-  private _inkCanvas!: HTMLCanvasElement;
+  inkLayer: InkLayer;
+  inkLayerHandler: InkLayerHandler;
+  private _inkCanvas: HTMLCanvasElement;
   private _isFitMode = true;
   private _clipboard: ElementJSON | null = null;
   private _exportPreviewOpen = false;
@@ -247,9 +247,9 @@ export class PDFEditorApp {
     });
 
      
-    document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
-    document.getElementById('cancelSignature')!.addEventListener('click', () => this.closeSignatureModal());
-    document.getElementById('saveSignature')!.addEventListener('click', () => this.saveSignature());
+    document.getElementById('clearSignature')?.addEventListener('click', () => this.signaturePad.clear());
+    document.getElementById('cancelSignature')?.addEventListener('click', () => this.closeSignatureModal());
+    document.getElementById('saveSignature')?.addEventListener('click', () => this.saveSignature());
 
     // Code modal
     this.ui.cancelCodeModal.addEventListener('click', () => this.closeCodeModal());
@@ -557,7 +557,7 @@ export class PDFEditorApp {
 
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
      
-    document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
+    document.getElementById('closeHelp')?.addEventListener('click', () => this._toggleHelp(false));
     this.ui.helpModal.addEventListener('click', (e) => { if (e.target === this.ui.helpModal) this._toggleHelp(false); });
 
 
@@ -1547,7 +1547,7 @@ export class PDFEditorApp {
       this.enableUI();
       this._enableFileMenuDocItems();
        
-      document.getElementById('emptyState')!.style.display = 'none';
+      (document.getElementById('emptyState') as HTMLElement).style.display = 'none';
       this.ui.pageThumbnailContainer.style.display = '';
       await this._thumbnailPanel?.render();
       this.updatePageInfo();
@@ -1627,6 +1627,7 @@ export class PDFEditorApp {
     void this._thumbnailPanel?.render();
     this._thumbnailPanel?.updateActive();
     this.updatePageInfo();
+    void this._renderCurrentPage().then(() => this.renderElements());
     this.showToast(t('toast.blankPageInserted'));
   }
 
@@ -1701,7 +1702,7 @@ export class PDFEditorApp {
     this.ui.pageThumbnailContainer.style.display = 'none';
     this.ui.pageThumbnailContainer.innerHTML = '';
      
-    document.getElementById('emptyState')!.style.display = 'flex';
+    (document.getElementById('emptyState') as HTMLElement).style.display = 'flex';
     this._disableFileMenuDocItems();
     this.renderElements(); // clear annotation DOM nodes after model is reset
     this.showToast(t('toast.documentClosed'));
@@ -1725,9 +1726,9 @@ export class PDFEditorApp {
               const canvas = document.createElement('canvas');
               canvas.width = imgEl.naturalWidth;
               canvas.height = imgEl.naturalHeight;
-              canvas.getContext('2d')!.drawImage(imgEl, 0, 0);
+              canvas.getContext('2d')?.drawImage(imgEl, 0, 0);
               canvas.toBlob((b) => {
-                b!.arrayBuffer().then(ab => resolve(new Uint8Array(ab)));
+                if (b) b.arrayBuffer().then(ab => resolve(new Uint8Array(ab)));
               }, 'image/png');
               URL.revokeObjectURL(blob);
             };
@@ -1836,7 +1837,7 @@ export class PDFEditorApp {
       this.renderer.pdfDoc = doc;
 
        
-      document.getElementById('emptyState')!.style.display = 'none';
+      (document.getElementById('emptyState') as HTMLElement).style.display = 'none';
       this._isFitMode = true;
       const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
       const isMobile = window.innerWidth <= 640;
@@ -2566,7 +2567,7 @@ export class PDFEditorApp {
     offscreen.width    = Math.round(vp.width);
     offscreen.height   = Math.round(vp.height);
      
-    const ctx          = offscreen.getContext('2d')!;
+    const ctx          = offscreen.getContext('2d') as CanvasRenderingContext2D;
     await renderPage.render({ canvas: offscreen, viewport: vp }).promise;
 
     // 3. Paint redaction boxes onto the canvas (permanently covers content)
@@ -3040,13 +3041,15 @@ export class PDFEditorApp {
           const eh = swapDims ? element.width : element.height;
           const corner = tp(element.x, element.y + element.height);
           const a = _anchorForCenter(corner.x, corner.y, ew, eh);
-          const fillOpts = she.fillColor ? { color: (() => { const fc = this.hexToRgbValues(she.fillColor!); return rgb(fc.r, fc.g, fc.b); })() } : {};
+          const fillClr = she.fillColor;
+          const fillOpts = fillClr ? { color: (() => { const fc = this.hexToRgbValues(fillClr); return rgb(fc.r, fc.g, fc.b); })() } : {};
           page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, ...fillOpts, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }
         case 'ellipse': {
           const center = tp(element.x + element.width / 2, element.y + element.height / 2);
-          const fillOptsE = she.fillColor ? { color: (() => { const fc = this.hexToRgbValues(she.fillColor!); return rgb(fc.r, fc.g, fc.b); })() } : {};
+          const fillClrE = she.fillColor;
+          const fillOptsE = fillClrE ? { color: (() => { const fc = this.hexToRgbValues(fillClrE); return rgb(fc.r, fc.g, fc.b); })() } : {};
           page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, ...fillOptsE, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }

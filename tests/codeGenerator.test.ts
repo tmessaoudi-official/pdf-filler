@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { CodeFormat } from '../src/codeGenerator';
 
 // Must be called before any import that pulls in bwip-js — Vitest hoists vi.mock calls.
 vi.mock('bwip-js/browser', () => ({
@@ -73,9 +74,9 @@ describe('getCodeFormat', () => {
     const { getCodeFormat } = await import('../src/codeGenerator');
     const fmt = getCodeFormat('codabar');
     expect(fmt).not.toBeNull();
-    expect(fmt!.bcid).toBe('rationalizedCodabar');
-    expect(fmt!.label).toBe('Codabar');
-    expect(fmt!.category).toBe('1d');
+    expect((fmt as CodeFormat).bcid).toBe('rationalizedCodabar');
+    expect((fmt as CodeFormat).label).toBe('Codabar');
+    expect((fmt as CodeFormat).category).toBe('1d');
   });
 
   it('returns null for unknown format id', async () => {
