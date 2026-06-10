@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InkLayer } from '../js/inkLayer';
-import type { InkStroke } from '../js/inkLayer';
+import { InkLayer } from '../src/inkLayer';
+import type { InkStroke } from '../src/inkLayer';
 
 const mkStroke = (override: Partial<InkStroke> = {}): InkStroke => ({
   type: 'ink',

@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CodeElement } from '../js/codeElement';
-import { ElementFactory } from '../js/elementFactory';
-import { PDFElement } from '../js/pdfElement';
+import { CodeElement } from '../src/codeElement';
+import { ElementFactory } from '../src/elementFactory';
+import { PDFElement } from '../src/pdfElement';
 
 const FAKE_URL = 'data:image/png;base64,abc123';
 

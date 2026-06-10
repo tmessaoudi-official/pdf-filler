@@ -17,11 +17,11 @@ import {
   ClearInkCmd,
   TransformAnnotationsCmd,
   type ElementTransformSnapshot,
-} from '../js/historyManager';
-import { TextElement } from '../js/textElement';
-import { PDFElement } from '../js/pdfElement';
-import { InkLayer } from '../js/inkLayer';
-import type { InkStroke } from '../js/inkLayer';
+} from '../src/historyManager';
+import { TextElement } from '../src/textElement';
+import { PDFElement } from '../src/pdfElement';
+import { InkLayer } from '../src/inkLayer';
+import type { InkStroke } from '../src/inkLayer';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 

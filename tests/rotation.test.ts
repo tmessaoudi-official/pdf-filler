@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { TextElement } from '../js/textElement';
-import { RotateElementCmd, TransformAnnotationsCmd, ElementTransformSnapshot } from '../js/historyManager';
-import { ElementFactory } from '../js/elementFactory';
+import { TextElement } from '../src/textElement';
+import { RotateElementCmd, TransformAnnotationsCmd, ElementTransformSnapshot } from '../src/historyManager';
+import { ElementFactory } from '../src/elementFactory';
 
 function makeEl() {
   return new TextElement(10, 20, 'p1');

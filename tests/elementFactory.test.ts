@@ -3,15 +3,15 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ElementFactory } from '../js/elementFactory';
-import { PDFElement } from '../js/pdfElement';
-import { TextElement } from '../js/textElement';
-import { SignatureElement } from '../js/signatureElement';
-import { ShapeElement } from '../js/shapeElement';
-import { ImageElement } from '../js/imageElement';
-import { HighlightElement } from '../js/highlightElement';
-import { CommentElement } from '../js/commentElement';
-import { RedactionElement } from '../js/redactionElement';
+import { ElementFactory } from '../src/elementFactory';
+import { PDFElement } from '../src/pdfElement';
+import { TextElement } from '../src/textElement';
+import { SignatureElement } from '../src/signatureElement';
+import { ShapeElement } from '../src/shapeElement';
+import { ImageElement } from '../src/imageElement';
+import { HighlightElement } from '../src/highlightElement';
+import { CommentElement } from '../src/commentElement';
+import { RedactionElement } from '../src/redactionElement';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 

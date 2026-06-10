@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DocumentModel } from '../js/documentModel';
+import { DocumentModel } from '../src/documentModel';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeDoc(numPages: number): any {

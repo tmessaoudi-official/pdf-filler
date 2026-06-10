@@ -5,14 +5,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PDFElement } from '../js/pdfElement';
-import { TextElement } from '../js/textElement';
-import { SignatureElement } from '../js/signatureElement';
-import { ImageElement } from '../js/imageElement';
-import { HighlightElement } from '../js/highlightElement';
-import { RedactionElement } from '../js/redactionElement';
-import { CommentElement } from '../js/commentElement';
-import { ShapeElement } from '../js/shapeElement';
+import { PDFElement } from '../src/pdfElement';
+import { TextElement } from '../src/textElement';
+import { SignatureElement } from '../src/signatureElement';
+import { ImageElement } from '../src/imageElement';
+import { HighlightElement } from '../src/highlightElement';
+import { RedactionElement } from '../src/redactionElement';
+import { CommentElement } from '../src/commentElement';
+import { ShapeElement } from '../src/shapeElement';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 

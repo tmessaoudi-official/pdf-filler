@@ -3,7 +3,7 @@ import {
   segmentsIntersect,
   bboxIntersectsPolyline,
   splitFreehandAtErase,
-} from '../js/eraserGeometry';
+} from '../src/eraserGeometry';
 
 describe('segmentsIntersect', () => {
   it('detects a simple crossing', () => {

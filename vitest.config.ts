@@ -7,8 +7,8 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      include: ['js/**/*.ts'],
-      exclude: ['js/**/*.d.ts'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.d.ts'],
     },
   },
 });
