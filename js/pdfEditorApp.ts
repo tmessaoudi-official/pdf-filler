@@ -35,8 +35,11 @@ import { CommentElement } from './commentElement';
 import { t } from './i18n';
 import { trapFocus } from './focusTrap';
 import { TextEditHandler } from './textEditHandler';
+import { CodeElement } from './codeElement';
+import { generateCodeDataUrl, getCodeFormat } from './codeGenerator';
+import type { QRStyleOptions, BwipOptions } from './codeGenerator';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'addCode' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
 
 export class PDFEditorApp {
   renderer!: PDFRenderer;
@@ -58,6 +61,16 @@ export class PDFEditorApp {
   eraserHandler!: EraserHandler;
   private _thumbnailPanel: PageThumbnailPanel | null = null;
   private _pendingImageSrc: string | null = null;
+  private _pendingImageNatural: { w: number; h: number } | null = null;
+  private _signatureNatural: { w: number; h: number } | null = null;
+  private _pendingCodeDataUrl: string | null = null;
+  private _pendingCodeOptions: { codeType: string; data: string; qrStyle: QRStyleOptions | null; bwipOpts: BwipOptions | null } | null = null;
+  private _pendingCodeNatural: { w: number; h: number } | null = null;
+  private _codeModalEditingId: number | null = null;
+  private _codeModalGen = 0;
+  private _codePreviewDebounce: ReturnType<typeof setTimeout> | null = null;
+  private _qrLogoDataUrl: string | null = null;
+  private _skipNextClick = false;
   private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   private _textSearch = new TextSearchHandler();
   private _findMatches: MatchResult[] = [];
@@ -149,6 +162,11 @@ export class PDFEditorApp {
       this.ui.addImageInput.click();
     });
     this.ui.addImageInput.addEventListener('change', (e) => this._handleImageFileSelect(e));
+    this.ui.addCodeBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      if (this.mode === 'addCode') { this.setMode('select'); return; }
+      this.openCodeModal();
+    });
     this.ui.highlightBtn.addEventListener('click', () => {
       if (!this.documentModel.pageCount) return;
       this.setMode(this.mode === 'drawHighlight' ? 'select' : 'drawHighlight');
@@ -222,6 +240,37 @@ export class PDFEditorApp {
     document.getElementById('clearSignature')!.addEventListener('click', () => this.signaturePad.clear());
     document.getElementById('cancelSignature')!.addEventListener('click', () => this.closeSignatureModal());
     document.getElementById('saveSignature')!.addEventListener('click', () => this.saveSignature());
+
+    // Code modal
+    this.ui.cancelCodeModal.addEventListener('click', () => this.closeCodeModal());
+    this.ui.saveCodeModal.addEventListener('click', () => void this.saveCodeModal());
+    this.ui.codeFormatSelect.addEventListener('change', () => { this._syncCodeOptionsVisibility(); this._triggerCodePreview(); });
+    this.ui.codeDataInput.addEventListener('input', () => this._triggerCodePreview());
+    this.ui.qrStyledChk.addEventListener('change', () => { this._syncCodeOptionsVisibility(); this._triggerCodePreview(); });
+    this.ui.qrEclevelSelect.addEventListener('change', () => this._triggerCodePreview());
+    this.ui.barcodeShowTextChk.addEventListener('change', () => this._triggerCodePreview());
+    this.ui.qrDotStyle.addEventListener('change', () => this._triggerCodePreview());
+    this.ui.qrDotColor.addEventListener('input', () => this._triggerCodePreview());
+    this.ui.qrBgColor.addEventListener('input', () => this._triggerCodePreview());
+    this.ui.qrLogoInput.addEventListener('change', (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        this._qrLogoDataUrl = (ev.target?.result as string) ?? null;
+        this.ui.qrLogoName.textContent = file.name;
+        this.ui.qrLogoClearBtn.style.display = '';
+        this._triggerCodePreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    this.ui.qrLogoClearBtn.addEventListener('click', () => {
+      this._qrLogoDataUrl = null;
+      this.ui.qrLogoInput.value = '';
+      this.ui.qrLogoName.textContent = '';
+      this.ui.qrLogoClearBtn.style.display = 'none';
+      this._triggerCodePreview();
+    });
      
 
     this.ui.sigLineWidthInput.addEventListener('change', (e) => {
@@ -299,7 +348,104 @@ export class PDFEditorApp {
         drop.style.left = rect.left + 'px';
       }
     });
-    document.addEventListener('click', () => this.ui.fileMenuWrap.classList.remove('open'));
+    // Draw flyout — same position:fixed pattern; satellite controls keep flyout open
+    this.ui.drawBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = this.ui.drawFlyoutWrap.classList.toggle('open');
+      this.ui.drawBtn.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        const rect = this.ui.drawBtn.getBoundingClientRect();
+        const flyout = document.getElementById('drawFlyout') as HTMLElement;
+        flyout.style.top  = (rect.bottom + 4) + 'px';
+        flyout.style.left = rect.left + 'px';
+      }
+    });
+    // Close flyout when a tool button (aria-pressed) is picked; satellite controls don't close it
+    document.getElementById('drawFlyout')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).hasAttribute('aria-pressed')) {
+        this.ui.drawFlyoutWrap.classList.remove('open');
+        this.ui.drawBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // Annotate flyout — same position:fixed pattern; no satellite controls
+    this.ui.annotateBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = this.ui.annotateFlyoutWrap.classList.toggle('open');
+      this.ui.annotateBtn.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        const rect = this.ui.annotateBtn.getBoundingClientRect();
+        const flyout = document.getElementById('annotateFlyout') as HTMLElement;
+        flyout.style.top  = (rect.bottom + 4) + 'px';
+        flyout.style.left = rect.left + 'px';
+      }
+    });
+    document.getElementById('annotateFlyout')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).hasAttribute('aria-pressed')) {
+        this.ui.annotateFlyoutWrap.classList.remove('open');
+        this.ui.annotateBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // Text split-button — chevron opens chooser flyout
+    this.ui.textChevronBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = this.ui.textSplitWrap.classList.toggle('open');
+      this.ui.textChevronBtn.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        const rect = this.ui.textChevronBtn.getBoundingClientRect();
+        const flyout = document.getElementById('textFlyout') as HTMLElement;
+        flyout.style.top  = (rect.bottom + 4) + 'px';
+        flyout.style.left = rect.left + 'px';
+      }
+    });
+    // Left part activates last-used text mode; also closes flyout if open
+    this.ui.textModeBtn.addEventListener('click', () => {
+      this.ui.textSplitWrap.classList.remove('open');
+      this.ui.textChevronBtn.setAttribute('aria-expanded', 'false');
+      if (!this.documentModel.pageCount) return;
+      const m = (this.ui.textModeBtn.dataset['mode'] ?? 'addText') as ToolMode;
+      this.setMode(this.mode === m ? 'select' : m);
+    });
+    document.getElementById('textFlyout')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[aria-pressed]')) {
+        this.ui.textSplitWrap.classList.remove('open');
+        this.ui.textChevronBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // Export ▾ split-button — chevron opens Preview + Watermark flyout
+    this.ui.exportChevronBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = this.ui.exportSplitWrap.classList.toggle('open');
+      this.ui.exportChevronBtn.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        const rect = this.ui.exportChevronBtn.getBoundingClientRect();
+        const flyout = document.getElementById('exportFlyout') as HTMLElement;
+        flyout.style.top  = (rect.bottom + 4) + 'px';
+        flyout.style.left = rect.left + 'px';
+      }
+    });
+    document.getElementById('exportFlyout')?.addEventListener('click', () => {
+      this.ui.exportSplitWrap.classList.remove('open');
+      this.ui.exportChevronBtn.setAttribute('aria-expanded', 'false');
+    });
+    document.addEventListener('click', (e) => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      if (!this.ui.drawFlyoutWrap.contains(e.target as Node)) {
+        this.ui.drawFlyoutWrap.classList.remove('open');
+        this.ui.drawBtn.setAttribute('aria-expanded', 'false');
+      }
+      if (!this.ui.annotateFlyoutWrap.contains(e.target as Node)) {
+        this.ui.annotateFlyoutWrap.classList.remove('open');
+        this.ui.annotateBtn.setAttribute('aria-expanded', 'false');
+      }
+      if (!this.ui.textSplitWrap.contains(e.target as Node)) {
+        this.ui.textSplitWrap.classList.remove('open');
+        this.ui.textChevronBtn.setAttribute('aria-expanded', 'false');
+      }
+      if (!this.ui.exportSplitWrap.contains(e.target as Node)) {
+        this.ui.exportSplitWrap.classList.remove('open');
+        this.ui.exportChevronBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
     document.addEventListener('selectionchange', () => this._updateCopyPasteBtns());
     this.ui.fileMenuOpen.addEventListener('click', () => {
       this.ui.fileMenuWrap.classList.remove('open');
@@ -411,6 +557,15 @@ export class PDFEditorApp {
         this.ui.redactColorInput.dispatchEvent(new Event('input', { bubbles: true }));
       } catch { /* user cancelled */ }
     });
+    this.ui.colorEyedropperBtn.addEventListener('click', async () => {
+      if (!('EyeDropper' in window)) { this.showToast('Eyedropper not supported in this browser'); return; }
+      try {
+        const dropper = new (window as { EyeDropper: new() => { open(): Promise<{ sRGBHex: string }> } }).EyeDropper();
+        const result = await dropper.open();
+        this.ui.colorInput.value = result.sRGBHex;
+        this.ui.colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch { /* user cancelled */ }
+    });
     this.ui.fontSizeDownBtn.addEventListener('click', () => {
       if (!this.selectedElement || this.selectedElement.type !== 'text') return;
       const te = this.selectedElement as TextElement;
@@ -452,6 +607,7 @@ export class PDFEditorApp {
         if (this.ui.helpModal.classList.contains('active')) { this._toggleHelp(false); return; }
         if (this.ui.signatureModal.classList.contains('active')) { this.closeSignatureModal(); return; }
         if (this.ui.watermarkModal.classList.contains('active')) { this._closeWatermarkModal(); return; }
+        if (this.ui.codeModal.classList.contains('active')) { this.closeCodeModal(); return; }
         if (this.ui.findBar.style.display !== 'none') { this._closeFindBar(); return; }
         this.setMode('select');
         this.selectElement(null);
@@ -514,6 +670,9 @@ export class PDFEditorApp {
           break;
         case 'k': case 'K':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawRedaction' ? 'select' : 'drawRedaction');
+          break;
+        case 'q': case 'Q':
+          if (this.documentModel.pageCount) this.openCodeModal();
           break;
         case 'w': case 'W':
           if (this.documentModel.pageCount) this._openWatermarkModal();
@@ -782,9 +941,13 @@ export class PDFEditorApp {
     reader.onload = (ev) => {
       const src = ev.target?.result as string;
       if (!src) return;
-      this._pendingImageSrc = src;
-      this.setMode('addImage');
-      this.showToast(t('toast.clickToPlaceImage'));
+      const img = new Image();
+      img.onload = () => {
+        this._pendingImageNatural = { w: img.naturalWidth, h: img.naturalHeight };
+        this._pendingImageSrc = src;
+        this.setMode('addImage');
+      };
+      img.src = src;
     };
     reader.readAsDataURL(file);
   }
@@ -804,6 +967,111 @@ export class PDFEditorApp {
     this.setMode('select');
     this.renderElements();
     this.selectElement(imgEl);
+  }
+
+  onPlacementDragComplete(mode: 'addText' | 'addImage' | 'addComment' | 'addSignature' | 'addCode', x: number, y: number, w: number, h: number): void {
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
+    this._skipNextClick = true;
+
+    if (mode === 'addText') {
+      const fw = w < 10 ? 200 : w;
+      const fh = h < 10 ? 40 : h;
+      const options = {
+        fontSize: parseInt(this.ui.fontSizeInput.value),
+        color: this.ui.colorInput.value,
+        width: fw,
+        height: fh,
+      };
+      const textEl = new TextElement(x, y, pageId, options);
+      this.historyManager.execute(new AddElementCmd(this.elements, textEl));
+      this._autosave();
+      this.renderElements();
+      const inputEl = this.ui.container.querySelector(
+        `[data-id='${textEl.id}'] input, [data-id='${textEl.id}'] textarea`
+      ) as HTMLInputElement | null;
+      if (inputEl) {
+        (inputEl as HTMLElement).style.pointerEvents = 'auto';
+        inputEl.focus();
+      }
+      this.setMode('select');
+      this.selectElement(textEl);
+      const freshInput = this.ui.container.querySelector(
+        `[data-id='${textEl.id}'] input, [data-id='${textEl.id}'] textarea`
+      ) as HTMLInputElement | null;
+      freshInput?.focus();
+
+    } else if (mode === 'addImage') {
+      const src = this._pendingImageSrc;
+      if (!src) return;
+      this._pendingImageSrc = null;
+      const nat = this._pendingImageNatural;
+      this._pendingImageNatural = null;
+
+      const fw = w < 10 ? 200 : w;
+      const fh = w < 10
+        ? (nat ? Math.round(200 * nat.h / nat.w) : 150)
+        : (nat ? Math.round(fw * nat.h / nat.w) : h);
+
+      const imgEl = new ImageElement(x, y, fw, fh, pageId, src);
+      this.historyManager.execute(new AddElementCmd(this.elements, imgEl));
+      this._autosave();
+      this.setMode('select');
+      this.renderElements();
+      this.selectElement(imgEl);
+
+    } else if (mode === 'addComment') {
+      const fw = w < 10 ? 200 : w;
+      const fh = h < 10 ? 120 : h;
+      const commentEl = new CommentElement(x, y, pageId, { width: fw, height: fh });
+      this.historyManager.execute(new AddElementCmd(this.elements, commentEl));
+      this._autosave();
+      this.setMode('select');
+      this.renderElements();
+      this.selectElement(commentEl);
+
+    } else if (mode === 'addCode') {
+      const dataUrl = this._pendingCodeDataUrl;
+      const opts = this._pendingCodeOptions;
+      if (!dataUrl || !opts) return;
+      this._pendingCodeDataUrl = null;
+      this._pendingCodeOptions = null;
+      const nat = this._pendingCodeNatural;
+      this._pendingCodeNatural = null;
+
+      const fw = w < 10 ? 200 : w;
+      const fmt = getCodeFormat(opts.codeType);
+      const fh = fmt?.squareOutput
+        ? fw
+        : nat ? Math.round(fw * nat.h / nat.w) : (h < 10 ? 80 : h);
+
+      const codeEl = new CodeElement(x, y, pageId, { ...opts, bwipOpts: opts.bwipOpts ?? null }, dataUrl, { w: fw, h: fh });
+      this.historyManager.execute(new AddElementCmd(this.elements, codeEl));
+      this._autosave();
+      this.setMode('select');
+      this.renderElements();
+      this.selectElement(codeEl);
+
+    } else {
+      const sig = this.currentSignature;
+      if (!sig) return;
+      this.currentSignature = null;
+      this.ui.addSignatureBtn.classList.remove('active');
+      const nat = this._signatureNatural;
+      this._signatureNatural = null;
+
+      const fw = w < 10 ? 200 : w;
+      const fh = w < 10
+        ? (nat ? Math.round(200 * nat.h / nat.w) : 80)
+        : (nat ? Math.round(fw * nat.h / nat.w) : h);
+
+      const sigEl = new SignatureElement(x, y, pageId, sig, { width: fw, height: fh });
+      this.historyManager.execute(new AddElementCmd(this.elements, sigEl));
+      this._autosave();
+      this.setMode('select');
+      this.renderElements();
+      this.selectElement(sigEl);
+    }
   }
 
   // ── PDF page management ───────────────────────────────────────
@@ -1438,10 +1706,11 @@ export class PDFEditorApp {
       addImage: 'toast.modeHint.addImage', drawArrow: 'toast.modeHint.drawArrow',
       drawRect: 'toast.modeHint.drawRect', drawEllipse: 'toast.modeHint.drawEllipse',
       drawFreehand: 'toast.modeHint.drawFreehand', drawHighlight: 'toast.modeHint.drawHighlight',
-      addComment: 'toast.modeHint.addComment', drawRedaction: 'toast.modeHint.drawRedaction',
+      addComment: 'toast.modeHint.addComment', addCode: 'toast.modeHint.addCode',
+      drawRedaction: 'toast.modeHint.drawRedaction',
       drawErase: 'toast.modeHint.drawErase', editText: 'toast.modeHint.editText',
     };
-    const placementModes: ToolMode[] = ['addText', 'addComment', 'addImage', 'addSignature'];
+    const placementModes: ToolMode[] = ['addText', 'addComment', 'addImage', 'addSignature', 'addCode'];
     if (!placementModes.includes(mode) && this._placementGhost) {
       this._placementGhost.style.display = 'none';
     }
@@ -1483,11 +1752,175 @@ export class PDFEditorApp {
       return;
     }
     this.currentSignature = this.signaturePad.getDataURL();
+    this._signatureNatural = { w: this.ui.signatureCanvas.width, h: this.ui.signatureCanvas.height };
     this.ui.signatureModal.classList.remove('active');
     this._trapCleanup?.();
     this._trapCleanup = null;
     this.mode = 'addSignature';
     this.ui.addSignatureBtn.classList.add('active');
+  }
+
+  // ── Code modal ────────────────────────────────────────────────
+
+  openCodeModal(el?: CodeElement): void {
+    this._codeModalEditingId = el?.id ?? null;
+    this._qrLogoDataUrl = null;
+    // Pre-fill or reset form
+    this.ui.codeFormatSelect.value = el?.codeType ?? 'qrcode';
+    this.ui.codeDataInput.value = el?.data ?? '';
+    const qs = el?.qrStyle;
+    this.ui.qrStyledChk.checked = qs?.styled ?? false;
+    this.ui.qrEclevelSelect.value = qs?.eclevel ?? 'M';
+    this.ui.qrDotStyle.value = qs?.dotType ?? 'square';
+    this.ui.qrDotColor.value = qs?.dotColor ?? '#000000';
+    this.ui.qrBgColor.value = qs?.bgColor ?? '#ffffff';
+    this.ui.qrLogoInput.value = '';
+    this._qrLogoDataUrl = qs?.logoSrc ?? null;
+    this.ui.qrLogoName.textContent = qs?.logoSrc ? t('modal.code.logoExisting') : '';
+    this.ui.qrLogoClearBtn.style.display = qs?.logoSrc ? '' : 'none';
+    const bo = (el as CodeElement | undefined)?.bwipOpts;
+    this.ui.barcodeShowTextChk.checked = bo?.includetext ?? true;
+    this._syncCodeOptionsVisibility();
+    // Reset preview
+    this.ui.codePreviewImg.style.display = 'none';
+    this.ui.codePreviewImg.src = '';
+    this.ui.codePreviewStatus.textContent = '';
+    this.ui.saveCodeModal.disabled = true;
+    const title = el ? t('modal.code.titleEdit') : t('modal.code.title');
+    const titleEl = this.ui.codeModal.querySelector('h2');
+    if (titleEl) titleEl.textContent = title;
+    const saveLabel = el ? t('modal.code.update') : t('modal.code.place');
+    this.ui.saveCodeModal.textContent = saveLabel;
+    this.ui.codeModal.classList.add('active');
+    this._trapCleanup?.();
+    this._trapCleanup = trapFocus(
+      this.ui.codeModal.querySelector('.code-modal-content') as HTMLElement,
+      this.ui.addCodeBtn,
+    );
+    // Trigger preview if data is pre-filled
+    if (this.ui.codeDataInput.value.trim()) this._triggerCodePreview(0);
+  }
+
+  closeCodeModal(): void {
+    this.ui.codeModal.classList.remove('active');
+    this._trapCleanup?.();
+    this._trapCleanup = null;
+    // Only switch to select if we were not editing an existing element
+    if (this._codeModalEditingId === null && this.mode !== 'addCode') {
+      this.setMode('select');
+    }
+    this._codeModalEditingId = null;
+  }
+
+  async saveCodeModal(): Promise<void> {
+    const fmt = this.ui.codeFormatSelect.value;
+    const data = this.ui.codeDataInput.value.trim();
+    if (!data) return;
+    const qrStyle = this._getQrStyleOptions();
+    const bwipOpts = this._getCodeBwipOpts();
+    this.ui.saveCodeModal.disabled = true;
+    this.ui.codePreviewStatus.textContent = t('modal.code.generating');
+    try {
+      const dataUrl = await generateCodeDataUrl(fmt, data, qrStyle, bwipOpts);
+      const nat = await new Promise<{ w: number; h: number }>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.src = dataUrl;
+      });
+      const editingId = this._codeModalEditingId;
+      this.ui.codeModal.classList.remove('active');
+      this._trapCleanup?.();
+      this._trapCleanup = null;
+      this._codeModalEditingId = null;
+
+      if (editingId !== null) {
+        // Edit existing element in-place
+        const el = this.elements.find(x => x.id === editingId) as CodeElement | undefined;
+        if (el) {
+          el.codeType = fmt;
+          el.data = data;
+          el.qrStyle = qrStyle ?? null;
+          el.bwipOpts = bwipOpts;
+          el.cachedDataUrl = dataUrl;
+          this._autosave();
+          this.renderElements();
+        }
+      } else {
+        // New placement — switch to addCode mode and wait for drag
+        this._pendingCodeDataUrl = dataUrl;
+        this._pendingCodeOptions = { codeType: fmt, data, qrStyle: qrStyle ?? null, bwipOpts };
+        this._pendingCodeNatural = nat;
+        this.setMode('addCode');
+      }
+    } catch (e) {
+      this.ui.codePreviewStatus.textContent = String(e).replace(/^Error:\s*/, '');
+      this.ui.saveCodeModal.disabled = false;
+    }
+  }
+
+  private _getQrStyleOptions(): QRStyleOptions | null {
+    if (this.ui.codeFormatSelect.value !== 'qrcode') return null;
+    const eclevel = this.ui.qrEclevelSelect.value;
+    if (!this.ui.qrStyledChk.checked) {
+      return { styled: false, eclevel };
+    }
+    return {
+      styled: true,
+      eclevel,
+      dotType: this.ui.qrDotStyle.value,
+      dotColor: this.ui.qrDotColor.value,
+      bgColor: this.ui.qrBgColor.value,
+      ...(this._qrLogoDataUrl ? { logoSrc: this._qrLogoDataUrl } : {}),
+    };
+  }
+
+  private _getCodeBwipOpts(): BwipOptions | null {
+    const is2D = ['qrcode', 'datamatrix', 'pdf417', 'azteccode'].includes(this.ui.codeFormatSelect.value);
+    if (is2D) return null;
+    return { includetext: this.ui.barcodeShowTextChk.checked };
+  }
+
+  private _syncCodeOptionsVisibility(): void {
+    const fmt = this.ui.codeFormatSelect.value;
+    const isQr = fmt === 'qrcode';
+    const is2D = ['qrcode', 'datamatrix', 'pdf417', 'azteccode'].includes(fmt);
+    this.ui.qrStyleSection.style.display = isQr ? '' : 'none';
+    this.ui.qrStyleControls.style.display = (isQr && this.ui.qrStyledChk.checked) ? '' : 'none';
+    this.ui.barcodeShowTextRow.style.display = is2D ? 'none' : '';
+  }
+
+  private _triggerCodePreview(delay = 400): void {
+    clearTimeout(this._codePreviewDebounce ?? undefined);
+    this._codePreviewDebounce = setTimeout(() => void this._runCodePreview(), delay);
+  }
+
+  private async _runCodePreview(): Promise<void> {
+    const gen = ++this._codeModalGen;
+    const fmt = this.ui.codeFormatSelect.value;
+    const data = this.ui.codeDataInput.value.trim();
+    if (!data) {
+      this.ui.codePreviewImg.style.display = 'none';
+      this.ui.codePreviewStatus.textContent = '';
+      this.ui.saveCodeModal.disabled = true;
+      return;
+    }
+    this.ui.saveCodeModal.disabled = true;
+    this.ui.codePreviewStatus.textContent = t('modal.code.generating');
+    try {
+      const qrStyle = this._getQrStyleOptions();
+      const bwipOpts = this._getCodeBwipOpts();
+      const dataUrl = await generateCodeDataUrl(fmt, data, qrStyle, bwipOpts);
+      if (gen !== this._codeModalGen) return; // stale generation
+      this.ui.codePreviewImg.src = dataUrl;
+      this.ui.codePreviewImg.style.display = 'block';
+      this.ui.codePreviewStatus.textContent = '';
+      this.ui.saveCodeModal.disabled = false;
+    } catch (e) {
+      if (gen !== this._codeModalGen) return;
+      this.ui.codePreviewImg.style.display = 'none';
+      this.ui.codePreviewStatus.textContent = String(e).replace(/^Error:\s*/, '');
+      this.ui.saveCodeModal.disabled = true;
+    }
   }
 
   selectElement(element: PDFElement | null) {
@@ -1504,40 +1937,16 @@ export class PDFEditorApp {
   }
 
   handleCanvasClick(e: MouseEvent) {
+    if (this._skipNextClick) { this._skipNextClick = false; return; }
     if (this._isShapeMode()) return;
-    if (this.mode === 'addText') {
-      this.addTextAtPosition(e);
-      this.setMode('select');
-      this._updateFormattingToolbar();
-    } else if (this.mode === 'editText') {
+    if (this.mode === 'addText' || (this.mode === 'addImage' && this._pendingImageSrc) || this.mode === 'addComment' || (this.mode === 'addSignature' && this.currentSignature) || this.mode === 'addCode') return;
+    if (this.mode === 'editText') {
       void this._textEditHandler.handleCanvasClick(e, this);
-    } else if (this.mode === 'addSignature' && this.currentSignature) {
-      this.addSignatureAtPosition(e);
-      this.mode = 'select';
-      this.ui.addSignatureBtn.classList.remove('active');
-      this.currentSignature = null;
-    } else if (this.mode === 'addImage' && this._pendingImageSrc) {
-      this.addImageAtPosition(e);
-    } else if (this.mode === 'addComment') {
-      this._addCommentAtPosition(e);
-      this.setMode('select');
     } else {
       this.selectElement(null);
     }
   }
 
-  private _addCommentAtPosition(e: MouseEvent): void {
-    const pageId = this.documentModel.currentPage?.id;
-    if (!pageId) return;
-    const rect = this.ui.canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / this.zoomScale;
-    const y = (e.clientY - rect.top)  / this.zoomScale;
-    const el = new CommentElement(x, y, pageId);
-    this.historyManager.execute(new AddElementCmd(this.elements, el));
-    this._autosave();
-    this.renderElements();
-    this.selectElement(el);
-  }
 
   addTextAtPosition(e: MouseEvent) {
     const pageId = this.documentModel.currentPage?.id;
@@ -1568,20 +1977,6 @@ export class PDFEditorApp {
     freshInput?.focus();
   }
 
-  addSignatureAtPosition(e: MouseEvent) {
-    const pageId = this.documentModel.currentPage?.id;
-    if (!pageId) return;
-    const rect = this.ui.canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / this.zoomScale;
-    const y = (e.clientY - rect.top) / this.zoomScale;
-    const sigElement = new SignatureElement(x, y, pageId, this.currentSignature ?? '');
-    sigElement.x -= sigElement.width / 2;
-    sigElement.y -= sigElement.height / 2;
-    this.historyManager.execute(new AddElementCmd(this.elements, sigElement));
-    this._autosave();
-    this.renderElements();
-    this.selectElement(sigElement);
-  }
 
   removeElement(id: number) {
     const el = this.elements.find(e => e.id === id);
@@ -1612,6 +2007,13 @@ export class PDFEditorApp {
       if (this.selectedElement && this.selectedElement.id === element.id) div.classList.add('selected');
       div.addEventListener('click', (e) => { e.stopPropagation(); this.selectElement(element); });
       div.addEventListener('pointerdown', (e) => { this.interactionHandler.handlePointerDown(e, element, div); });
+      if (element.type === 'code') {
+        div.addEventListener('code-element-edit', (e) => {
+          const id = (e as CustomEvent<{ id: number }>).detail.id;
+          const el = this.elements.find(x => x.id === id) as CodeElement | undefined;
+          if (el) this.openCodeModal(el);
+        });
+      }
       if (element.type === 'text') {
         const input = div.querySelector('input, textarea');
         if (input) {
@@ -2393,6 +2795,14 @@ export class PDFEditorApp {
       const corner = tp(element.x, element.y + element.height);
       const a = _anchorForCenter(corner.x, corner.y, ew, eh);
       page.drawImage(pdfImg, { x: a.x, y: a.y, width: ew, height: eh, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
+    } else if (element.type === 'code') {
+      const ce = element as CodeElement;
+      const codePdfImg = await this._embedImage(pdfDoc, ce.cachedDataUrl);
+      const ew = swapDims ? element.height : element.width;
+      const eh = swapDims ? element.width : element.height;
+      const corner = tp(element.x, element.y + element.height);
+      const a = _anchorForCenter(corner.x, corner.y, ew, eh);
+      page.drawImage(codePdfImg, { x: a.x, y: a.y, width: ew, height: eh, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
     } else if (element.type === 'highlight') {
       const he = element as HighlightElement;
       const col = this.hexToRgbValues(he.color);

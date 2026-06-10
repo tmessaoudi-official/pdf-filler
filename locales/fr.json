@@ -1,5 +1,7 @@
 {
-  "app": { "title": "PDFturbo" },
+  "app": {
+    "title": "PDFturbo"
+  },
   "toolbar": {
     "file": "📁 Fichier ▾",
     "open": "📂 Ouvrir…",
@@ -34,10 +36,12 @@
     "watermarkTitle": "Paramètres du filigrane",
     "helpTitle": "Raccourcis clavier (?)",
     "editTextLabel": "Éditer texte",
-    "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer"
+    "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer",
+    "addCodeLabel": "Code",
+    "addCodeTitle": "Ajouter un QR code / code-barres (Q)"
   },
   "formatting": {
-    "textLabel": "Texte",
+    "textLabel": "Texte / Forme",
     "shapeLabel": "Forme",
     "boldTitle": "Gras",
     "italicTitle": "Italique",
@@ -88,7 +92,8 @@
     "addComment": "💬 COMMENT.",
     "drawRedaction": "⬛ CAVIAR.",
     "drawErase": "⌫ GOMME",
-    "editText": "✎ ÉDITER"
+    "editText": "✎ ÉDITER",
+    "addCode": "⊡ CODE"
   },
   "modal": {
     "watermark": {
@@ -153,6 +158,27 @@
       "message": "Une session sauvegardée a été trouvée. Que souhaitez-vous faire ?",
       "restore": "Restaurer la session",
       "fresh": "Recommencer"
+    },
+    "code": {
+      "title": "Ajouter un QR / code-barres",
+      "titleEdit": "Modifier le code",
+      "formatLabel": "Format",
+      "contentLabel": "Contenu",
+      "styledQr": "QR stylisé (couleurs personnalisées / logo)",
+      "dotStyle": "Style de points",
+      "dotColor": "Couleur",
+      "bgColor": "Arrière-plan",
+      "logo": "Logo",
+      "logoChoose": "Choisir une image…",
+      "logoClear": "Supprimer le logo",
+      "logoExisting": "(logo existant)",
+      "previewHint": "Saisissez un contenu ci-dessus pour prévisualiser",
+      "generating": "Génération…",
+      "cancel": "Annuler",
+      "place": "Placer sur le PDF →",
+      "update": "Mettre à jour",
+      "errorCorrection": "Correction d'erreur",
+      "showText": "Afficher le texte"
     }
   },
   "toast": {
@@ -160,7 +186,7 @@
     "watermarkDisabled": "Filigrane désactivé",
     "highlightAdded": "Surlignage ajouté — Ctrl+Z pour annuler",
     "selectImageFile": "Veuillez sélectionner un fichier image (PNG, JPEG, GIF ou WebP)",
-    "clickToPlaceImage": "Cliquez sur le PDF pour placer l'image",
+    "clickToPlaceImage": "Faites glisser sur le PDF pour placer l'image",
     "fileLoadFailed": "Échec du chargement de « {{name}} » — ignoré",
     "filesAdded_one": "{{count}} fichier ajouté",
     "filesAdded_other": "{{count}} fichiers ajoutés",
@@ -184,18 +210,19 @@
     "unsupportedFields_one": "Ce PDF contient {{count}} champ case/liste déroulante — seuls les champs texte sont pris en charge",
     "unsupportedFields_other": "Ce PDF contient {{count}} champs cases/listes déroulantes — seuls les champs texte sont pris en charge",
     "modeHint": {
-      "addText": "Outil texte — cliquez pour placer. Appuyez sur Échap pour annuler.",
-      "addSignature": "Outil signature — cliquez pour placer. Appuyez sur Échap pour annuler.",
-      "addImage": "Mode image — cliquez pour placer. Appuyez sur Échap pour annuler.",
+      "addText": "Outil texte — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler.",
+      "addSignature": "Outil signature — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler.",
+      "addImage": "Mode image — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler.",
       "drawArrow": "Outil flèche — faites glisser pour dessiner. Appuyez sur Échap pour quitter.",
       "drawRect": "Outil rectangle — faites glisser pour dessiner. Appuyez sur Échap pour quitter.",
       "drawEllipse": "Outil cercle — faites glisser pour dessiner. Appuyez sur Échap pour quitter.",
       "drawFreehand": "Stylo libre — dessinez librement. Appuyez sur Terminé ou Échap pour quitter.",
       "drawHighlight": "Outil surligneur — faites glisser pour marquer. Appuyez sur Échap pour quitter.",
-      "addComment": "Outil commentaire — cliquez pour placer. Appuyez sur Échap pour annuler.",
+      "addComment": "Outil commentaire — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler.",
       "drawRedaction": "Outil caviardage — faites glisser pour caviarder. Appuyez sur Échap pour quitter.",
       "drawErase": "Gomme — balayez pour effacer des éléments. Appuyez sur Échap pour quitter.",
-      "editText": "Éditer texte — cliquez sur un mot pour le superposer et l'éditer. Appuyez sur Échap pour quitter."
+      "editText": "Éditer texte — cliquez sur un mot pour le superposer et l'éditer. Appuyez sur Échap pour quitter.",
+      "addCode": "Outil code — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler."
     }
   },
   "thumbnail": {
@@ -221,5 +248,16 @@
     "text": "Cet outil enregistre votre session de travail dans le stockage local de votre navigateur. Aucune donnée n'est envoyée à un serveur.",
     "privacyLink": "Politique de confidentialité",
     "dismiss": "Compris"
+  },
+  "element": {
+    "deleteTitle": "Supprimer",
+    "rotateTitle": "Pivoter",
+    "burnLabel": "⚠ Appliqué à l'export"
+  },
+  "footer": {
+    "privacyPolicy": "Politique de confidentialité",
+    "legalNotice": "Mentions légales",
+    "termsOfUse": "Conditions d'utilisation",
+    "accessibility": "Accessibilité"
   }
 }

@@ -5,6 +5,8 @@ import { ImageElement } from './imageElement';
 import { HighlightElement } from './highlightElement';
 import { CommentElement } from './commentElement';
 import { RedactionElement } from './redactionElement';
+import { CodeElement } from './codeElement';
+import type { QRStyleOptions, BwipOptions } from './codeGenerator';
 import type { ShapeType } from './shapeElement';
 import { PDFElement } from './pdfElement';
 
@@ -59,6 +61,15 @@ export class ElementFactory {
     }
     if (data['type'] === 'redaction') {
       const el = new RedactionElement(data['x'], data['y'], data['width'], data['height'], pageId, data['color'] as string | undefined);
+      return applyBase(el);
+    }
+    if (data['type'] === 'code') {
+      const el = new CodeElement(
+        data['x'], data['y'], pageId,
+        { codeType: data['codeType'] as string, data: data['data'] as string, qrStyle: data['qrStyle'] as QRStyleOptions | null ?? null, bwipOpts: data['bwipOpts'] as BwipOptions | null ?? null },
+        (data['cachedDataUrl'] as string) || '',
+        { w: data['width'] as number, h: data['height'] as number },
+      );
       return applyBase(el);
     }
     return null;

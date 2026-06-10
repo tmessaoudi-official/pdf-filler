@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { PDFElement } from './pdfElement';
 import type { ElementJSON } from './pdfElement';
 
@@ -28,7 +29,7 @@ export class RedactionElement extends PDFElement {
 
     const burnLabel = document.createElement('span');
     burnLabel.className = 'redaction-burn-label';
-    burnLabel.textContent = '⚠ Burn on export';
+    burnLabel.textContent = t('element.burnLabel');
     wrapper.appendChild(burnLabel);
     wrapper.appendChild(this.createRotationHandle());
     wrapper.appendChild(this.createControls());

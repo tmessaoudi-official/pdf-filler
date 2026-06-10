@@ -55,7 +55,7 @@ export class DrawingHandler {
       return;
     }
 
-    if (!this.app.mode.startsWith('draw')) return;
+    if (!this.app.mode.startsWith('draw') && this.app.mode !== 'addText' && this.app.mode !== 'addImage' && this.app.mode !== 'addComment' && this.app.mode !== 'addSignature' && this.app.mode !== 'addCode') return;
     if (this.app.mode === 'drawFreehand') return; // handled by InkLayerHandler
     if (this._previewSvg) { this._previewSvg.remove(); this._previewSvg = null; }
 
@@ -233,6 +233,16 @@ export class DrawingHandler {
       this.app.setMode('select');
       this.app.selectElement(redEl);
       return;
+
+    } else if (this.app.mode === 'addText' || this.app.mode === 'addImage' || this.app.mode === 'addComment' || this.app.mode === 'addSignature' || this.app.mode === 'addCode') {
+      const x = Math.min(start.x, endX);
+      const y = Math.min(start.y, endY);
+      const w = Math.abs(endX - start.x);
+      const h = Math.abs(endY - start.y);
+      this._drawStart  = null;
+      this._drawPoints = [];
+      this.app.onPlacementDragComplete(this.app.mode as 'addText' | 'addImage' | 'addComment' | 'addSignature' | 'addCode', x, y, w, h);
+      return;
     }
 
     this._drawStart  = null;
@@ -361,6 +371,66 @@ export class DrawingHandler {
       el.setAttribute('fill-opacity', '0.8');
       el.setAttribute('stroke', '#c00');
       el.setAttribute('stroke-width', '2');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
+
+    } else if (this.app.mode === 'addText') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(37,99,235,0.07)');
+      el.setAttribute('stroke', '#2563eb');
+      el.setAttribute('stroke-width', '1.5');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
+
+    } else if (this.app.mode === 'addImage') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(22,163,74,0.07)');
+      el.setAttribute('stroke', '#16a34a');
+      el.setAttribute('stroke-width', '1.5');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
+
+    } else if (this.app.mode === 'addComment') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(234,179,8,0.08)');
+      el.setAttribute('stroke', '#ca8a04');
+      el.setAttribute('stroke-width', '1.5');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
+
+    } else if (this.app.mode === 'addSignature') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(147,51,234,0.07)');
+      el.setAttribute('stroke', '#9333ea');
+      el.setAttribute('stroke-width', '1.5');
+      el.setAttribute('stroke-dasharray', '6,3');
+      this._previewSvg.appendChild(el);
+
+    } else if (this.app.mode === 'addCode') {
+      const el = document.createElementNS(ns, 'rect');
+      el.setAttribute('x', String(Math.min(sx0, sxC)));
+      el.setAttribute('y', String(Math.min(sy0, syC)));
+      el.setAttribute('width', String(Math.abs(sxC - sx0)));
+      el.setAttribute('height', String(Math.abs(syC - sy0)));
+      el.setAttribute('fill', 'rgba(13,148,136,0.08)');
+      el.setAttribute('stroke', '#0d9488');
+      el.setAttribute('stroke-width', '1.5');
       el.setAttribute('stroke-dasharray', '6,3');
       this._previewSvg.appendChild(el);
     }

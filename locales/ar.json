@@ -1,6 +1,8 @@
 {
   "_note": "Arabic UI labels — needs native-speaker review before production",
-  "app": { "title": "PDFturbo" },
+  "app": {
+    "title": "PDFturbo"
+  },
   "toolbar": {
     "file": "📁 الملف ▾",
     "open": "📂 فتح…",
@@ -23,6 +25,8 @@
     "commentTitle": "إضافة تعليق / ملاحظة (N)",
     "editTextLabel": "تحرير النص",
     "editTextTitle": "تحرير نص PDF — انقر على كلمة لتراكبها وتعديلها",
+    "addCodeLabel": "رمز",
+    "addCodeTitle": "إضافة رمز QR / باركود (Q)",
     "findTitle": "البحث في الصفحة (Ctrl+F)",
     "arrowTitle": "سهم (A)",
     "rectTitle": "مستطيل (R)",
@@ -38,7 +42,7 @@
     "helpTitle": "اختصارات لوحة المفاتيح (?)"
   },
   "formatting": {
-    "textLabel": "نص",
+    "textLabel": "نص / شكل",
     "shapeLabel": "شكل",
     "boldTitle": "عريض",
     "italicTitle": "مائل",
@@ -89,7 +93,8 @@
     "addComment": "💬 تعليق",
     "drawRedaction": "⬛ تعتيم",
     "drawErase": "⌫ محو",
-    "editText": "✎ تحرير"
+    "editText": "✎ تحرير",
+    "addCode": "⊡ رمز"
   },
   "modal": {
     "watermark": {
@@ -154,6 +159,27 @@
       "message": "تم العثور على جلسة محفوظة. ماذا تريد أن تفعل؟",
       "restore": "استعادة الجلسة",
       "fresh": "البدء من جديد"
+    },
+    "code": {
+      "title": "إضافة رمز QR / باركود",
+      "titleEdit": "تعديل الرمز",
+      "formatLabel": "التنسيق",
+      "contentLabel": "المحتوى",
+      "styledQr": "رمز QR مُنسَّق (ألوان مخصصة / شعار)",
+      "dotStyle": "نمط النقاط",
+      "dotColor": "اللون",
+      "bgColor": "الخلفية",
+      "logo": "الشعار",
+      "logoChoose": "اختر صورة…",
+      "logoClear": "إزالة الشعار",
+      "logoExisting": "(الشعار الحالي)",
+      "previewHint": "أدخل محتوى أعلاه للمعاينة",
+      "generating": "جارٍ التوليد…",
+      "cancel": "إلغاء",
+      "place": "وضع على PDF ←",
+      "update": "تحديث",
+      "errorCorrection": "مستوى تصحيح الخطأ",
+      "showText": "إظهار النص"
     }
   },
   "toast": {
@@ -161,7 +187,7 @@
     "watermarkDisabled": "تم إلغاء العلامة المائية",
     "highlightAdded": "تم إضافة التظليل — Ctrl+Z للتراجع",
     "selectImageFile": "يرجى اختيار ملف صورة (PNG أو JPEG أو GIF أو WebP)",
-    "clickToPlaceImage": "انقر على PDF لوضع الصورة",
+    "clickToPlaceImage": "اسحب على PDF لوضع الصورة",
     "fileLoadFailed": "فشل تحميل «{{name}}» — تخطي",
     "filesAdded_one": "تم إضافة {{count}} ملف",
     "filesAdded_other": "تم إضافة {{count}} ملفات",
@@ -185,18 +211,19 @@
     "unsupportedFields_one": "يحتوي هذا PDF على {{count}} حقل تحديد/قائمة — تدعم الأداة حقول النص فقط",
     "unsupportedFields_other": "يحتوي هذا PDF على {{count}} حقول تحديد/قوائم — تدعم الأداة حقول النص فقط",
     "modeHint": {
-      "addText": "أداة النص — انقر للوضع. اضغط Esc للإلغاء.",
-      "addSignature": "أداة التوقيع — انقر للوضع. اضغط Esc للإلغاء.",
-      "addImage": "وضع الصورة — انقر للوضع. اضغط Esc للإلغاء.",
+      "addText": "أداة النص — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء.",
+      "addSignature": "أداة التوقيع — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء.",
+      "addImage": "وضع الصورة — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء.",
       "drawArrow": "أداة السهم — اسحب للرسم. اضغط Esc للخروج.",
       "drawRect": "أداة المستطيل — اسحب للرسم. اضغط Esc للخروج.",
       "drawEllipse": "أداة الدائرة — اسحب للرسم. اضغط Esc للخروج.",
       "drawFreehand": "القلم الحر — ارسم بحرية. اضغط تم أو Esc للخروج.",
       "drawHighlight": "أداة التظليل — اسحب للتحديد. اضغط Esc للخروج.",
-      "addComment": "أداة التعليق — انقر للوضع. اضغط Esc للإلغاء.",
+      "addComment": "أداة التعليق — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء.",
       "drawRedaction": "أداة التعتيم — اسحب للتعتيم. اضغط Esc للخروج.",
       "drawErase": "الممحاة — امسح للحذف. اضغط Esc للخروج.",
-      "editText": "تحرير النص — انقر على أي كلمة لتراكبها وتعديلها. اضغط Esc للخروج."
+      "editText": "تحرير النص — انقر على أي كلمة لتراكبها وتعديلها. اضغط Esc للخروج.",
+      "addCode": "أداة الرمز — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء."
     }
   },
   "thumbnail": {
@@ -222,5 +249,16 @@
     "text": "تحفظ هذه الأداة جلسة عملك في التخزين المحلي لمتصفحك. لا يتم إرسال أي بيانات إلى أي خادم.",
     "privacyLink": "سياسة الخصوصية",
     "dismiss": "حسناً"
+  },
+  "element": {
+    "deleteTitle": "حذف",
+    "rotateTitle": "تدوير",
+    "burnLabel": "⚠ يُطبَّق عند التصدير"
+  },
+  "footer": {
+    "privacyPolicy": "سياسة الخصوصية",
+    "legalNotice": "الإشعار القانوني",
+    "termsOfUse": "شروط الاستخدام",
+    "accessibility": "إمكانية الوصول"
   }
 }

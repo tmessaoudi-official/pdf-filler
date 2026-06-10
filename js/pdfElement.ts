@@ -1,4 +1,6 @@
-export type ElementType = 'text' | 'signature' | 'shape' | 'image' | 'highlight' | 'comment' | 'redaction';
+import { t } from './i18n';
+
+export type ElementType = 'text' | 'signature' | 'shape' | 'image' | 'highlight' | 'comment' | 'redaction' | 'code';
 
 export interface ElementJSON {
   id: number;
@@ -39,7 +41,7 @@ export abstract class PDFElement {
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'control-btn delete-btn';
     deleteBtn.textContent = '×';
-    deleteBtn.title = 'Delete';
+    deleteBtn.title = t('element.deleteTitle');
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       deleteBtn.dispatchEvent(
@@ -57,7 +59,7 @@ export abstract class PDFElement {
   createRotationHandle(): HTMLDivElement {
     const handle = document.createElement('div');
     handle.className = 'rotation-handle';
-    handle.title = 'Rotate';
+    handle.title = t('element.rotateTitle');
     handle.textContent = '↻';
     return handle;
   }

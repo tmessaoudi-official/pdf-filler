@@ -86,4 +86,7 @@ function updateLangButtons(): void {
   document.querySelectorAll<HTMLElement>('.lang-btn').forEach(btn => {
     btn.classList.toggle('lang-active', btn.dataset.lang === current);
   });
+  const labels: Record<string, string> = { en: 'EN', fr: 'FR', ar: 'ع' };
+  const globeBtn = document.getElementById('langGlobeBtn');
+  if (globeBtn) globeBtn.textContent = '🌐 ' + (labels[current] ?? current.toUpperCase());
 }

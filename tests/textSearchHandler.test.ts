@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { TextSearchHandler } from '../js/textSearchHandler';
 
 function makePage(text: string) {
@@ -6,7 +7,7 @@ function makePage(text: string) {
     getTextContent: async () => ({
       items: [{ str: text, transform: [1, 0, 0, 1, 50, 500], width: text.length * 7, height: 14 }],
     }),
-  } as any;
+  } as unknown as PDFPageProxy;
 }
 
 describe('TextSearchHandler LRU cache', () => {
@@ -15,7 +16,7 @@ describe('TextSearchHandler LRU cache', () => {
     for (let i = 0; i < 21; i++) {
       await handler.buildIndex(makePage(`content of page ${i}`), `page-${i}`);
     }
-    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as unknown as PageViewport;
     // page-0 was evicted (oldest)
     const matches0 = handler.search('content of page 0', 'page-0', vp, 1);
     expect(matches0).toHaveLength(0);
@@ -35,7 +36,7 @@ describe('TextSearchHandler LRU cache', () => {
     // Add one more — should evict page-1 (now the oldest), not page-0
     await handler.buildIndex(makePage('new page'), 'page-21');
 
-    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as unknown as PageViewport;
     expect(handler.search('important page', 'page-0', vp, 1)).toHaveLength(1);
     expect(handler.search('page 1', 'page-1', vp, 1)).toHaveLength(0);
   });
@@ -47,7 +48,7 @@ describe('TextSearchHandler word-level highlights', () => {
     const text = 'Test content for search: Hello World';
     await handler.buildIndex(makePage(text), 'p1');
 
-    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as unknown as PageViewport;
     const matches = handler.search('search', 'p1', vp, 1);
     expect(matches).toHaveLength(1);
 
@@ -60,7 +61,7 @@ describe('TextSearchHandler word-level highlights', () => {
     const text = 'AAAAAAbbbCCCCC'; // exactly 1 'bbb' match, offset from item start
     await handler.buildIndex(makePage(text), 'p2');
 
-    const vp = { transform: [1, 0, 0, -1, 0, 842] } as any;
+    const vp = { transform: [1, 0, 0, -1, 0, 842] } as unknown as PageViewport;
     const matches = handler.search('bbb', 'p2', vp, 1);
     expect(matches).toHaveLength(1);
     // The match should start at x > item start (which is 50 in the stub)

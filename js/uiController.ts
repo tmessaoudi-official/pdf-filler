@@ -19,6 +19,7 @@ export interface UIRefs {
   signatureCanvas: HTMLCanvasElement;
   fontSizeInput: HTMLInputElement;
   colorInput: HTMLInputElement;
+  colorEyedropperBtn: HTMLButtonElement;
   sigLineWidthInput: HTMLInputElement;
   sigColorInput: HTMLInputElement;
   zoomOutBtn: HTMLButtonElement;
@@ -42,6 +43,10 @@ export interface UIRefs {
   pageInput: HTMLInputElement;
   pageTotal: HTMLElement;
   toast: HTMLElement;
+  drawBtn:        HTMLButtonElement;
+  drawFlyoutWrap: HTMLElement;
+  annotateBtn:        HTMLButtonElement;
+  annotateFlyoutWrap: HTMLElement;
   arrowBtn: HTMLButtonElement;
   rectBtn: HTMLButtonElement;
   circleBtn: HTMLButtonElement;
@@ -99,6 +104,31 @@ export interface UIRefs {
   restoreYesBtn:   HTMLButtonElement;
   restoreNoBtn:    HTMLButtonElement;
   editTextBtn:     HTMLButtonElement;
+  textModeBtn:     HTMLButtonElement;
+  textChevronBtn:  HTMLButtonElement;
+  textSplitWrap:   HTMLElement;
+  exportChevronBtn: HTMLButtonElement;
+  exportSplitWrap:  HTMLElement;
+  addCodeBtn:       HTMLButtonElement;
+  codeModal:        HTMLElement;
+  codeFormatSelect: HTMLSelectElement;
+  codeDataInput:    HTMLTextAreaElement;
+  qrStyleSection:    HTMLElement;
+  qrEclevelSelect:   HTMLSelectElement;
+  qrStyledChk:       HTMLInputElement;
+  qrStyleControls:   HTMLElement;
+  qrDotStyle:        HTMLSelectElement;
+  qrDotColor:        HTMLInputElement;
+  qrBgColor:         HTMLInputElement;
+  qrLogoInput:       HTMLInputElement;
+  qrLogoName:        HTMLElement;
+  qrLogoClearBtn:    HTMLButtonElement;
+  barcodeShowTextRow: HTMLElement;
+  barcodeShowTextChk: HTMLInputElement;
+  codePreviewImg:   HTMLImageElement;
+  codePreviewStatus: HTMLElement;
+  cancelCodeModal:  HTMLButtonElement;
+  saveCodeModal:    HTMLButtonElement;
 }
 
 export class UIController {
@@ -119,7 +149,8 @@ export class UIController {
       signatureModal:   document.getElementById('signatureModal')   as HTMLElement,
       signatureCanvas:  document.getElementById('signatureCanvas')  as HTMLCanvasElement,
       fontSizeInput:    document.getElementById('fontSize')         as HTMLInputElement,
-      colorInput:       document.getElementById('color')            as HTMLInputElement,
+      colorInput:           document.getElementById('color')                as HTMLInputElement,
+      colorEyedropperBtn:   document.getElementById('colorEyedropperBtn')   as HTMLButtonElement,
       sigLineWidthInput:document.getElementById('sigLineWidth')     as HTMLInputElement,
       sigColorInput:    document.getElementById('sigColor')         as HTMLInputElement,
       zoomOutBtn:       document.getElementById('zoomOutBtn')       as HTMLButtonElement,
@@ -143,6 +174,10 @@ export class UIController {
       pageInput:        document.getElementById('pageInput')        as HTMLInputElement,
       pageTotal:        document.getElementById('pageTotal')        as HTMLElement,
       toast:            document.getElementById('toast')            as HTMLElement,
+      drawBtn:          document.getElementById('drawBtn')          as HTMLButtonElement,
+      drawFlyoutWrap:   document.getElementById('drawFlyoutWrap')   as HTMLElement,
+      annotateBtn:        document.getElementById('annotateBtn')        as HTMLButtonElement,
+      annotateFlyoutWrap: document.getElementById('annotateFlyoutWrap') as HTMLElement,
       arrowBtn:         document.getElementById('arrowBtn')         as HTMLButtonElement,
       rectBtn:          document.getElementById('rectBtn')          as HTMLButtonElement,
       circleBtn:        document.getElementById('circleBtn')        as HTMLButtonElement,
@@ -200,12 +235,40 @@ export class UIController {
       restoreYesBtn:   document.getElementById('restoreYesBtn')   as HTMLButtonElement,
       restoreNoBtn:    document.getElementById('restoreNoBtn')    as HTMLButtonElement,
       editTextBtn:     document.getElementById('editTextBtn')     as HTMLButtonElement,
+      textModeBtn:     document.getElementById('textModeBtn')     as HTMLButtonElement,
+      textChevronBtn:  document.getElementById('textChevronBtn')  as HTMLButtonElement,
+      textSplitWrap:   document.getElementById('textSplitWrap')   as HTMLElement,
+      exportChevronBtn: document.getElementById('exportChevronBtn') as HTMLButtonElement,
+      exportSplitWrap:  document.getElementById('exportSplitWrap')  as HTMLElement,
+      addCodeBtn:       document.getElementById('addCodeBtn')       as HTMLButtonElement,
+      codeModal:        document.getElementById('codeModal')        as HTMLElement,
+      codeFormatSelect: document.getElementById('codeFormatSelect') as HTMLSelectElement,
+      codeDataInput:    document.getElementById('codeDataInput')    as HTMLTextAreaElement,
+      qrStyleSection:    document.getElementById('qrStyleSection')    as HTMLElement,
+      qrEclevelSelect:   document.getElementById('qrEclevelSelect')   as HTMLSelectElement,
+      qrStyledChk:       document.getElementById('qrStyledChk')       as HTMLInputElement,
+      qrStyleControls:   document.getElementById('qrStyleControls')   as HTMLElement,
+      qrDotStyle:        document.getElementById('qrDotStyle')        as HTMLSelectElement,
+      qrDotColor:        document.getElementById('qrDotColor')        as HTMLInputElement,
+      qrBgColor:         document.getElementById('qrBgColor')         as HTMLInputElement,
+      qrLogoInput:       document.getElementById('qrLogoInput')       as HTMLInputElement,
+      qrLogoName:        document.getElementById('qrLogoName')        as HTMLElement,
+      qrLogoClearBtn:    document.getElementById('qrLogoClearBtn')    as HTMLButtonElement,
+      barcodeShowTextRow: document.getElementById('barcodeShowTextRow') as HTMLElement,
+      barcodeShowTextChk: document.getElementById('barcodeShowTextChk') as HTMLInputElement,
+      codePreviewImg:   document.getElementById('codePreviewImg')   as HTMLImageElement,
+      codePreviewStatus: document.getElementById('codePreviewStatus') as HTMLElement,
+      cancelCodeModal:  document.getElementById('cancelCodeModal')  as HTMLButtonElement,
+      saveCodeModal:    document.getElementById('saveCodeModal')    as HTMLButtonElement,
     };
   }
 
   enableUI(): void {
     const r = this.refs;
+    r.textModeBtn.disabled    = false;
+    r.textChevronBtn.disabled = false;
     r.addTextBtn.disabled     = false;
+    r.exportChevronBtn.disabled = false;
     r.addSignatureBtn.disabled = false;
     r.downloadBtn.disabled    = false;
     r.prevPageBtn.disabled    = false;
@@ -216,6 +279,8 @@ export class UIController {
     r.firstPage.disabled      = false;
     r.lastPage.disabled       = false;
     r.pageInput.disabled      = false;
+    r.drawBtn.disabled        = false;
+    r.annotateBtn.disabled    = false;
     r.arrowBtn.disabled       = false;
     r.rectBtn.disabled        = false;
     r.circleBtn.disabled      = false;
@@ -231,6 +296,8 @@ export class UIController {
     r.editTextBtn.disabled    = false;
     const eyedropper = document.getElementById('redactEyedropperBtn') as HTMLButtonElement | null;
     if (eyedropper) eyedropper.disabled = false;
+    r.colorEyedropperBtn.disabled = false;
+    r.addCodeBtn.disabled = false;
   }
 
   updateModeButtons(mode: ToolMode): void {
@@ -240,6 +307,7 @@ export class UIController {
     r.addTextBtn.classList.toggle('active',      mode === 'addText');
     r.addSignatureBtn.classList.toggle('active', mode === 'addSignature');
     r.addImageBtn.classList.toggle('active',     mode === 'addImage');
+    r.addCodeBtn.classList.toggle('active',      mode === 'addCode');
     r.highlightBtn.classList.toggle('active',    mode === 'drawHighlight');
     r.arrowBtn.classList.toggle('active',        mode === 'drawArrow');
     r.rectBtn.classList.toggle('active',         mode === 'drawRect');
@@ -249,19 +317,45 @@ export class UIController {
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
     r.editTextBtn.classList.toggle('active',   mode === 'editText');
+    const drawIcons: Partial<Record<string, string>> = {
+      drawArrow: '→', drawRect: '□', drawEllipse: '○',
+      drawFreehand: '✏', drawErase: '⌫', drawRedaction: '⬛',
+    };
+    const drawIcon = drawIcons[mode];
+    r.drawBtn.textContent = (drawIcon ?? '✏') + ' ▾';
+    r.drawBtn.classList.toggle('active', !!drawIcon);
+
+    const annotateIcons: Partial<Record<string, string>> = {
+      drawHighlight: '🖊', addComment: '💬',
+    };
+    const annotateIcon = annotateIcons[mode];
+    r.annotateBtn.textContent = (annotateIcon ?? '🖊') + ' ▾';
+    r.annotateBtn.classList.toggle('active', !!annotateIcon);
+
+    const textFaces: Partial<Record<string, string>> = {
+      addText: t('toolbar.addText'), editText: '✎ ' + t('toolbar.editTextLabel'),
+    };
+    const textFace = textFaces[mode];
+    if (textFace) {
+      r.textModeBtn.textContent = textFace;
+      r.textModeBtn.dataset['mode'] = mode;
+    }
+    r.textModeBtn.classList.toggle('active', mode === 'addText' || mode === 'editText');
 
     const toggles: [HTMLButtonElement, ToolMode][] = [
       [r.selectBtn, 'select'],
       [r.addTextBtn, 'addText'], [r.addSignatureBtn, 'addSignature'], [r.addImageBtn, 'addImage'],
+      [r.addCodeBtn, 'addCode'],
       [r.highlightBtn, 'drawHighlight'], [r.arrowBtn, 'drawArrow'], [r.rectBtn, 'drawRect'],
       [r.circleBtn, 'drawEllipse'], [r.freehandBtn, 'drawFreehand'], [r.commentBtn, 'addComment'],
       [r.redactBtn, 'drawRedaction'], [r.eraserBtn, 'drawErase'], [r.editTextBtn, 'editText'],
     ];
     toggles.forEach(([btn, m]) => btn.setAttribute('aria-pressed', String(mode === m)));
+    r.textModeBtn.setAttribute('aria-pressed', String(mode === 'addText' || mode === 'editText'));
 
     const badgeKeys: Record<string, string> = {
       select: 'badge.select', addText: 'badge.addText', addSignature: 'badge.addSignature',
-      addImage: 'badge.addImage', drawArrow: 'badge.drawArrow', drawRect: 'badge.drawRect',
+      addImage: 'badge.addImage', addCode: 'badge.addCode', drawArrow: 'badge.drawArrow', drawRect: 'badge.drawRect',
       drawEllipse: 'badge.drawEllipse', drawFreehand: 'badge.drawFreehand',
       drawHighlight: 'badge.drawHighlight', addComment: 'badge.addComment',
       drawRedaction: 'badge.drawRedaction', drawErase: 'badge.drawErase',
@@ -274,13 +368,29 @@ export class UIController {
 
     const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase' && mode !== 'drawHighlight';
     r.colorInput.disabled = !isShapeMode;
+    r.colorEyedropperBtn.disabled = !isShapeMode;
     r.shapeWidth.disabled = !isShapeMode;
+
+    // Redact color controls only make sense in redact mode — hide them otherwise to avoid
+    // visual confusion with the shape stroke color control in row2.
+    const isRedact = mode === 'drawRedaction';
+    r.redactColorInput.style.display = isRedact ? '' : 'none';
+    const redactEyedropper = document.getElementById('redactEyedropperBtn') as HTMLButtonElement | null;
+    if (redactEyedropper) redactEyedropper.style.display = isRedact ? '' : 'none';
+
+    // Phase 6: hide formatting strip in idle select mode; shown by updateFormattingToolbar when element selected
+    const formattingGroup = document.getElementById('formattingGroup');
+    formattingGroup?.classList.toggle('row2-hidden', mode === 'select');
   }
 
   updateFormattingToolbar(el: PDFElement | null, mode: ToolMode): void {
     const r = this.refs;
     const isText  = el?.type === 'text';
     const isShape = el?.type === 'shape';
+
+    // Show formatting strip when something is selected (overrides row2-hidden set by updateModeButtons)
+    const formattingGroup = document.getElementById('formattingGroup');
+    if (el && mode === 'select') formattingGroup?.classList.remove('row2-hidden');
 
     r.fontFamily.disabled      = !isText;
     r.boldBtn.disabled         = !isText;
@@ -305,6 +415,7 @@ export class UIController {
 
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
     r.colorInput.disabled = !isText && !shapeActive;
+    r.colorEyedropperBtn.disabled = !isText && !shapeActive;
     r.shapeWidth.disabled = !shapeActive;
     if (isShape) {
       r.colorInput.value = (el as ShapeElement).strokeColor;

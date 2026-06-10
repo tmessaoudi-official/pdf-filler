@@ -1,5 +1,7 @@
 {
-  "app": { "title": "PDFturbo" },
+  "app": {
+    "title": "PDFturbo"
+  },
   "toolbar": {
     "file": "📁 File ▾",
     "open": "📂 Open…",
@@ -34,10 +36,12 @@
     "watermarkTitle": "Watermark settings",
     "helpTitle": "Keyboard shortcuts (?)",
     "editTextLabel": "Edit Text",
-    "editTextTitle": "Edit PDF text — click a word to overlay and edit it"
+    "editTextTitle": "Edit PDF text — click a word to overlay and edit it",
+    "addCodeLabel": "Code",
+    "addCodeTitle": "Add QR code / barcode (Q)"
   },
   "formatting": {
-    "textLabel": "Text",
+    "textLabel": "Text / Shape",
     "shapeLabel": "Shape",
     "boldTitle": "Bold",
     "italicTitle": "Italic",
@@ -88,7 +92,8 @@
     "addComment": "💬 COMMENT",
     "drawRedaction": "⬛ REDACT",
     "drawErase": "⌫ ERASE",
-    "editText": "✎ EDIT TEXT"
+    "editText": "✎ EDIT TEXT",
+    "addCode": "⊡ CODE"
   },
   "modal": {
     "watermark": {
@@ -153,6 +158,27 @@
       "message": "Found a saved session. What would you like to do?",
       "restore": "Restore session",
       "fresh": "Start fresh"
+    },
+    "code": {
+      "title": "Add QR / Barcode",
+      "titleEdit": "Edit Code",
+      "formatLabel": "Format",
+      "contentLabel": "Content",
+      "styledQr": "Styled QR (custom colors / logo)",
+      "dotStyle": "Dot style",
+      "dotColor": "Color",
+      "bgColor": "Background",
+      "logo": "Logo",
+      "logoChoose": "Choose image…",
+      "logoClear": "Remove logo",
+      "logoExisting": "(existing logo)",
+      "previewHint": "Enter content above to preview",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "place": "Place on PDF →",
+      "update": "Update",
+      "errorCorrection": "Error correction",
+      "showText": "Show text"
     }
   },
   "toast": {
@@ -160,7 +186,7 @@
     "watermarkDisabled": "Watermark disabled",
     "highlightAdded": "Highlight added — Ctrl+Z to undo",
     "selectImageFile": "Please select an image file (PNG, JPEG, GIF, or WebP)",
-    "clickToPlaceImage": "Click on the PDF to place the image",
+    "clickToPlaceImage": "Drag on the PDF to place the image",
     "fileLoadFailed": "Failed to load \"{{name}}\" — skipping",
     "filesAdded_one": "Added {{count}} file",
     "filesAdded_other": "Added {{count}} files",
@@ -184,15 +210,16 @@
     "unsupportedFields_one": "This PDF has {{count}} checkbox/dropdown field — only text fields are supported",
     "unsupportedFields_other": "This PDF has {{count}} checkbox/dropdown fields — only text fields are supported",
     "modeHint": {
-      "addText": "Text tool — click to place. Press Esc to cancel.",
-      "addSignature": "Signature tool — click to place. Press Esc to cancel.",
-      "addImage": "Image mode — click to place. Press Esc to cancel.",
+      "addText": "Text tool — drag to define size and place. Press Esc to cancel.",
+      "addSignature": "Signature tool — drag to define size and place. Press Esc to cancel.",
+      "addImage": "Image mode — drag to define size and place. Press Esc to cancel.",
       "drawArrow": "Arrow tool — drag to draw. Press Esc to exit.",
       "drawRect": "Rectangle tool — drag to draw. Press Esc to exit.",
       "drawEllipse": "Circle tool — drag to draw. Press Esc to exit.",
       "drawFreehand": "Freehand pen — draw freely. Tap Done or press Esc to exit.",
       "drawHighlight": "Highlight tool — drag to mark. Press Esc to exit.",
-      "addComment": "Comment tool — click to place. Press Esc to cancel.",
+      "addComment": "Comment tool — drag to define size and place. Press Esc to cancel.",
+      "addCode": "Code tool — drag to define size and place. Press Esc to cancel.",
       "drawRedaction": "Redact tool — drag to black out. Press Esc to exit.",
       "drawErase": "Eraser — swipe to erase elements. Press Esc to exit.",
       "editText": "Edit Text — click on any word to overlay and edit it. Press Esc to exit."
@@ -221,5 +248,16 @@
     "text": "This tool saves your working session in your browser's local storage. No data is sent to any server.",
     "privacyLink": "Privacy Policy",
     "dismiss": "Got it"
+  },
+  "element": {
+    "deleteTitle": "Delete",
+    "rotateTitle": "Rotate",
+    "burnLabel": "⚠ Burn on export"
+  },
+  "footer": {
+    "privacyPolicy": "Privacy Policy",
+    "legalNotice": "Legal Notice",
+    "termsOfUse": "Terms of Use",
+    "accessibility": "Accessibility"
   }
 }

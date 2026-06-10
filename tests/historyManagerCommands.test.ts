@@ -19,7 +19,6 @@ import {
   type ElementTransformSnapshot,
 } from '../js/historyManager';
 import { TextElement } from '../js/textElement';
-import { HighlightElement } from '../js/highlightElement';
 import { PDFElement } from '../js/pdfElement';
 import { InkLayer } from '../js/inkLayer';
 import type { InkStroke } from '../js/inkLayer';
@@ -27,7 +26,6 @@ import type { InkStroke } from '../js/inkLayer';
 beforeEach(() => { PDFElement._nextId = 1; });
 
 function mkEl(pageId = 'p1'): TextElement { return new TextElement(0, 0, pageId); }
-function mkHl(pageId = 'p1'): HighlightElement { return new HighlightElement(0, 0, 100, 30, pageId); }
 function mkMgr() { return new HistoryManager(50, vi.fn()); }
 function mkStroke(override: Partial<InkStroke> = {}): InkStroke {
   return { type: 'ink', points: [{ x: 0, y: 0 }, { x: 10, y: 5 }], width: 2, color: '#000', ...override };

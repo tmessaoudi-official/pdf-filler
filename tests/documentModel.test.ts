@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { DocumentModel } from '../js/documentModel';
 
 function makeDoc(numPages: number) {
-  return { numPages, getPage: async () => ({}) } as any;
+  return { numPages, getPage: async () => ({}) } as unknown as PDFDocumentProxy;
 }
 
 describe('DocumentModel', () => {

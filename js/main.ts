@@ -24,6 +24,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Globe language flyout toggle
+  const langGlobeWrap = document.getElementById('langGlobeWrap');
+  const langGlobeBtn  = document.getElementById('langGlobeBtn');
+  const langGlobeFlyout = document.getElementById('langGlobeFlyout');
+  langGlobeBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = langGlobeWrap?.classList.toggle('open');
+    langGlobeBtn.setAttribute('aria-expanded', String(!!isOpen));
+  });
+  langGlobeFlyout?.addEventListener('click', () => {
+    langGlobeWrap?.classList.remove('open');
+    langGlobeBtn?.setAttribute('aria-expanded', 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if (!langGlobeWrap?.contains(e.target as Node)) {
+      langGlobeWrap?.classList.remove('open');
+      langGlobeBtn?.setAttribute('aria-expanded', 'false');
+    }
+  });
+
   // Storage notice banner — show once, dismissed to localStorage
   const banner = document.getElementById('storageBanner');
   const dismissBtn = document.getElementById('storageBannerDismiss');

@@ -173,21 +173,19 @@ export class InteractionHandler {
     const scale = this.app.zoomScale;
     const deltaX = (e.clientX - this.startX) / scale;
     const deltaY = (e.clientY - this.startY) / scale;
-    const [minW, minH] = (() => {
-      switch (el.type) {
-        case 'highlight': case 'redaction': return [5, 5];
-        case 'shape':     return [10, 10];
-        case 'image':     case 'signature': return [20, 20];
-        case 'comment':   return [20, 20];
-        default:          return [20, 16]; // text and others
-      }
-    })();
-    const newWidth  = Math.max(minW, this.startWidth  + deltaX);
-    const newHeight = Math.max(minH, this.startHeight + deltaY);
+    const minW = 5, minH = 5;
     const maxW = (canvas.width  / scale) - el.x;
     const maxH = (canvas.height / scale) - el.y;
-    el.width  = Math.min(newWidth,  maxW);
-    el.height = Math.min(newHeight, maxH);
+    if (e.shiftKey && this.startWidth > 0 && this.startHeight > 0) {
+      const scaleX = Math.max(minW, this.startWidth  + deltaX) / this.startWidth;
+      const scaleY = Math.max(minH, this.startHeight + deltaY) / this.startHeight;
+      const s = Math.max(scaleX, scaleY);
+      el.width  = Math.min(this.startWidth  * s, maxW);
+      el.height = Math.min(this.startHeight * s, maxH);
+    } else {
+      el.width  = Math.min(Math.max(minW, this.startWidth  + deltaX), maxW);
+      el.height = Math.min(Math.max(minH, this.startHeight + deltaY), maxH);
+    }
     this.app.renderElements();
   }
 

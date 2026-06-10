@@ -25,9 +25,9 @@ describe('PDFElement monotonic IDs', () => {
   it('syncIdCounter advances _nextId past restored IDs', () => {
     // Simulate restored elements with high IDs
     const mockElements = [
-      { id: 500 } as any,
-      { id: 300 } as any,
-      { id: 999 } as any,
+      { id: 500 } as unknown as PDFElement,
+      { id: 300 } as unknown as PDFElement,
+      { id: 999 } as unknown as PDFElement,
     ];
     PDFElement._nextId = 1;
     ElementFactory.syncIdCounter(mockElements);
@@ -44,7 +44,7 @@ describe('PDFElement monotonic IDs', () => {
   });
 
   it('syncIdCounter handles legacy float IDs gracefully', () => {
-    const mockElements = [{ id: 999.7 } as any, { id: 500.3 } as any];
+    const mockElements = [{ id: 999.7 } as unknown as PDFElement, { id: 500.3 } as unknown as PDFElement];
     PDFElement._nextId = 1;
     ElementFactory.syncIdCounter(mockElements);
     expect(PDFElement._nextId).toBe(1000); // floor(999.7) + 1 = 1000
@@ -55,7 +55,7 @@ describe('PDFElement monotonic IDs', () => {
 
   it('syncIdCounter handles 100,000 elements without RangeError', () => {
     PDFElement._nextId = 1;
-    const bigArray = Array.from({ length: 100_000 }, (_, i) => ({ id: i + 1 } as any));
+    const bigArray = Array.from({ length: 100_000 }, (_, i) => ({ id: i + 1 } as unknown as PDFElement));
     expect(() => ElementFactory.syncIdCounter(bigArray)).not.toThrow();
     expect(PDFElement._nextId).toBe(100_001);
   });
@@ -175,12 +175,12 @@ describe('closeSignatureModal mode reset (BUG-21)', () => {
   it('setMode is called — not direct mode assignment', () => {
     const modeCalls: string[] = [];
     const fakeApp = {
-      mode: 'addSignature',
+      mode: 'addSignature' as string,
       ui: {
         signatureModal: { classList: { remove: vi.fn() } },
         addSignatureBtn: { classList: { remove: vi.fn() } },
       },
-    } as any;
+    };
 
     // The fixed implementation calls setMode which invokes side effects
     // Simulate the fixed closeSignatureModal
@@ -227,9 +227,9 @@ describe('DrawingHandler fixes', () => {
 
   it('BUG-12: documentModel.currentPage guard vs renderer.pdfDoc guard', () => {
     const fakeApp = {
-      renderer: { pdfDoc: null },
+      renderer: { pdfDoc: null as null },
       documentModel: { currentPage: { id: 'p1' } },
-    } as any;
+    };
     const oldGuard = !fakeApp.renderer.pdfDoc;        // true — blocks added-PDF drawing (bug)
     const newGuard = !fakeApp.documentModel.currentPage; // false — allows drawing (fix)
     expect(oldGuard).toBe(true);

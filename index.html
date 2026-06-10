@@ -191,6 +191,31 @@
     .file-menu-item:hover:not(:disabled) { background: #f1f5f9; }
     .file-menu-item:disabled { color: #9ca3af; cursor: not-allowed; }
     .file-menu-sep { border: 0; border-top: 1px solid #e5e7eb; margin: 3px 0; }
+    .draw-flyout-wrap { position: relative; }
+    .draw-flyout {
+      display: none; position: fixed; z-index: 300;
+      background: #fff; border: 1px solid #ced4da; border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      flex-direction: row; align-items: center; flex-wrap: wrap;
+      gap: 4px; padding: 6px;
+    }
+    .draw-flyout-wrap.open .draw-flyout { display: flex; }
+    .draw-flyout-sep { width: 1px; height: 24px; background: #ced4da; margin: 0 2px; }
+    .text-split-btn { display: flex; }
+    .text-split-btn > :first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .text-split-btn > :last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid rgba(255,255,255,0.3); padding: 0 5px; min-width: 20px; }
+    .lang-globe-wrap { position: relative; }
+    .lang-globe-flyout {
+      display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 300;
+      background: #fff; border: 1px solid #ced4da; border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      flex-direction: row; align-items: center; gap: 4px; padding: 6px;
+    }
+    .lang-globe-wrap.open .lang-globe-flyout { display: flex; }
+    .lang-globe-flyout .lang-btn { background: #f1f5f9; color: #333; border-color: #ced4da; }
+    .lang-globe-flyout .lang-btn:hover { background: #e2e8f0; }
+    .lang-globe-flyout .lang-btn.lang-active { background: #2563eb; color: white; border-color: #2563eb; }
+    #formattingGroup.row2-hidden { display: none; }
     .mode-badge {
       margin-inline-start: auto;
       padding: 3px 10px;
@@ -318,7 +343,7 @@
       #tbsep-1, #tbsep-2, #tbsep-3 { display: none; }
       /* Tools row: text/sign + all shape buttons — evenly spread */
       #tbg-edit   { order: 10; flex: 1; justify-content: space-evenly; }
-      #tbg-shapes { order: 11; flex: 2; justify-content: space-evenly; }
+      #tbg-shapes { order: 11; flex: 0; }
       /* Hide first/last page on mobile to save space */
       #firstPage, #lastPage { display: none; }
       /* Nav group: no auto-margin on mobile (it's in the scroll row) */
@@ -781,6 +806,42 @@
     }
     #wmPreviewCanvas { display: block; width: 100%; height: 100%; }
     .wm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    /* Code / barcode modal */
+    .code-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .code-modal.active { display: flex; }
+    .code-modal-content {
+      background: white; border-radius: 8px; padding: 20px;
+      max-width: 460px; width: 92%; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .code-modal-content h2 { margin: 0 0 14px; font-size: 17px; }
+    .code-field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .code-field label { font-size: 13px; font-weight: 600; color: #475569; }
+    .code-field select, .code-field textarea {
+      padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px;
+      font-family: inherit;
+    }
+    .code-field textarea { resize: vertical; font-family: monospace; }
+    .code-field .qr-style-label { font-weight: normal; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .qr-style-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; align-items: center; }
+    .qr-style-row label { font-size: 13px; display: flex; align-items: center; gap: 5px; font-weight: normal; }
+    .qr-style-row input[type="color"] { width: 34px; height: 26px; padding: 1px; border-radius: 3px; cursor: pointer; }
+    .qr-logo-row { align-items: center; gap: 8px; }
+    .qr-logo-btn { font-size: 12px; padding: 3px 8px; cursor: pointer; }
+    .qr-logo-name { font-size: 12px; color: #555; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-danger-sm { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; padding: 2px 5px; font-size: 11px; }
+    .code-preview-area {
+      min-height: 80px; background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px; padding: 8px; flex-direction: column; gap: 6px;
+    }
+    #codePreviewImg { max-width: 200px; max-height: 200px; display: none; image-rendering: pixelated; }
+    #codePreviewStatus { font-size: 12px; color: #6b7280; text-align: center; }
+    .code-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
     .export-preview-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -871,9 +932,14 @@
   <div class="header">
     <h1 data-i18n="app.title">PDFturbo</h1>
     <div class="lang-switcher">
-      <button class="lang-btn" data-lang="en">EN</button>
-      <button class="lang-btn" data-lang="fr">FR</button>
-      <button class="lang-btn" data-lang="ar">ع</button>
+      <div class="lang-globe-wrap" id="langGlobeWrap">
+        <button id="langGlobeBtn" class="lang-btn" aria-haspopup="true" aria-expanded="false" title="Change language">🌐 EN</button>
+        <div class="lang-globe-flyout" id="langGlobeFlyout">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="fr">FR</button>
+          <button class="lang-btn" data-lang="ar">ع</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="toolbar toolbar-row1">
@@ -901,33 +967,59 @@
     <div class="toolbar-sep" id="tbsep-1"></div>
     <div class="toolbar-group" id="tbg-edit">
       <button id="selectBtn" class="btn btn-icon active" aria-pressed="true" data-i18n-title="toolbar.selectTitle" title="Select (Esc)">↖</button>
-      <button id="addTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
+      <div class="draw-flyout-wrap" id="textSplitWrap">
+        <div class="text-split-btn">
+          <button id="textModeBtn" class="btn btn-secondary" disabled aria-pressed="false" data-mode="addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button><button id="textChevronBtn" class="btn btn-secondary text-chevron" disabled aria-haspopup="true" aria-expanded="false" title="Text tools">▾</button>
+        </div>
+        <div class="draw-flyout" id="textFlyout">
+          <button id="addTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
+          <button id="editTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.editTextTitle" title="Edit PDF text (overlay)">✎ <span class="btn-label" data-i18n="toolbar.editTextLabel">Edit Text</span></button>
+        </div>
+      </div>
       <button id="addSignatureBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
       <button id="addImageBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
-      <button id="highlightBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊 <span class="btn-label" data-i18n="toolbar.highlightLabel">Highlight</span></button>
-      <button id="commentBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬 <span class="btn-label" data-i18n="toolbar.commentLabel">Comment</span></button>
-      <button id="editTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.editTextTitle" title="Edit PDF text (overlay)">✎ <span class="btn-label" data-i18n="toolbar.editTextLabel">Edit Text</span></button>
+      <button id="addCodeBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.addCodeTitle" title="Add QR / Barcode (Q)">⊡ <span class="btn-label" data-i18n="toolbar.addCodeLabel">Code</span></button>
+      <div class="draw-flyout-wrap" id="annotateFlyoutWrap">
+        <button id="annotateBtn" class="btn btn-icon" disabled title="Annotate tools (H/N)" aria-haspopup="true" aria-expanded="false">🖊 ▾</button>
+        <div class="draw-flyout" id="annotateFlyout">
+          <button id="highlightBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.highlightTitle" title="Highlight brush (H)">🖊</button>
+          <button id="commentBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.commentTitle" title="Add comment / sticky note (N)">💬</button>
+        </div>
+      </div>
       <button id="findBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.findTitle" title="Find in page (Ctrl+F)">🔍</button>
     </div>
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-actions">
-      <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button>
-      <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
-      <button id="watermarkBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.watermarkTitle" title="Watermark settings">≋</button>
+      <div class="draw-flyout-wrap" id="exportSplitWrap">
+        <div class="text-split-btn">
+          <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button><button id="exportChevronBtn" class="btn btn-success" disabled aria-haspopup="true" aria-expanded="false" title="Export options">▾</button>
+        </div>
+        <div class="draw-flyout" id="exportFlyout">
+          <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
+          <button id="watermarkBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.watermarkTitle" title="Watermark settings">≋</button>
+        </div>
+      </div>
       <button id="helpBtn" class="btn btn-icon" data-i18n-title="toolbar.helpTitle" title="Keyboard shortcuts (?)">?</button>
       <input type="file" id="addPdfInput" accept="application/pdf,image/*" multiple>
     </div>
     <div class="toolbar-sep" id="tbsep-3"></div>
     <div class="toolbar-group" id="tbg-shapes">
-      <button id="arrowBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
-      <button id="rectBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
-      <button id="circleBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
-      <button id="freehandBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
-      <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser — swipe to erase (E)">⌫</button>
-      <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact — draw a permanent black box">⬛</button>
-      <input type="color" id="redactColor" value="#000000" class="toolbar-color" title="Redact color">
-      <button id="redactEyedropperBtn" class="btn btn-icon btn-sm" disabled title="Pick color from screen (eyedropper)">🖊</button>
+      <div class="draw-flyout-wrap" id="drawFlyoutWrap">
+        <button id="drawBtn" class="btn btn-icon" disabled title="Draw tools (A/R/C/D/E/K)" aria-haspopup="true" aria-expanded="false">✏ ▾</button>
+        <div class="draw-flyout" id="drawFlyout">
+          <button id="arrowBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
+          <button id="rectBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
+          <button id="circleBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
+          <button id="freehandBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand (D)">✏</button>
+          <button id="eraserBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.eraserTitle" title="Eraser (E)">⌫</button>
+          <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
+          <div class="draw-flyout-sep"></div>
+          <button id="redactBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.redactTitle" title="Redact (K)">⬛</button>
+          <input type="color" id="redactColor" value="#000000" class="toolbar-color" title="Redact color" style="display:none">
+          <button id="redactEyedropperBtn" class="btn btn-icon btn-sm" disabled title="Pick color from screen (eyedropper)" style="display:none">🖊</button>
+        </div>
+      </div>
     </div>
     <div id="modeBadge" class="mode-badge">SELECT</div>
   </div>
@@ -946,11 +1038,7 @@
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
       <button id="fontSizeUpBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeUpTitle" title="Increase font size (A+)">A+</button>
       <input type="color" id="color" value="#000000" class="toolbar-color" disabled>
-    </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
-      <span class="toolbar-label" data-i18n="formatting.shapeLabel">Shape</span>
-      <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
+      <button id="colorEyedropperBtn" class="btn btn-icon btn-sm" disabled title="Pick color from screen (eyedropper)">🖊</button>
     </div>
     <div class="toolbar-sep"></div>
     <div class="toolbar-group">
@@ -997,10 +1085,10 @@
   <div id="pageThumbnailContainer" class="page-thumb-container" style="display:none"></div>
   <footer class="app-footer">
     <nav class="footer-links" aria-label="Legal">
-      <a href="./privacy.html">Privacy Policy</a>
-      <a href="./mentions-legales.html">Mentions légales</a>
-      <a href="./terms.html">Terms of Use</a>
-      <a href="./accessibility.html">Accessibility</a>
+      <a href="./privacy.html" data-i18n="footer.privacyPolicy">Privacy Policy</a>
+      <a href="./mentions-legales.html" data-i18n="footer.legalNotice">Mentions légales</a>
+      <a href="./terms.html" data-i18n="footer.termsOfUse">Terms of Use</a>
+      <a href="./accessibility.html" data-i18n="footer.accessibility">Accessibility</a>
     </nav>
     <div>© 2026 Takieddine Messaoudi — <a href="https://github.com/tmessaoudi-official/pdfturbo" rel="noopener">GitHub</a></div>
   </footer>
@@ -1096,6 +1184,83 @@
     <div class="wm-actions">
       <button id="wmCancel" class="btn btn-secondary" data-i18n="modal.watermark.cancel">Cancel</button>
       <button id="wmApply" class="btn btn-success" data-i18n="modal.watermark.apply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="code-modal" id="codeModal" role="dialog" aria-modal="true" aria-labelledby="codeModalTitle">
+  <div class="code-modal-content">
+    <h2 id="codeModalTitle" data-i18n="modal.code.title">Add QR / Barcode</h2>
+    <div class="code-field">
+      <label for="codeFormatSelect" data-i18n="modal.code.formatLabel">Format</label>
+      <select id="codeFormatSelect">
+        <optgroup label="2D Codes">
+          <option value="qrcode">QR Code</option>
+          <option value="datamatrix">Data Matrix</option>
+          <option value="pdf417">PDF417</option>
+          <option value="azteccode">Aztec Code</option>
+        </optgroup>
+        <optgroup label="1D Barcodes">
+          <option value="code128">Code 128</option>
+          <option value="code39">Code 39</option>
+          <option value="ean13">EAN-13</option>
+          <option value="ean8">EAN-8</option>
+          <option value="upca">UPC-A</option>
+          <option value="upce">UPC-E</option>
+          <option value="itf14">ITF-14</option>
+          <option value="codabar">Codabar</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="code-field">
+      <label for="codeDataInput" data-i18n="modal.code.contentLabel">Content</label>
+      <textarea id="codeDataInput" rows="2" placeholder="https://example.com"></textarea>
+    </div>
+    <div class="code-field" id="qrStyleSection">
+      <div class="qr-style-row">
+        <label><span data-i18n="modal.code.errorCorrection">Error correction</span>
+          <select id="qrEclevelSelect">
+            <option value="L">L – 7%</option>
+            <option value="M" selected>M – 15%</option>
+            <option value="Q">Q – 25%</option>
+            <option value="H">H – 30% (best with logo)</option>
+          </select>
+        </label>
+      </div>
+      <label class="qr-style-label"><input type="checkbox" id="qrStyledChk"> <span data-i18n="modal.code.styledQr">Styled QR (custom colors / logo)</span></label>
+      <div id="qrStyleControls" style="display:none">
+        <div class="qr-style-row">
+          <label><span data-i18n="modal.code.dotStyle">Dot style</span>
+            <select id="qrDotStyle">
+              <option value="square">Square</option>
+              <option value="dots">Dots</option>
+              <option value="rounded">Rounded</option>
+              <option value="classy">Classy</option>
+              <option value="extra-rounded">Extra Rounded</option>
+            </select>
+          </label>
+          <label><span data-i18n="modal.code.dotColor">Color</span> <input type="color" id="qrDotColor" value="#000000"></label>
+          <label><span data-i18n="modal.code.bgColor">Background</span> <input type="color" id="qrBgColor" value="#ffffff"></label>
+        </div>
+        <div class="qr-style-row qr-logo-row">
+          <span data-i18n="modal.code.logo">Logo</span>
+          <label class="btn btn-sm qr-logo-btn" for="qrLogoInput">📎 <span data-i18n="modal.code.logoChoose">Choose image…</span></label>
+          <input type="file" id="qrLogoInput" accept="image/*" style="display:none">
+          <span id="qrLogoName" class="qr-logo-name"></span>
+          <button type="button" id="qrLogoClearBtn" class="btn btn-sm btn-danger-sm" style="display:none" data-i18n-title="modal.code.logoClear" title="Remove logo">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="code-field" id="barcodeShowTextRow">
+      <label><input type="checkbox" id="barcodeShowTextChk" checked> <span data-i18n="modal.code.showText">Show text</span></label>
+    </div>
+    <div class="code-preview-area">
+      <img id="codePreviewImg" src="" alt="Code preview">
+      <div id="codePreviewStatus" data-i18n="modal.code.previewHint">Enter content above to preview</div>
+    </div>
+    <div class="code-modal-actions">
+      <button id="cancelCodeModal" class="btn btn-secondary" data-i18n="modal.code.cancel">Cancel</button>
+      <button id="saveCodeModal" class="btn btn-success" disabled data-i18n="modal.code.place">Place on PDF →</button>
     </div>
   </div>
 </div>

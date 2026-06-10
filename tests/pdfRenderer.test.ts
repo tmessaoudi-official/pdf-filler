@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { PDFRenderer } from '../js/pdfRenderer';
+
+type RendererTestable = {
+  _renderPdfPage(doc: PDFDocumentProxy, pageNum: number): Promise<void>;
+  isRendering: boolean;
+};
 
 function makeCanvas() {
   const canvas = document.createElement('canvas');
@@ -18,7 +24,7 @@ function makeDoc(failOnPage?: number) {
         render: () => ({ promise: Promise.resolve() }),
       };
     }),
-  } as any;
+  } as unknown as PDFDocumentProxy;
 }
 
 describe('PDFRenderer deadlock fix (BUG-05)', () => {
@@ -26,19 +32,19 @@ describe('PDFRenderer deadlock fix (BUG-05)', () => {
     const renderer = new PDFRenderer(makeCanvas());
     const doc = makeDoc(1); // page 1 throws
 
-    await expect((renderer as any)._renderPdfPage(doc, 1)).rejects.toThrow('page 1 corrupt');
+    await expect((renderer as unknown as RendererTestable)._renderPdfPage(doc, 1)).rejects.toThrow('page 1 corrupt');
 
-    expect((renderer as any).isRendering).toBe(false);
+    expect((renderer as unknown as RendererTestable).isRendering).toBe(false);
   });
 
   it('can render again after an error (no deadlock)', async () => {
     const renderer = new PDFRenderer(makeCanvas());
     const doc = makeDoc(1);
 
-    await expect((renderer as any)._renderPdfPage(doc, 1)).rejects.toThrow();
+    await expect((renderer as unknown as RendererTestable)._renderPdfPage(doc, 1)).rejects.toThrow();
     // Second render should succeed (not deadlocked)
     const goodDoc = makeDoc();
-    await expect((renderer as any)._renderPdfPage(goodDoc, 1)).resolves.toBeUndefined();
+    await expect((renderer as unknown as RendererTestable)._renderPdfPage(goodDoc, 1)).resolves.toBeUndefined();
   });
 });
 
@@ -50,13 +56,13 @@ describe('PDFRenderer pending queue fix (BUG-08)', () => {
     const resolved: number[] = [];
 
     // Start first render (sets isRendering=true)
-    const first = (renderer as any)._renderPdfPage(doc, 1).then(() => resolved.push(1));
+    const first = (renderer as unknown as RendererTestable)._renderPdfPage(doc, 1).then(() => resolved.push(1));
 
     // Queue second render while first is in progress
-    const second = (renderer as any)._renderPdfPage(doc, 2).then(() => resolved.push(2));
+    const second = (renderer as unknown as RendererTestable)._renderPdfPage(doc, 2).then(() => resolved.push(2));
 
     // Queue third render — should resolve the second (overwrite with resolution)
-    const third = (renderer as any)._renderPdfPage(doc, 3).then(() => resolved.push(3));
+    const third = (renderer as unknown as RendererTestable)._renderPdfPage(doc, 3).then(() => resolved.push(3));
 
     await Promise.all([first, second, third]);
 
@@ -72,11 +78,11 @@ describe('PDFRenderer pending queue fix (BUG-08)', () => {
     const badDoc = makeDoc(1);         // queued page 1 throws
 
     // Start first render
-    const first = (renderer as any)._renderPdfPage(goodDoc, 1);
+    const first = (renderer as unknown as RendererTestable)._renderPdfPage(goodDoc, 1);
 
     // Queue a bad page while first is in progress
     let queuedResolved = false;
-    const queued = (renderer as any)._renderPdfPage(badDoc, 1).then(
+    const queued = (renderer as unknown as RendererTestable)._renderPdfPage(badDoc, 1).then(
       () => { queuedResolved = true; },
       () => { queuedResolved = true; } // also resolved on rejection — we just want it to settle
     );

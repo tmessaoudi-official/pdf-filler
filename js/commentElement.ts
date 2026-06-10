@@ -5,6 +5,8 @@ import { t } from './i18n';
 export interface CommentOptions {
   color?: string;
   text?: string;
+  width?: number;
+  height?: number;
 }
 
 export class CommentElement extends PDFElement {
@@ -12,7 +14,7 @@ export class CommentElement extends PDFElement {
   text: string;
 
   constructor(x: number, y: number, pageId: string, opts: CommentOptions = {}) {
-    super('comment', x, y, 200, 120, pageId);
+    super('comment', x, y, opts.width ?? 200, opts.height ?? 120, pageId);
     this.color = opts.color ?? '#FFFDE7';
     this.text  = opts.text  ?? '';
   }

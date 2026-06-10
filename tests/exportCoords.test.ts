@@ -309,7 +309,7 @@ describe('watermark tiling within CropBox area', () => {
   });
 
   it('no-cropbox page: tiling starts at -(step/2), same as before', () => {
-    const cropW = 595, cropH = 842, cropX = 0, cropY = 0;
+    const cropX = 0, cropY = 0;
     const stepX = 150, stepY = 100;
 
     const yStart = cropY - stepY / 2;   // = -(stepY/2) when cropY=0
