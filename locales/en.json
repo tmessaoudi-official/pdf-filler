@@ -39,7 +39,8 @@
     "editTextTitle": "Edit PDF text — click a word to overlay and edit it",
     "addCodeLabel": "Code",
     "addCodeTitle": "Add QR code / barcode (Q)",
-    "newBlankPage": "📄 New Blank Page…"
+    "newBlankPage": "📄 New Blank Page…",
+    "lockPdf": "🔒 Lock PDF…"
   },
   "formatting": {
     "textLabel": "Text / Shape",
@@ -161,6 +162,22 @@
       "restore": "Restore session",
       "fresh": "Start fresh"
     },
+    "pdfPassword": {
+      "title": "This PDF is password-protected",
+      "passwordLabel": "Password",
+      "error": "Incorrect password. Please try again.",
+      "cancel": "Cancel",
+      "unlock": "Unlock"
+    },
+    "lockPdf": {
+      "title": "Lock PDF with Password",
+      "userPasswordLabel": "Open password (required to open the PDF)",
+      "ownerPasswordLabel": "Owner password (optional, for permissions)",
+      "locked": "PDF will be locked on next export.",
+      "removeLock": "Remove Lock",
+      "cancel": "Cancel",
+      "apply": "Apply Lock"
+    },
     "blankPage": {
       "title": "Insert Blank Page",
       "sizeLabel": "Page size",
@@ -212,6 +229,8 @@
     "sessionRestoreFailed": "Previous session could not be restored — starting fresh",
     "sessionCleared": "Session cleared",
     "blankPageInserted": "Blank page inserted",
+    "pdfWillBeLocked": "PDF will be locked on next export",
+    "pdfLockRemoved": "Password lock removed",
     "noAnnotationsToClear": "No annotations to clear",
     "annotationsCleared": "All annotations cleared — Ctrl+Z to undo",
     "documentClosed": "Document closed",

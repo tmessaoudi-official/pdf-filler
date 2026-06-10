@@ -28,6 +28,7 @@
     "addCodeLabel": "رمز",
     "addCodeTitle": "إضافة رمز QR / باركود (Q)",
     "newBlankPage": "📄 صفحة فارغة جديدة…",
+    "lockPdf": "🔒 قفل PDF…",
     "findTitle": "البحث في الصفحة (Ctrl+F)",
     "arrowTitle": "سهم (A)",
     "rectTitle": "مستطيل (R)",
@@ -162,6 +163,22 @@
       "restore": "استعادة الجلسة",
       "fresh": "البدء من جديد"
     },
+    "pdfPassword": {
+      "title": "هذا PDF محمي بكلمة مرور",
+      "passwordLabel": "كلمة المرور",
+      "error": "كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.",
+      "cancel": "إلغاء",
+      "unlock": "فتح القفل"
+    },
+    "lockPdf": {
+      "title": "قفل PDF بكلمة مرور",
+      "userPasswordLabel": "كلمة مرور الفتح (مطلوبة لفتح الملف)",
+      "ownerPasswordLabel": "كلمة مرور المالك (اختيارية، للأذونات)",
+      "locked": "سيتم قفل PDF عند التصدير التالي.",
+      "removeLock": "إزالة القفل",
+      "cancel": "إلغاء",
+      "apply": "تطبيق القفل"
+    },
     "blankPage": {
       "title": "إدراج صفحة فارغة",
       "sizeLabel": "حجم الصفحة",
@@ -213,6 +230,8 @@
     "sessionRestoreFailed": "تعذر استعادة الجلسة السابقة — بدء جديد",
     "sessionCleared": "تم مسح الجلسة",
     "blankPageInserted": "تم إدراج صفحة فارغة",
+    "pdfWillBeLocked": "سيتم قفل PDF عند التصدير التالي",
+    "pdfLockRemoved": "تم إزالة قفل كلمة المرور",
     "noAnnotationsToClear": "لا توجد تعليقات للمسح",
     "annotationsCleared": "تم مسح جميع التعليقات — Ctrl+Z للتراجع",
     "documentClosed": "تم إغلاق المستند",

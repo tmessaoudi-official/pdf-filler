@@ -39,7 +39,8 @@
     "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer",
     "addCodeLabel": "Code",
     "addCodeTitle": "Ajouter un QR code / code-barres (Q)",
-    "newBlankPage": "📄 Nouvelle page vierge…"
+    "newBlankPage": "📄 Nouvelle page vierge…",
+    "lockPdf": "🔒 Verrouiller le PDF…"
   },
   "formatting": {
     "textLabel": "Texte / Forme",
@@ -161,6 +162,22 @@
       "restore": "Restaurer la session",
       "fresh": "Recommencer"
     },
+    "pdfPassword": {
+      "title": "Ce PDF est protégé par mot de passe",
+      "passwordLabel": "Mot de passe",
+      "error": "Mot de passe incorrect. Veuillez réessayer.",
+      "cancel": "Annuler",
+      "unlock": "Déverrouiller"
+    },
+    "lockPdf": {
+      "title": "Protéger le PDF par mot de passe",
+      "userPasswordLabel": "Mot de passe d'ouverture (requis pour ouvrir le PDF)",
+      "ownerPasswordLabel": "Mot de passe propriétaire (optionnel, pour les permissions)",
+      "locked": "Le PDF sera verrouillé lors du prochain export.",
+      "removeLock": "Supprimer le verrou",
+      "cancel": "Annuler",
+      "apply": "Appliquer le verrou"
+    },
     "blankPage": {
       "title": "Insérer une page vierge",
       "sizeLabel": "Format",
@@ -212,6 +229,8 @@
     "sessionRestoreFailed": "La session précédente n'a pas pu être restaurée — démarrage à zéro",
     "sessionCleared": "Session effacée",
     "blankPageInserted": "Page vierge insérée",
+    "pdfWillBeLocked": "Le PDF sera verrouillé lors du prochain export",
+    "pdfLockRemoved": "Verrouillage par mot de passe supprimé",
     "noAnnotationsToClear": "Aucune annotation à effacer",
     "annotationsCleared": "Toutes les annotations effacées — Ctrl+Z pour annuler",
     "documentClosed": "Document fermé",

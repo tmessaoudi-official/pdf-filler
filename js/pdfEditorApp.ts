@@ -86,6 +86,8 @@ export class PDFEditorApp {
   private _formFieldGen = 0;
   private _isLoading = false;
   private _pageUpdatePending = false;
+  private _pendingPasswordResolve: ((password: string | null) => void) | null = null;
+  private _exportPassword: { user: string; owner: string } | null = null;
   inkLayer!: InkLayer;
   inkLayerHandler!: InkLayerHandler;
   private _inkCanvas!: HTMLCanvasElement;
@@ -483,6 +485,67 @@ export class PDFEditorApp {
       this._insertBlankPage();
       blankModal.style.display = 'none';
     });
+
+    // ── Password entry modal (decrypt on open) ──────────────────────────────
+    const pdfPwdModal = document.getElementById('pdfPasswordModal') as HTMLElement;
+    const pdfPwdInput = document.getElementById('pdfPasswordInput') as HTMLInputElement;
+    const pdfPwdError = document.getElementById('pdfPasswordError') as HTMLElement;
+    const pdfPwdToggle = document.getElementById('pdfPasswordToggle') as HTMLButtonElement;
+    pdfPwdToggle?.addEventListener('click', () => {
+      pdfPwdInput.type = pdfPwdInput.type === 'password' ? 'text' : 'password';
+    });
+    document.getElementById('pdfPasswordSubmitBtn')?.addEventListener('click', () => {
+      const pw = pdfPwdInput.value;
+      if (!pw) { pdfPwdError.style.display = 'block'; return; }
+      pdfPwdError.style.display = 'none';
+      pdfPwdModal.style.display = 'none';
+      this._pendingPasswordResolve?.(pw);
+      this._pendingPasswordResolve = null;
+    });
+    pdfPwdInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('pdfPasswordSubmitBtn')?.click();
+    });
+    document.getElementById('pdfPasswordCancelBtn')?.addEventListener('click', () => {
+      pdfPwdModal.style.display = 'none';
+      this._pendingPasswordResolve?.(null);
+      this._pendingPasswordResolve = null;
+    });
+    pdfPwdModal?.addEventListener('click', (e) => {
+      if (e.target === pdfPwdModal) {
+        pdfPwdModal.style.display = 'none';
+        this._pendingPasswordResolve?.(null);
+        this._pendingPasswordResolve = null;
+      }
+    });
+
+    // ── Lock PDF modal (encrypt on export) ──────────────────────────────────
+    const lockModal = document.getElementById('lockPdfModal') as HTMLElement;
+    document.getElementById('fileMenuLockPdf')?.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      lockModal.style.display = 'flex';
+      const status = document.getElementById('lockPdfStatus') as HTMLElement;
+      status.style.display = this._exportPassword ? 'block' : 'none';
+      (document.getElementById('lockUserPassword') as HTMLInputElement).value = this._exportPassword?.user ?? '';
+      (document.getElementById('lockOwnerPassword') as HTMLInputElement).value = this._exportPassword?.owner ?? '';
+    });
+    document.getElementById('lockPdfApplyBtn')?.addEventListener('click', () => {
+      const user = (document.getElementById('lockUserPassword') as HTMLInputElement).value.trim();
+      if (!user) { this.showToast('User password is required'); return; }
+      const owner = (document.getElementById('lockOwnerPassword') as HTMLInputElement).value.trim() || user;
+      this._exportPassword = { user, owner };
+      const status = document.getElementById('lockPdfStatus') as HTMLElement;
+      status.style.display = 'block';
+      lockModal.style.display = 'none';
+      this.showToast(t('toast.pdfWillBeLocked'));
+    });
+    document.getElementById('lockPdfRemoveBtn')?.addEventListener('click', () => {
+      this._exportPassword = null;
+      (document.getElementById('lockPdfStatus') as HTMLElement).style.display = 'none';
+      lockModal.style.display = 'none';
+      this.showToast(t('toast.pdfLockRemoved'));
+    });
+    document.getElementById('lockPdfCancelBtn')?.addEventListener('click', () => { lockModal.style.display = 'none'; });
+    lockModal?.addEventListener('click', (e) => { if (e.target === lockModal) lockModal.style.display = 'none'; });
 
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
      
@@ -1500,6 +1563,24 @@ export class PDFEditorApp {
     this.showToast(t('toast.sessionCleared'));
   }
 
+  private async _applyExportPassword(pdfDoc: { encrypt(opts: { userPassword: string; ownerPassword: string }): Promise<void> }): Promise<void> {
+    if (!this._exportPassword) return;
+    await pdfDoc.encrypt({ userPassword: this._exportPassword.user, ownerPassword: this._exportPassword.owner });
+  }
+
+  private _promptPassword(isRetry = false): Promise<string | null> {
+    return new Promise<string | null>((resolve) => {
+      const modal = document.getElementById('pdfPasswordModal') as HTMLElement;
+      const input = document.getElementById('pdfPasswordInput') as HTMLInputElement;
+      const error = document.getElementById('pdfPasswordError') as HTMLElement;
+      input.value = '';
+      error.style.display = isRetry ? 'block' : 'none';
+      modal.style.display = 'flex';
+      input.focus();
+      this._pendingPasswordResolve = resolve;
+    });
+  }
+
   _openBlankPageModal(): void {
     const modal = document.getElementById('blankPageModal') as HTMLElement;
     if (!modal) return;
@@ -1620,7 +1701,7 @@ export class PDFEditorApp {
 
   // ── File upload ───────────────────────────────────────────────
   private async _imagesToPdf(imageFiles: File[]): Promise<{ bytes: Uint8Array; name: string }> {
-    const { PDFDocument } = await import('pdf-lib');
+    const { PDFDocument } = await import('@cantoo/pdf-lib');
     const pdfDoc = await PDFDocument.create();
     for (const file of imageFiles) {
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -1689,7 +1770,30 @@ export class PDFEditorApp {
     try {
       const rawBytes = new Uint8Array(await file.arrayBuffer());
       const bytesToStore = rawBytes.slice(0); // pdf.js transfers the ArrayBuffer; copy first
-      const doc = await pdfjsLib.getDocument({ data: rawBytes }).promise;
+
+      // Handle password-protected PDFs with retry loop
+      let doc;
+      let openPassword: string | undefined;
+      let isRetry = false;
+      for (;;) {
+        try {
+          const loadOpts: Record<string, unknown> = { data: rawBytes.slice(0) };
+          if (openPassword) loadOpts['password'] = openPassword;
+          doc = await pdfjsLib.getDocument(loadOpts).promise;
+          break;
+        } catch (err) {
+          // pdfjs throws PasswordException (name: 'PasswordException') for encrypted PDFs
+          const isPasswordError = err instanceof Error && (
+            err.name === 'PasswordException' ||
+            err.message.toLowerCase().includes('password')
+          );
+          if (!isPasswordError) throw err;
+          const pw = await this._promptPassword(isRetry);
+          if (!pw) { this._isLoading = false; return; } // user cancelled
+          openPassword = pw;
+          isRetry = true;
+        }
+      }
 
       // Reset state for new document
       this.documentModel = new DocumentModel();
@@ -2397,7 +2501,7 @@ export class PDFEditorApp {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     libs: { rgb: any; StandardFonts: any; degrees: any },
   ): Promise<void> {
-    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('@cantoo/pdf-lib');
     void rgb; void StandardFonts; // used via libs param below
 
     // 1. Build a temp single-page PDF with all NON-redaction elements drawn in
@@ -2486,7 +2590,7 @@ export class PDFEditorApp {
     if (!this.documentModel.pageCount) return;
     this._cleanEmptyTextElements();
     this.showToast('Generating PDF…', 60000);
-    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('@cantoo/pdf-lib');
     this.ui.container.style.opacity = '0.4';
     try {
       const pdfDoc = await PDFDocument.create();
@@ -2603,6 +2707,7 @@ export class PDFEditorApp {
         }
       }
 
+      await this._applyExportPassword(pdfDoc);
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -2628,7 +2733,7 @@ export class PDFEditorApp {
     const docPage = this.documentModel.pages[pageIdx];
     if (!docPage) return;
     this.showToast('Generating page PDF…', 30000);
-    const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+    const { PDFDocument, rgb, StandardFonts, degrees } = await import('@cantoo/pdf-lib');
     this.ui.container.style.opacity = '0.4';
     try {
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
@@ -2676,6 +2781,7 @@ export class PDFEditorApp {
         }
       }
 
+      await this._applyExportPassword(pdfDoc);
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -2703,7 +2809,7 @@ export class PDFEditorApp {
     this.ui.container.style.opacity = '0.4';
     try {
       // Build a single-page PDF with all elements drawn in
-      const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
+      const { PDFDocument, rgb, StandardFonts, degrees } = await import('@cantoo/pdf-lib');
       const srcEntry = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
       if (!srcEntry) {
         this.showToast('Export failed — source PDF not found');

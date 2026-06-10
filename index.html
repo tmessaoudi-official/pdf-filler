@@ -954,6 +954,8 @@
           <button id="fileMenuResetSession" class="file-menu-item" disabled data-i18n="toolbar.resetSession">↺ Reset Session</button>
           <hr class="file-menu-sep">
           <button id="fileMenuBlankPage" class="file-menu-item" data-i18n="toolbar.newBlankPage">📄 New Blank Page…</button>
+          <hr class="file-menu-sep">
+          <button id="fileMenuLockPdf" class="file-menu-item" data-i18n="toolbar.lockPdf">🔒 Lock PDF…</button>
         </div>
       </div>
       <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,image/bmp" multiple style="display:none">
@@ -1337,6 +1339,48 @@
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button id="blankPageCancelBtn" class="btn btn-icon" data-i18n="modal.blankPage.cancel">Cancel</button>
       <button id="blankPageInsertBtn" class="btn btn-primary" data-i18n="modal.blankPage.insert">Insert Page</button>
+    </div>
+  </div>
+</div>
+
+<!-- Password entry modal (decrypt on open) -->
+<div id="pdfPasswordModal" role="dialog" aria-modal="true" aria-labelledby="pdfPasswordModalTitle"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:12px;padding:28px 32px;min-width:320px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <h3 id="pdfPasswordModalTitle" data-i18n="modal.pdfPassword.title" style="margin:0 0 16px;font-size:16px;font-weight:600;color:#f1f5f9;">This PDF is password-protected</h3>
+    <label style="display:block;margin-bottom:6px;font-size:13px;color:#94a3b8;" data-i18n="modal.pdfPassword.passwordLabel">Password</label>
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <input type="password" id="pdfPasswordInput" autocomplete="current-password"
+        style="flex:1;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;"
+        placeholder="Enter password…">
+      <button id="pdfPasswordToggle" class="btn btn-icon btn-sm" type="button" title="Show/hide password" style="padding:0 10px;">👁</button>
+    </div>
+    <p id="pdfPasswordError" style="display:none;color:#f87171;font-size:12px;margin:0 0 12px;" data-i18n="modal.pdfPassword.error">Incorrect password. Please try again.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="pdfPasswordCancelBtn" class="btn btn-icon" data-i18n="modal.pdfPassword.cancel">Cancel</button>
+      <button id="pdfPasswordSubmitBtn" class="btn btn-primary" data-i18n="modal.pdfPassword.unlock">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lock PDF modal (encrypt on export) -->
+<div id="lockPdfModal" role="dialog" aria-modal="true" aria-labelledby="lockPdfModalTitle"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:12px;padding:28px 32px;min-width:340px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <h3 id="lockPdfModalTitle" data-i18n="modal.lockPdf.title" style="margin:0 0 16px;font-size:16px;font-weight:600;color:#f1f5f9;">Lock PDF with Password</h3>
+    <label style="display:block;margin-bottom:4px;font-size:13px;color:#94a3b8;" data-i18n="modal.lockPdf.userPasswordLabel">Open password (required to open the PDF)</label>
+    <input type="password" id="lockUserPassword" autocomplete="new-password"
+      style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;"
+      placeholder="User password…">
+    <label style="display:block;margin-bottom:4px;font-size:13px;color:#94a3b8;" data-i18n="modal.lockPdf.ownerPasswordLabel">Owner password (optional, for permissions)</label>
+    <input type="password" id="lockOwnerPassword" autocomplete="new-password"
+      style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:16px;"
+      placeholder="Owner password (leave empty to use user password)…">
+    <p id="lockPdfStatus" style="display:none;color:#4ade80;font-size:12px;margin:0 0 12px;" data-i18n="modal.lockPdf.locked">PDF will be locked on next export.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="lockPdfRemoveBtn" class="btn btn-icon" data-i18n="modal.lockPdf.removeLock">Remove Lock</button>
+      <button id="lockPdfCancelBtn" class="btn btn-icon" data-i18n="modal.lockPdf.cancel">Cancel</button>
+      <button id="lockPdfApplyBtn" class="btn btn-primary" data-i18n="modal.lockPdf.apply">Apply Lock</button>
     </div>
   </div>
 </div>
