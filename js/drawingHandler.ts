@@ -204,7 +204,8 @@ export class DrawingHandler {
       this._drawPoints = [];
       this.app.historyManager.execute(new AddElementCmd(this.app.elements, hlEl));
       this.app._autosave();
-      this.app.renderElements();
+      this.app.setMode('select');
+      this.app.selectElement(hlEl);
       return;
 
     } else if (this.app.mode === 'drawFreehand') {

@@ -1927,14 +1927,19 @@ export class PDFEditorApp {
     const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
     if (userRot) tempPage.setRotation(degrees(totalRot));
 
-    const { width: W_orig, height: H_orig } = tempPage.getSize() as { width: number; height: number };
-    const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(tempPage);
+    const cropBoxR = this._getPageCropBox(tempPage);
+    const W_orig = cropBoxR.width;
+    const H_orig = cropBoxR.height;
+    const cropOriginX = cropBoxR.x;
+    const cropOriginY = cropBoxR.y;
+    const w_eff = (totalRot === 90 || totalRot === 270) ? H_orig : W_orig;
+    const h_eff = (totalRot === 90 || totalRot === 270) ? W_orig : H_orig;
 
     const nonRedactions = elements.filter(e => e.type !== 'redaction');
     const rasterErrors: string[] = [];
     for (const el of nonRedactions) {
       try {
-        await this._drawElementOnPage(tempDoc, tempPage, el, h_eff, w_eff, libs, W_orig, H_orig, totalRot);
+        await this._drawElementOnPage(tempDoc, tempPage, el, h_eff, w_eff, libs, W_orig, H_orig, totalRot, cropOriginX, cropOriginY);
       } catch {
         rasterErrors.push(`${el.type} (id ${el.id})`);
       }
@@ -1944,14 +1949,14 @@ export class PDFEditorApp {
     }
 
     if (this.documentModel.watermark.enabled) {
-      await this._drawWatermark(tempPage, W_orig, H_orig, {
+      await this._drawWatermark(tempPage, W_orig, H_orig, cropOriginX, cropOriginY, {
         rgb: libs.rgb, degrees, pdfDoc: tempDoc, StandardFonts: libs.StandardFonts,
       });
     }
     const inkDataUrlRast = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
     if (inkDataUrlRast) {
       const inkImg = await tempDoc.embedPng(this._dataUrlToUint8Array(inkDataUrlRast));
-      tempPage.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+      tempPage.drawImage(inkImg, { x: cropOriginX, y: cropOriginY, width: W_orig, height: H_orig });
     }
 
     // 2. Rasterize via pdf.js at 2× scale
@@ -2058,15 +2063,20 @@ export class PDFEditorApp {
         const totalRot = ((sourceRot + userRot) % 360 + 360) % 360;
         if (userRot) page.setRotation(degrees(totalRot));
 
-        // Original (unrotated) content dims for coordinate transform
-        const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
-        // Visual (effective) dims after rotation — used for watermark centering
-        const { width: w_eff, height: h_eff } = this._getEffectivePageDims(page);
+        // CropBox dims — pdfjs renders in CropBox space; use CropBox for all element coords
+        const cropBox = this._getPageCropBox(page);
+        const W_orig = cropBox.width;
+        const H_orig = cropBox.height;
+        const cropOriginX = cropBox.x;
+        const cropOriginY = cropBox.y;
+        // Visual (effective) dims after rotation
+        const w_eff = (totalRot === 90 || totalRot === 270) ? H_orig : W_orig;
+        const h_eff = (totalRot === 90 || totalRot === 270) ? W_orig : H_orig;
 
         const exportErrors: string[] = [];
         for (const element of pageElements) {
           try {
-            await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot);
+            await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot, cropOriginX, cropOriginY);
           } catch {
             exportErrors.push(`${element.type} (id ${element.id})`);
           }
@@ -2076,14 +2086,14 @@ export class PDFEditorApp {
         }
 
         if (this.documentModel.watermark.enabled) {
-          await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+          await this._drawWatermark(page, W_orig, H_orig, cropOriginX, cropOriginY, { rgb, degrees, pdfDoc, StandardFonts });
         }
 
         const inkDataUrl = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
         if (inkDataUrl) {
           const inkPng = this._dataUrlToUint8Array(inkDataUrl);
           const inkImg = await pdfDoc.embedPng(inkPng);
-          page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+          page.drawImage(inkImg, { x: cropOriginX, y: cropOriginY, width: W_orig, height: H_orig });
         }
       }
 
@@ -2133,25 +2143,30 @@ export class PDFEditorApp {
         const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
         if (userRot) page.setRotation(degrees(totalRot));
 
-        const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
-        const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+        const cropBoxP = this._getPageCropBox(page);
+        const W_orig = cropBoxP.width;
+        const H_orig = cropBoxP.height;
+        const cropOriginX = cropBoxP.x;
+        const cropOriginY = cropBoxP.y;
+        const w_eff = (totalRot === 90 || totalRot === 270) ? H_orig : W_orig;
+        const h_eff = (totalRot === 90 || totalRot === 270) ? W_orig : H_orig;
         const exportErrors: string[] = [];
         for (const element of pageElements) {
-          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot); }
+          try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts, degrees }, W_orig, H_orig, totalRot, cropOriginX, cropOriginY); }
           catch { exportErrors.push(`${element.type} (id ${element.id})`); }
         }
         if (exportErrors.length > 0) {
           this.showToast(`⚠ ${exportErrors.length} element(s) failed to render: ${exportErrors.join(', ')}`, 6000);
         }
         if (this.documentModel.watermark.enabled) {
-          await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+          await this._drawWatermark(page, W_orig, H_orig, cropOriginX, cropOriginY, { rgb, degrees, pdfDoc, StandardFonts });
         }
 
         const inkDataUrl = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
         if (inkDataUrl) {
           const inkPng = this._dataUrlToUint8Array(inkDataUrl);
           const inkImg = await pdfDoc.embedPng(inkPng);
-          page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+          page.drawImage(inkImg, { x: cropOriginX, y: cropOriginY, width: W_orig, height: H_orig });
         }
       }
 
@@ -2198,24 +2213,29 @@ export class PDFEditorApp {
       const srcRot   = page.getRotation().angle as number;
       const totalRot = ((srcRot + userRot) % 360 + 360) % 360;
       if (userRot) page.setRotation(degrees(totalRot));
-      const { width: W_orig, height: H_orig } = page.getSize() as { width: number; height: number };
-      const { width: w_eff, height: h_eff }   = this._getEffectivePageDims(page);
+      const cropBoxI = this._getPageCropBox(page);
+      const W_orig = cropBoxI.width;
+      const H_orig = cropBoxI.height;
+      const cropOriginX = cropBoxI.x;
+      const cropOriginY = cropBoxI.y;
+      const w_eff = (totalRot === 90 || totalRot === 270) ? H_orig : W_orig;
+      const h_eff = (totalRot === 90 || totalRot === 270) ? W_orig : H_orig;
 
       const imgExportErrors: string[] = [];
       for (const element of this.elements.filter(el => el.pageId === docPage.id)) {
-        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot); }
+        try { await this._drawElementOnPage(pdfDoc, page, element, h_eff, w_eff, { rgb, StandardFonts }, W_orig, H_orig, totalRot, cropOriginX, cropOriginY); }
         catch { imgExportErrors.push(`${element.type} (id ${element.id})`); }
       }
       if (imgExportErrors.length > 0) {
         this.showToast(`⚠ ${imgExportErrors.length} element(s) failed to render: ${imgExportErrors.join(', ')}`, 6000);
       }
       if (this.documentModel.watermark.enabled) {
-        await this._drawWatermark(page, W_orig, H_orig, { rgb, degrees, pdfDoc, StandardFonts });
+        await this._drawWatermark(page, W_orig, H_orig, cropOriginX, cropOriginY, { rgb, degrees, pdfDoc, StandardFonts });
       }
       const inkDataUrlImg = this._renderInkForExport(docPage.id, W_orig, H_orig, totalRot);
       if (inkDataUrlImg) {
         const inkImg = await pdfDoc.embedPng(this._dataUrlToUint8Array(inkDataUrlImg));
-        page.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+        page.drawImage(inkImg, { x: cropOriginX, y: cropOriginY, width: W_orig, height: H_orig });
       }
 
       // Rasterize via pdf.js at 2× scale
@@ -2307,19 +2327,23 @@ export class PDFEditorApp {
     return null;
   }
 
-  private _getEffectivePageDims(page: { getSize(): { width: number; height: number }; getRotation(): { angle: number } }): { width: number; height: number } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _getPageCropBox(page: any): { x: number; y: number; width: number; height: number } {
+    try {
+      const cb = page.getCropBox?.();
+      if (cb && typeof cb.width === 'number') return { x: cb.x, y: cb.y, width: cb.width, height: cb.height };
+    } catch { /* no CropBox */ }
     const { width, height } = page.getSize();
-    const angle = page.getRotation().angle;
-    return (angle === 90 || angle === 270) ? { width: height, height: width } : { width, height };
+    return { x: 0, y: 0, width, height };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, w: number, libs: { rgb: any; StandardFonts: any; degrees?: any }, W_orig = 0, H_orig = 0, totalRot = 0): Promise<void> {
+  private async _drawElementOnPage(pdfDoc: any, page: any, element: PDFElement, h: number, w: number, libs: { rgb: any; StandardFonts: any; degrees?: any }, W_orig = 0, H_orig = 0, totalRot = 0, cropOriginX = 0, cropOriginY = 0): Promise<void> {
     const { rgb, StandardFonts } = libs;
     // W_orig/H_orig are the unrotated content dims; fall back to effective dims when totalRot=0
     const Wo = W_orig || w;
     const Ho = H_orig || h;
-    const tp = (px: number, py: number) => this._transformPoint(px, py, Wo, Ho, totalRot);
+    const tp = (px: number, py: number) => { const r = this._transformPoint(px, py, Wo, Ho, totalRot); return { x: r.x + cropOriginX, y: r.y + cropOriginY }; };
     const swapDims = ((totalRot % 360) + 360) % 360 === 90 || ((totalRot % 360) + 360) % 360 === 270;
     // Element's own rotation (degrees, CW). pdf-lib uses CCW so negate.
     const elemRot = element.rotation ?? 0;
@@ -2442,10 +2466,9 @@ export class PDFEditorApp {
     }
   }
 
-  // W_orig / H_orig are the unrotated content dimensions — ensures centering is correct
-  // regardless of user-applied page rotation.
+  // W_orig / H_orig are the CropBox dimensions; cropOriginX/Y shift tiling into MediaBox space.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async _drawWatermark(page: any, W_orig: number, H_orig: number, libs: { rgb: any; degrees: any; pdfDoc: any; StandardFonts: any }): Promise<void> {
+  private async _drawWatermark(page: any, W_orig: number, H_orig: number, cropOriginX: number, cropOriginY: number, libs: { rgb: any; degrees: any; pdfDoc: any; StandardFonts: any }): Promise<void> {
     const { rgb, degrees, pdfDoc, StandardFonts } = libs;
     const wm = this.documentModel.watermark;
     const col = this.hexToRgbValues(wm.color);
@@ -2455,8 +2478,8 @@ export class PDFEditorApp {
     const spacingFactor = densityFactors[Math.max(1, Math.min(5, wm.density ?? 3))];
     const stepX = Math.max(textWidth + wm.fontSize * 0.8, W_orig / 5) * spacingFactor;
     const stepY = Math.max(wm.fontSize * 2, H_orig / 4) * spacingFactor;
-    for (let y = -(stepY / 2); y < H_orig + stepY; y += stepY) {
-      for (let x = -(stepX / 2); x < W_orig + stepX; x += stepX) {
+    for (let y = cropOriginY - (stepY / 2); y < cropOriginY + H_orig + stepY; y += stepY) {
+      for (let x = cropOriginX - (stepX / 2); x < cropOriginX + W_orig + stepX; x += stepX) {
         page.drawText(wm.text, {
           x: x - textWidth / 2,
           y,
