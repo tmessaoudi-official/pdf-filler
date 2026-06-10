@@ -231,6 +231,7 @@
     "blankPageInserted": "Blank page inserted",
     "pdfWillBeLocked": "PDF will be locked on next export",
     "pdfLockRemoved": "Password lock removed",
+    "privacyBadge": "🔒 All processing is local — your files never leave your browser",
     "noAnnotationsToClear": "No annotations to clear",
     "annotationsCleared": "All annotations cleared — Ctrl+Z to undo",
     "documentClosed": "Document closed",
@@ -291,6 +292,7 @@
     "privacyPolicy": "Privacy Policy",
     "legalNotice": "Legal Notice",
     "termsOfUse": "Terms of Use",
-    "accessibility": "Accessibility"
+    "accessibility": "Accessibility",
+    "privacyBadge": "100% local — your files never leave your browser"
   }
 }

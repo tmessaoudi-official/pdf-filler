@@ -231,6 +231,7 @@
     "blankPageInserted": "Page vierge insérée",
     "pdfWillBeLocked": "Le PDF sera verrouillé lors du prochain export",
     "pdfLockRemoved": "Verrouillage par mot de passe supprimé",
+    "privacyBadge": "🔒 Tout le traitement est local — vos fichiers ne quittent jamais votre navigateur",
     "noAnnotationsToClear": "Aucune annotation à effacer",
     "annotationsCleared": "Toutes les annotations effacées — Ctrl+Z pour annuler",
     "documentClosed": "Document fermé",
@@ -291,6 +292,7 @@
     "privacyPolicy": "Politique de confidentialité",
     "legalNotice": "Mentions légales",
     "termsOfUse": "Conditions d'utilisation",
-    "accessibility": "Accessibilité"
+    "accessibility": "Accessibilité",
+    "privacyBadge": "100% local — vos fichiers ne quittent jamais votre navigateur"
   }
 }

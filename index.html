@@ -882,6 +882,13 @@
     .app-footer a { color: #2563eb; text-decoration: none; }
     .app-footer a:hover { text-decoration: underline; }
     .footer-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .privacy-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #dcfce7; color: #15803d;
+      border: 1px solid #86efac; border-radius: 999px;
+      padding: 3px 12px; font-size: 11px; font-weight: 600;
+      margin: 6px auto 4px; cursor: default;
+    }
     /* Cookie/storage banner */
     #storageBanner {
       position: fixed;
@@ -1098,6 +1105,9 @@
       <a href="./terms.html" data-i18n="footer.termsOfUse">Terms of Use</a>
       <a href="./accessibility.html" data-i18n="footer.accessibility">Accessibility</a>
     </nav>
+    <div id="privacyChip" class="privacy-chip" title="All processing happens locally in your browser — no files are ever uploaded to any server">
+      🔒 <span data-i18n="footer.privacyBadge">100% local — your files never leave your browser</span>
+    </div>
     <div>© 2026 Takieddine Messaoudi — <a href="https://github.com/tmessaoudi-official/pdfturbo" rel="noopener">GitHub</a></div>
   </footer>
 </div>

@@ -232,6 +232,7 @@
     "blankPageInserted": "تم إدراج صفحة فارغة",
     "pdfWillBeLocked": "سيتم قفل PDF عند التصدير التالي",
     "pdfLockRemoved": "تم إزالة قفل كلمة المرور",
+    "privacyBadge": "🔒 جميع المعالجة محلية — ملفاتك لا تغادر متصفحك أبدًا",
     "noAnnotationsToClear": "لا توجد تعليقات للمسح",
     "annotationsCleared": "تم مسح جميع التعليقات — Ctrl+Z للتراجع",
     "documentClosed": "تم إغلاق المستند",
@@ -292,6 +293,7 @@
     "privacyPolicy": "سياسة الخصوصية",
     "legalNotice": "الإشعار القانوني",
     "termsOfUse": "شروط الاستخدام",
-    "accessibility": "إمكانية الوصول"
+    "accessibility": "إمكانية الوصول",
+    "privacyBadge": "100% محلي — ملفاتك لا تغادر متصفحك أبدًا"
   }
 }

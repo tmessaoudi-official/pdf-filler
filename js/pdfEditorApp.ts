@@ -129,6 +129,7 @@ export class PDFEditorApp {
     this.setupEventListeners();
     this._initThumbnailPanel();
     this._restoreSession();
+    this._showPrivacyToastOnce();
   }
 
   private _initThumbnailPanel(): void {
@@ -144,6 +145,13 @@ export class PDFEditorApp {
       onDownload: (index) => this.downloadPage(index),
       onDownloadImage: (index) => this.downloadPageAsImage(index),
     });
+  }
+
+  private _showPrivacyToastOnce(): void {
+    const KEY = 'pdfturbo_privacy_toast_shown';
+    if (sessionStorage.getItem(KEY)) return;
+    sessionStorage.setItem(KEY, '1');
+    this.showToast(t('toast.privacyBadge'), 4000);
   }
 
   setupEventListeners() {
