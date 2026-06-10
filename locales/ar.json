@@ -56,7 +56,8 @@
     "firstPageTitle": "الصفحة الأولى",
     "prevPageTitle": "الصفحة السابقة (Ctrl+←)",
     "nextPageTitle": "الصفحة التالية (Ctrl+→)",
-    "lastPageTitle": "الصفحة الأخيرة"
+    "lastPageTitle": "الصفحة الأخيرة",
+    "fillLabel": "تعبئة"
   },
   "colors": {
     "black": "أسود",

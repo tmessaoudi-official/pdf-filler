@@ -5,6 +5,7 @@ export type ShapeType = 'arrow' | 'rect' | 'ellipse' | 'freehand';
 
 export interface ShapeOptions {
   strokeColor?: string;
+  fillColor?: string;
   strokeWidth?: number;
   x1?: number; y1?: number;
   x2?: number; y2?: number;
@@ -14,6 +15,7 @@ export interface ShapeOptions {
 export class ShapeElement extends PDFElement {
   shapeType: ShapeType;
   strokeColor: string;
+  fillColor?: string;
   strokeWidth: number;
   x1: number; y1: number;
   x2: number; y2: number;
@@ -23,6 +25,7 @@ export class ShapeElement extends PDFElement {
     super('shape', x, y, width, height, pageId);
     this.shapeType = shapeType;
     this.strokeColor = options.strokeColor ?? '#ef4444';
+    this.fillColor = options.fillColor;
     this.strokeWidth = options.strokeWidth ?? 2;
     this.x1 = options.x1 ?? x;      this.y1 = options.y1 ?? y;
     this.x2 = options.x2 ?? x + width; this.y2 = options.y2 ?? y + height;
@@ -67,7 +70,7 @@ export class ShapeElement extends PDFElement {
     el.setAttribute('x', String(sw / 2)); el.setAttribute('y', String(sw / 2));
     el.setAttribute('width', String(Math.max(1, w - sw)));
     el.setAttribute('height', String(Math.max(1, h - sw)));
-    el.setAttribute('fill', 'none');
+    el.setAttribute('fill', this.fillColor ?? 'none');
     el.setAttribute('stroke', this.strokeColor);
     el.setAttribute('stroke-width', String(sw));
     svg.appendChild(el);
@@ -78,7 +81,7 @@ export class ShapeElement extends PDFElement {
     el.setAttribute('cx', String(w / 2)); el.setAttribute('cy', String(h / 2));
     el.setAttribute('rx', String(Math.max(1, w / 2 - sw / 2)));
     el.setAttribute('ry', String(Math.max(1, h / 2 - sw / 2)));
-    el.setAttribute('fill', 'none');
+    el.setAttribute('fill', this.fillColor ?? 'none');
     el.setAttribute('stroke', this.strokeColor);
     el.setAttribute('stroke-width', String(sw));
     svg.appendChild(el);
@@ -131,6 +134,7 @@ export class ShapeElement extends PDFElement {
 
   override toJSON(): ElementJSON {
     return { ...super.toJSON(), shapeType: this.shapeType, strokeColor: this.strokeColor,
-      strokeWidth: this.strokeWidth, x1: this.x1, y1: this.y1, x2: this.x2, y2: this.y2, points: this.points };
+      fillColor: this.fillColor, strokeWidth: this.strokeWidth,
+      x1: this.x1, y1: this.y1, x2: this.x2, y2: this.y2, points: this.points };
   }
 }

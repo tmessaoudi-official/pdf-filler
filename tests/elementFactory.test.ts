@@ -125,6 +125,22 @@ describe('fromJSON — shape', () => {
     }) as ShapeElement;
     expect(el.points).toEqual([]);
   });
+
+  it('deserializes fillColor', () => {
+    const el = ElementFactory.fromJSON({
+      id: 11, type: 'shape', shapeType: 'rect', x: 0, y: 0, width: 100, height: 50,
+      pageId: 'p1', strokeColor: '#f00', strokeWidth: 2, fillColor: '#00ff00',
+    }) as ShapeElement;
+    expect(el.fillColor).toBe('#00ff00');
+  });
+
+  it('fillColor defaults to undefined when absent in JSON', () => {
+    const el = ElementFactory.fromJSON({
+      id: 12, type: 'shape', shapeType: 'ellipse', x: 0, y: 0, width: 60, height: 40,
+      pageId: 'p1', strokeColor: '#000', strokeWidth: 1,
+    }) as ShapeElement;
+    expect(el.fillColor).toBeUndefined();
+  });
 });
 
 // ── ImageElement ───────────────────────────────────────────────────────────────

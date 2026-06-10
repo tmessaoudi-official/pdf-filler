@@ -129,6 +129,8 @@ export interface UIRefs {
   codePreviewStatus: HTMLElement;
   cancelCodeModal:  HTMLButtonElement;
   saveCodeModal:    HTMLButtonElement;
+  fillColorInput:   HTMLInputElement;
+  fillColorLabel:   HTMLElement;
 }
 
 export class UIController {
@@ -260,6 +262,8 @@ export class UIController {
       codePreviewStatus: document.getElementById('codePreviewStatus') as HTMLElement,
       cancelCodeModal:  document.getElementById('cancelCodeModal')  as HTMLButtonElement,
       saveCodeModal:    document.getElementById('saveCodeModal')    as HTMLButtonElement,
+      fillColorInput:   document.getElementById('fillColor')        as HTMLInputElement,
+      fillColorLabel:   document.getElementById('fillColorLabel')   as HTMLElement,
     };
   }
 
@@ -408,9 +412,16 @@ export class UIController {
 
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
     r.shapeWidth.disabled = !shapeActive;
+    const isFillableShape = isShape && ((el as ShapeElement).shapeType === 'rect' || (el as ShapeElement).shapeType === 'ellipse');
+    r.fillColorLabel.style.display = isFillableShape ? 'inline-flex' : 'none';
     if (isShape) {
       r.colorInput.value = (el as ShapeElement).strokeColor;
       r.shapeWidth.value = String((el as ShapeElement).strokeWidth);
+      if (isFillableShape) {
+        r.fillColorInput.value = (el as ShapeElement).fillColor ?? '#ffffff';
+      }
+    } else {
+      r.fillColorLabel.style.display = 'none';
     }
 
     // Sync unified color picker with redaction element color

@@ -566,6 +566,16 @@ export class PDFEditorApp {
         this.renderElements(); this._autosave();
       }
     });
+    this.ui.fillColorInput.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (this.selectedElement?.type === 'shape') {
+        const she = this.selectedElement as ShapeElement;
+        const before = { fillColor: she.fillColor };
+        she.fillColor = val;
+        this.historyManager.record(new MoveResizeCmd(this.elements, she, before, { fillColor: val }));
+        this.renderElements(); this._autosave();
+      }
+    });
     this.ui.redactColorInput.addEventListener('input', (e) => {
       const val = (e.target as HTMLInputElement).value;
       if (this.selectedElement?.type === 'redaction') {
@@ -2916,12 +2926,14 @@ export class PDFEditorApp {
           const eh = swapDims ? element.width : element.height;
           const corner = tp(element.x, element.y + element.height);
           const a = _anchorForCenter(corner.x, corner.y, ew, eh);
-          page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
+          const fillOpts = she.fillColor ? { color: (() => { const fc = this.hexToRgbValues(she.fillColor!); return rgb(fc.r, fc.g, fc.b); })() } : {};
+          page.drawRectangle({ x: a.x, y: a.y, width: ew, height: eh, ...fillOpts, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }
         case 'ellipse': {
           const center = tp(element.x + element.width / 2, element.y + element.height / 2);
-          page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
+          const fillOptsE = she.fillColor ? { color: (() => { const fc = this.hexToRgbValues(she.fillColor!); return rgb(fc.r, fc.g, fc.b); })() } : {};
+          page.drawEllipse({ x: center.x, y: center.y, xScale: swapDims ? element.height / 2 : element.width / 2, yScale: swapDims ? element.width / 2 : element.height / 2, ...fillOptsE, borderColor: shapeColor, borderWidth: lw, ...(pdfRotVal ? { rotate: pdfRotVal } : {}) });
           break;
         }
         case 'arrow': {

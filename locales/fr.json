@@ -55,7 +55,8 @@
     "firstPageTitle": "Première page",
     "prevPageTitle": "Page précédente (Ctrl+←)",
     "nextPageTitle": "Page suivante (Ctrl+→)",
-    "lastPageTitle": "Dernière page"
+    "lastPageTitle": "Dernière page",
+    "fillLabel": "Remplissage"
   },
   "colors": {
     "black": "Noir",

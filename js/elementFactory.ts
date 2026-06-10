@@ -39,7 +39,7 @@ export class ElementFactory {
       const el = new ShapeElement(
         data['shapeType'] as ShapeType,
         data['x'], data['y'], data['width'], data['height'], pageId, {
-          strokeColor: data['strokeColor'], strokeWidth: data['strokeWidth'],
+          strokeColor: data['strokeColor'], fillColor: data['fillColor'], strokeWidth: data['strokeWidth'],
           x1: data['x1'], y1: data['y1'], x2: data['x2'], y2: data['y2'],
           points: data['points'] || []
         });

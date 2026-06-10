@@ -12,6 +12,7 @@ import { ImageElement } from '../js/imageElement';
 import { HighlightElement } from '../js/highlightElement';
 import { RedactionElement } from '../js/redactionElement';
 import { CommentElement } from '../js/commentElement';
+import { ShapeElement } from '../js/shapeElement';
 
 beforeEach(() => { PDFElement._nextId = 1; });
 
@@ -295,5 +296,51 @@ describe('ID auto-increment', () => {
     for (let i = 1; i < ids.length; i++) {
       expect(ids[i]).toBeGreaterThan(ids[i - 1]);
     }
+  });
+});
+
+// ── ShapeElement fill color ────────────────────────────────────────────────────
+describe('ShapeElement fillColor', () => {
+  it('defaults to undefined (no fill)', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1');
+    expect(el.fillColor).toBeUndefined();
+  });
+
+  it('accepts fillColor from options', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1', { fillColor: '#ff0000' });
+    expect(el.fillColor).toBe('#ff0000');
+  });
+
+  it('renders rect SVG with fill=none when fillColor is undefined', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1');
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    const rect = div.querySelector('rect');
+    expect(rect?.getAttribute('fill')).toBe('none');
+  });
+
+  it('renders rect SVG with fillColor when set', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1', { fillColor: '#0000ff' });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    const rect = div.querySelector('rect');
+    expect(rect?.getAttribute('fill')).toBe('#0000ff');
+  });
+
+  it('renders ellipse SVG with fillColor when set', () => {
+    const el = new ShapeElement('ellipse', 0, 0, 100, 50, 'p1', { fillColor: '#00ff00' });
+    const div = el.render(document.createElement('div'), { left: 0, top: 0 }, 1);
+    const ellipse = div.querySelector('ellipse');
+    expect(ellipse?.getAttribute('fill')).toBe('#00ff00');
+  });
+
+  it('toJSON includes fillColor', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1', { fillColor: '#123456' });
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['fillColor']).toBe('#123456');
+  });
+
+  it('toJSON omits fillColor when undefined', () => {
+    const el = new ShapeElement('rect', 0, 0, 100, 50, 'p1');
+    const json = el.toJSON() as Record<string, unknown>;
+    expect(json['fillColor']).toBeUndefined();
   });
 });

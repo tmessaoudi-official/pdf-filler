@@ -55,7 +55,8 @@
     "firstPageTitle": "First page",
     "prevPageTitle": "Previous page (Ctrl+←)",
     "nextPageTitle": "Next page (Ctrl+→)",
-    "lastPageTitle": "Last page"
+    "lastPageTitle": "Last page",
+    "fillLabel": "Fill"
   },
   "colors": {
     "black": "Black",
