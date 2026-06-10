@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { PDFRenderer } from '../js/pdfRenderer';
+import { DocumentModel } from '../js/documentModel';
 
 type RendererTestable = {
   _renderPdfPage(doc: PDFDocumentProxy, pageNum: number): Promise<void>;
+  _renderBlankPage(widthPt: number, heightPt: number): void;
   isRendering: boolean;
 };
 
@@ -91,5 +93,105 @@ describe('PDFRenderer pending queue fix (BUG-08)', () => {
     await first.catch(() => {});
     await queued;
     expect(queuedResolved).toBe(true);
+  });
+});
+
+describe('PDFRenderer blank page support', () => {
+  function makeCtx() {
+    const fills: { x: number; y: number; w: number; h: number; style: string }[] = [];
+    return {
+      ctx: {
+        fillStyle: '' as string,
+        fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
+          fills.push({ x, y, w, h, style: '' });
+        }),
+      },
+      fills,
+    };
+  }
+
+  it('_renderBlankPage sets canvas dimensions scaled by renderer scale', () => {
+    const canvas = makeCanvas();
+    const { ctx } = makeCtx();
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    const renderer = new PDFRenderer(canvas);
+    renderer.setScale(1.5);
+
+    (renderer as unknown as RendererTestable)._renderBlankPage(400, 600);
+
+    expect(canvas.width).toBe(600);  // 400 * 1.5
+    expect(canvas.height).toBe(900); // 600 * 1.5
+  });
+
+  it('_renderBlankPage fills with white', () => {
+    const canvas = makeCanvas();
+    const { ctx } = makeCtx();
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    const renderer = new PDFRenderer(canvas);
+
+    (renderer as unknown as RendererTestable)._renderBlankPage(100, 200);
+
+    expect(ctx.fillStyle).toBe('#ffffff');
+    expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 100, 200);
+  });
+
+  it('renderCurrentPage dispatches to blank path for blank pages', async () => {
+    const canvas = makeCanvas();
+    const { ctx } = makeCtx();
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    const renderer = new PDFRenderer(canvas);
+
+    const model = new DocumentModel();
+    model.addBlankPage(595, 842);
+    renderer.setModel(model);
+
+    const blankSpy = vi.spyOn(renderer as unknown as RendererTestable, '_renderBlankPage');
+    await renderer.renderCurrentPage();
+
+    expect(blankSpy).toHaveBeenCalledWith(595, 842);
+  });
+
+  it('computeFitScale uses blankWidth for blank pages', async () => {
+    const canvas = makeCanvas();
+    const renderer = new PDFRenderer(canvas);
+    const model = new DocumentModel();
+    model.addBlankPage(500, 700); // 500pt wide
+    renderer.setModel(model);
+
+    const scale = await renderer.computeFitScale(540); // container 540px → (540-40)/500 = 1.0
+    expect(scale).toBeCloseTo(1.0, 5);
+  });
+
+  it('generateThumbnail returns a data URL for blank pages', async () => {
+    const canvas = makeCanvas();
+    const { ctx } = makeCtx();
+    canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
+    // createElement('canvas') inside generateThumbnail also needs stubbing
+    const thumbCtx = {
+      fillStyle: '' as string,
+      strokeStyle: '' as string,
+      fillRect: vi.fn(),
+      strokeRect: vi.fn(),
+    };
+    const origCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') {
+        const c = origCreate('canvas') as HTMLCanvasElement;
+        c.getContext = vi.fn().mockReturnValue(thumbCtx) as typeof c.getContext;
+        c.toDataURL = vi.fn().mockReturnValue('data:image/jpeg;base64,abc') as typeof c.toDataURL;
+        return c;
+      }
+      return origCreate(tag);
+    });
+
+    const renderer = new PDFRenderer(canvas);
+    const model = new DocumentModel();
+    model.addBlankPage(595, 842);
+    renderer.setModel(model);
+
+    const result = await renderer.generateThumbnail(0, 0.15);
+    expect(result).toBe('data:image/jpeg;base64,abc');
+
+    vi.restoreAllMocks();
   });
 });

@@ -48,6 +48,9 @@ export class PDFRenderer {
     const model = this._model;
     if (model?.currentPage) {
       const docPage = model.currentPage;
+      if (docPage.sourcePdfId === 'blank' && docPage.blankWidth) {
+        return Promise.resolve(Math.max(0.25, (containerWidth - 40) / docPage.blankWidth));
+      }
       const src = model.sourcePdfs.get(docPage.sourcePdfId);
       if (src) {
         return src.doc.getPage(docPage.sourcePageNum).then((page: PDFPageProxy) => {
@@ -78,6 +81,10 @@ export class PDFRenderer {
     const model = this._model;
     if (!model || !model.currentPage) return;
     const docPage = model.currentPage;
+    if (docPage.sourcePdfId === 'blank') {
+      this._renderBlankPage(docPage.blankWidth ?? 595, docPage.blankHeight ?? 842);
+      return;
+    }
     const src = model.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     await this._renderPdfPage(src.doc, docPage.sourcePageNum, docPage.rotation ?? 0);
@@ -92,6 +99,10 @@ export class PDFRenderer {
     }
     const docPage = model.pages[index];
     if (!docPage) return;
+    if (docPage.sourcePdfId === 'blank') {
+      this._renderBlankPage(docPage.blankWidth ?? 595, docPage.blankHeight ?? 842);
+      return;
+    }
     const src = model.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     await this._renderPdfPage(src.doc, docPage.sourcePageNum, docPage.rotation ?? 0);
@@ -137,6 +148,21 @@ export class PDFRenderer {
     if (!model) return '';
     const docPage = model.pages[docIndex];
     if (!docPage) return '';
+
+    if (docPage.sourcePdfId === 'blank') {
+      const w = Math.round((docPage.blankWidth ?? 595) * thumbScale);
+      const h = Math.round((docPage.blankHeight ?? 842) * thumbScale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+      return canvas.toDataURL('image/jpeg', 0.7);
+    }
+
     const src = model.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return '';
 
@@ -150,6 +176,15 @@ export class PDFRenderer {
     if (!ctx) return '';
     await page.render({ canvas, viewport: vp }).promise;
     return canvas.toDataURL('image/jpeg', 0.7);
+  }
+
+  private _renderBlankPage(widthPt: number, heightPt: number): void {
+    this.canvas.width  = Math.round(widthPt  * this.scale);
+    this.canvas.height = Math.round(heightPt * this.scale);
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   getPageInfo(): { current: number; total: number } {

@@ -25,7 +25,7 @@ import {
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
 import { InkLayerHandler } from './inkLayerHandler';
-import { DocumentModel } from './documentModel';
+import { DocumentModel, PAGE_SIZES } from './documentModel';
 import type { WatermarkSettings } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
@@ -463,6 +463,27 @@ export class PDFEditorApp {
       this.ui.fileMenuWrap.classList.remove('open');
       this._clearSave();
     });
+
+    document.getElementById('fileMenuBlankPage')?.addEventListener('click', () => {
+      this.ui.fileMenuWrap.classList.remove('open');
+      this._openBlankPageModal();
+    });
+
+    const blankModal = document.getElementById('blankPageModal') as HTMLElement;
+    const blankSizeSelect = document.getElementById('blankPageSize') as HTMLSelectElement;
+    const blankCustomDiv = document.getElementById('blankPageCustomSize') as HTMLElement;
+    blankSizeSelect?.addEventListener('change', () => {
+      blankCustomDiv.style.display = blankSizeSelect.value === 'custom' ? 'block' : 'none';
+    });
+    document.getElementById('blankPageCancelBtn')?.addEventListener('click', () => {
+      blankModal.style.display = 'none';
+    });
+    blankModal?.addEventListener('click', (e) => { if (e.target === blankModal) blankModal.style.display = 'none'; });
+    document.getElementById('blankPageInsertBtn')?.addEventListener('click', () => {
+      this._insertBlankPage();
+      blankModal.style.display = 'none';
+    });
+
     this.ui.helpBtn.addEventListener('click', () => this._toggleHelp());
      
     document.getElementById('closeHelp')!.addEventListener('click', () => this._toggleHelp(false));
@@ -1469,6 +1490,47 @@ export class PDFEditorApp {
     this.showToast(t('toast.sessionCleared'));
   }
 
+  _openBlankPageModal(): void {
+    const modal = document.getElementById('blankPageModal') as HTMLElement;
+    if (!modal) return;
+    modal.style.display = 'flex';
+  }
+
+  _insertBlankPage(): void {
+    const sizeKey = (document.getElementById('blankPageSize') as HTMLSelectElement)?.value ?? 'a4';
+    const position = (document.getElementById('blankPagePosition') as HTMLSelectElement)?.value ?? 'end';
+
+    let w = 595, h = 842;
+    if (sizeKey === 'custom') {
+      const mmW = parseFloat((document.getElementById('blankPageW') as HTMLInputElement)?.value ?? '210');
+      const mmH = parseFloat((document.getElementById('blankPageH') as HTMLInputElement)?.value ?? '297');
+      w = Math.round(mmW * 2.8346); // mm → pt
+      h = Math.round(mmH * 2.8346);
+    } else if (sizeKey === 'match') {
+      const cur = this.documentModel.currentPage;
+      if (cur?.blankWidth) { w = cur.blankWidth; h = cur.blankHeight ?? 842; }
+    } else {
+      const s = PAGE_SIZES[sizeKey];
+      if (s) { w = s.width; h = s.height; }
+    }
+
+    let atIndex: number;
+    const total = this.documentModel.pageCount;
+    switch (position) {
+      case 'beginning': atIndex = 0; break;
+      case 'after':     atIndex = this.documentModel.currentPageIndex + 1; break;
+      default:          atIndex = total;
+    }
+
+    const newPage = this.documentModel.addBlankPage(w, h, atIndex);
+    this.documentModel.currentPageIndex = this.documentModel.pages.indexOf(newPage);
+    this._autosave();
+    void this._thumbnailPanel?.render();
+    this._thumbnailPanel?.updateActive();
+    this.updatePageInfo();
+    this.showToast(t('toast.blankPageInserted'));
+  }
+
   clearAll() {
     const hasVector = this.elements.length > 0;
     const hasInk    = this.inkLayer.hasAnyContent();
@@ -2105,6 +2167,7 @@ export class PDFEditorApp {
   private async _renderTextLayer(): Promise<void> {
     const docPage = this.documentModel.currentPage;
     if (!docPage) { this._textLayerManager.clear(); return; }
+    if (docPage.sourcePdfId === 'blank') { this._textLayerManager.clear(); return; }
     const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     const page = await src.doc.getPage(docPage.sourcePageNum);
@@ -2119,6 +2182,7 @@ export class PDFEditorApp {
     const myGen = ++this._formFieldGen;
     const docPage = this.documentModel.currentPage;
     if (!docPage) { this._formFieldOverlay.clear(); return; }
+    if (docPage.sourcePdfId === 'blank') { this._formFieldOverlay.clear(); return; }
     const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
     if (!src) return;
     const page = await src.doc.getPage(docPage.sourcePageNum);
@@ -2452,6 +2516,29 @@ export class PDFEditorApp {
       for (const docPage of this.documentModel.pages) {
         const pageElements = this.elements.filter(el => el.pageId === docPage.id);
         const hasRedaction = pageElements.some(el => el.type === 'redaction');
+
+        // Blank page: create fresh page at specified dimensions
+        if (docPage.sourcePdfId === 'blank') {
+          const W_orig = docPage.blankWidth ?? 595;
+          const H_orig = docPage.blankHeight ?? 842;
+          const blankPage = pdfDoc.addPage([W_orig, H_orig]);
+          blankPage.drawRectangle({ x: 0, y: 0, width: W_orig, height: H_orig, color: rgb(1, 1, 1), borderWidth: 0 });
+          const exportErrors: string[] = [];
+          for (const element of pageElements) {
+            try {
+              await this._drawElementOnPage(pdfDoc, blankPage, element, H_orig, W_orig, { rgb, StandardFonts, degrees }, W_orig, H_orig, 0, 0, 0);
+            } catch {
+              exportErrors.push(`${element.type} (id ${element.id})`);
+            }
+          }
+          if (exportErrors.length > 0) this.showToast(`⚠ ${exportErrors.length} element(s) failed: ${exportErrors.join(', ')}`, 6000);
+          const inkDataUrl = this._renderInkForExport(docPage.id, W_orig, H_orig, 0);
+          if (inkDataUrl) {
+            const inkImg = await pdfDoc.embedPng(this._dataUrlToUint8Array(inkDataUrl));
+            blankPage.drawImage(inkImg, { x: 0, y: 0, width: W_orig, height: H_orig });
+          }
+          continue;
+        }
 
         if (hasRedaction) {
           const srcDoc = srcDocs.get(docPage.sourcePdfId);

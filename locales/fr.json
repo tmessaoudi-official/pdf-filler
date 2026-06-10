@@ -38,7 +38,8 @@
     "editTextLabel": "Éditer texte",
     "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer",
     "addCodeLabel": "Code",
-    "addCodeTitle": "Ajouter un QR code / code-barres (Q)"
+    "addCodeTitle": "Ajouter un QR code / code-barres (Q)",
+    "newBlankPage": "📄 Nouvelle page vierge…"
   },
   "formatting": {
     "textLabel": "Texte / Forme",
@@ -159,6 +160,17 @@
       "restore": "Restaurer la session",
       "fresh": "Recommencer"
     },
+    "blankPage": {
+      "title": "Insérer une page vierge",
+      "sizeLabel": "Format",
+      "positionLabel": "Position d'insertion",
+      "posBeginning": "Début du document",
+      "posAfter": "Après la page courante",
+      "posEnd": "Fin du document",
+      "customLabel": "Taille (mm) : L × H",
+      "cancel": "Annuler",
+      "insert": "Insérer"
+    },
     "code": {
       "title": "Ajouter un QR / code-barres",
       "titleEdit": "Modifier le code",
@@ -198,6 +210,7 @@
     "sessionRestored": "Session restaurée",
     "sessionRestoreFailed": "La session précédente n'a pas pu être restaurée — démarrage à zéro",
     "sessionCleared": "Session effacée",
+    "blankPageInserted": "Page vierge insérée",
     "noAnnotationsToClear": "Aucune annotation à effacer",
     "annotationsCleared": "Toutes les annotations effacées — Ctrl+Z pour annuler",
     "documentClosed": "Document fermé",

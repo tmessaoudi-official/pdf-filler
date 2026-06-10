@@ -952,6 +952,8 @@
           <hr class="file-menu-sep">
           <button id="fileMenuClearAnnotations" class="file-menu-item" disabled data-i18n="toolbar.clearAnnotations">🗑 Clear Annotations</button>
           <button id="fileMenuResetSession" class="file-menu-item" disabled data-i18n="toolbar.resetSession">↺ Reset Session</button>
+          <hr class="file-menu-sep">
+          <button id="fileMenuBlankPage" class="file-menu-item" data-i18n="toolbar.newBlankPage">📄 New Blank Page…</button>
         </div>
       </div>
       <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,image/bmp" multiple style="display:none">
@@ -1288,6 +1290,53 @@
 <span id="pageInfo" style="display:none"></span>
 <button id="donePill" class="done-pill" data-i18n="donePill" style="display:none">✓ Done drawing</button>
 <div id="toast"></div>
+
+<!-- Blank Page Modal -->
+<div id="blankPageModal" role="dialog" aria-modal="true" aria-labelledby="blankPageModalTitle"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px 32px;min-width:300px;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <h3 id="blankPageModalTitle" style="margin:0 0 18px;font-size:16px;font-weight:700;" data-i18n="modal.blankPage.title">New Blank Page</h3>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;" data-i18n="modal.blankPage.sizeLabel">Page Size</label>
+      <select id="blankPageSize" style="width:100%;padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
+        <option value="a4">A4 (210 × 297 mm)</option>
+        <option value="letter">Letter (8.5 × 11 in)</option>
+        <option value="a3">A3 (297 × 420 mm)</option>
+        <option value="a5">A5 (148 × 210 mm)</option>
+        <option value="custom">Custom…</option>
+        <option value="match">Match current page</option>
+      </select>
+    </div>
+
+    <div id="blankPageCustomSize" style="display:none;margin-bottom:14px;gap:8px;flex-wrap:wrap;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;" data-i18n="modal.blankPage.customLabel">Custom size (mm)</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="blankPageW" placeholder="Width" min="50" max="2000" value="210"
+               style="width:90px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
+        <span style="color:#64748b;">×</span>
+        <input type="number" id="blankPageH" placeholder="Height" min="50" max="2000" value="297"
+               style="width:90px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
+        <span style="color:#64748b;font-size:12px;">mm</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:18px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;" data-i18n="modal.blankPage.positionLabel">Insert position</label>
+      <select id="blankPagePosition" style="width:100%;padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
+        <option value="end" data-i18n="modal.blankPage.posEnd">At end</option>
+        <option value="beginning" data-i18n="modal.blankPage.posBeginning">At beginning</option>
+        <option value="after" data-i18n="modal.blankPage.posAfter">After current page</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="blankPageCancelBtn" class="btn btn-icon" data-i18n="modal.blankPage.cancel">Cancel</button>
+      <button id="blankPageInsertBtn" class="btn btn-primary" data-i18n="modal.blankPage.insert">Insert Page</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="./js/main.ts"></script>
 </body>
 </html>

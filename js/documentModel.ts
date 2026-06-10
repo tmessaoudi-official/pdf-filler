@@ -11,9 +11,18 @@ export interface SourcePdf {
 export interface DocumentPage {
   id: string;
   sourcePdfId: string;
-  sourcePageNum: number; // 1-indexed within source PDF
+  sourcePageNum: number; // 1-indexed within source PDF; 0 for blank pages
   rotation?: number;     // CCW degrees applied by user (0/90/180/270); defaults to 0
+  blankWidth?: number;   // PDF points; only set when sourcePdfId === 'blank'
+  blankHeight?: number;  // PDF points; only set when sourcePdfId === 'blank'
 }
+
+export const PAGE_SIZES: Record<string, { width: number; height: number; label: string }> = {
+  a4:     { width: 595,  height: 842,  label: 'A4' },
+  letter: { width: 612,  height: 792,  label: 'Letter' },
+  a3:     { width: 842,  height: 1191, label: 'A3' },
+  a5:     { width: 420,  height: 595,  label: 'A5' },
+};
 
 export interface WatermarkSettings {
   enabled: boolean;
@@ -64,6 +73,19 @@ export class DocumentModel {
     }));
     this.pages.push(...newPages);
     return newPages;
+  }
+
+  addBlankPage(widthPt: number, heightPt: number, atIndex?: number): DocumentPage {
+    const page: DocumentPage = {
+      id: `p_blank_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      sourcePdfId: 'blank',
+      sourcePageNum: 0,
+      blankWidth: widthPt,
+      blankHeight: heightPt,
+    };
+    const insertAt = atIndex ?? this.pages.length;
+    this.pages.splice(insertAt, 0, page);
+    return page;
   }
 
   deletePage(pageId: string): DocumentPage | null {

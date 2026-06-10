@@ -38,7 +38,8 @@
     "editTextLabel": "Edit Text",
     "editTextTitle": "Edit PDF text — click a word to overlay and edit it",
     "addCodeLabel": "Code",
-    "addCodeTitle": "Add QR code / barcode (Q)"
+    "addCodeTitle": "Add QR code / barcode (Q)",
+    "newBlankPage": "📄 New Blank Page…"
   },
   "formatting": {
     "textLabel": "Text / Shape",
@@ -159,6 +160,17 @@
       "restore": "Restore session",
       "fresh": "Start fresh"
     },
+    "blankPage": {
+      "title": "Insert Blank Page",
+      "sizeLabel": "Page size",
+      "positionLabel": "Insert position",
+      "posBeginning": "Beginning of document",
+      "posAfter": "After current page",
+      "posEnd": "End of document",
+      "customLabel": "Size (mm): W × H",
+      "cancel": "Cancel",
+      "insert": "Insert"
+    },
     "code": {
       "title": "Add QR / Barcode",
       "titleEdit": "Edit Code",
@@ -198,6 +210,7 @@
     "sessionRestored": "Session restored",
     "sessionRestoreFailed": "Previous session could not be restored — starting fresh",
     "sessionCleared": "Session cleared",
+    "blankPageInserted": "Blank page inserted",
     "noAnnotationsToClear": "No annotations to clear",
     "annotationsCleared": "All annotations cleared — Ctrl+Z to undo",
     "documentClosed": "Document closed",
