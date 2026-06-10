@@ -536,6 +536,13 @@ export class PDFEditorApp {
       } else if (this.selectedElement?.type === 'shape') {
         (this.selectedElement as ShapeElement).strokeColor = val;
         this.renderElements(); this._autosave();
+      } else if (this.selectedElement?.type === 'redaction') {
+        const re = this.selectedElement as RedactionElement;
+        const before = { color: re.color };
+        re.color = val;
+        this.ui.redactColorInput.value = val;
+        this.historyManager.record(new MoveResizeCmd(this.elements, re, before, { color: val }));
+        this.renderElements(); this._autosave();
       }
     });
     this.ui.redactColorInput.addEventListener('input', (e) => {

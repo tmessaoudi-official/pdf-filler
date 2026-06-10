@@ -367,30 +367,19 @@ export class UIController {
     r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
 
     const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase' && mode !== 'drawHighlight';
-    r.colorInput.disabled = !isShapeMode;
-    r.colorEyedropperBtn.disabled = !isShapeMode;
     r.shapeWidth.disabled = !isShapeMode;
 
-    // Redact color controls only make sense in redact mode — hide them otherwise to avoid
-    // visual confusion with the shape stroke color control in row2.
-    const isRedact = mode === 'drawRedaction';
-    r.redactColorInput.style.display = isRedact ? '' : 'none';
+    // Redact color is now unified into the main color picker — keep legacy input hidden
+    r.redactColorInput.style.display = 'none';
     const redactEyedropper = document.getElementById('redactEyedropperBtn') as HTMLButtonElement | null;
-    if (redactEyedropper) redactEyedropper.style.display = isRedact ? '' : 'none';
-
-    // Phase 6: hide formatting strip in idle select mode; shown by updateFormattingToolbar when element selected
-    const formattingGroup = document.getElementById('formattingGroup');
-    formattingGroup?.classList.toggle('row2-hidden', mode === 'select');
+    if (redactEyedropper) redactEyedropper.style.display = 'none';
   }
 
   updateFormattingToolbar(el: PDFElement | null, mode: ToolMode): void {
     const r = this.refs;
-    const isText  = el?.type === 'text';
-    const isShape = el?.type === 'shape';
-
-    // Show formatting strip when something is selected (overrides row2-hidden set by updateModeButtons)
-    const formattingGroup = document.getElementById('formattingGroup');
-    if (el && mode === 'select') formattingGroup?.classList.remove('row2-hidden');
+    const isText      = el?.type === 'text';
+    const isShape     = el?.type === 'shape';
+    const isRedaction = el?.type === 'redaction';
 
     r.fontFamily.disabled      = !isText;
     r.boldBtn.disabled         = !isText;
@@ -413,17 +402,20 @@ export class UIController {
       r.italicBtn.setAttribute('aria-pressed', 'false');
     }
 
+    // Unified color picker: always enabled, syncs value to context
+    r.colorInput.disabled = false;
+    r.colorEyedropperBtn.disabled = false;
+
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
-    r.colorInput.disabled = !isText && !shapeActive;
-    r.colorEyedropperBtn.disabled = !isText && !shapeActive;
     r.shapeWidth.disabled = !shapeActive;
     if (isShape) {
       r.colorInput.value = (el as ShapeElement).strokeColor;
       r.shapeWidth.value = String((el as ShapeElement).strokeWidth);
     }
 
-    const isRedaction = el?.type === 'redaction';
+    // Sync unified color picker with redaction element color
     if (isRedaction) {
+      r.colorInput.value = (el as RedactionElement).color;
       r.redactColorInput.value = (el as RedactionElement).color;
     }
   }
