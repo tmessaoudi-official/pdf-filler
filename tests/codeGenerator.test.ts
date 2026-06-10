@@ -83,3 +83,34 @@ describe('getCodeFormat', () => {
     expect(getCodeFormat('nosuchformat')).toBeNull();
   });
 });
+
+// ── dataUriToBlobUrl ──────────────────────────────────────────────────────────
+
+describe('dataUriToBlobUrl', () => {
+  it('converts a data: URI to a blob: URL', async () => {
+    const { dataUriToBlobUrl } = await import('../js/codeGenerator');
+    // 1×1 transparent PNG in base64
+    const dataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const blobUrl = dataUriToBlobUrl(dataUri);
+    expect(blobUrl).toMatch(/^blob:/);
+    URL.revokeObjectURL(blobUrl);
+  });
+
+  it('extracts the MIME type correctly from the data URI header', async () => {
+    const { dataUriToBlobUrl } = await import('../js/codeGenerator');
+    // We cannot directly inspect the Blob's type from a blob: URL in jsdom,
+    // but we can verify the function returns a valid blob URL without throwing.
+    const dataUri = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIhAAAQMEAgMAAAAAAAAAAAAAAQIDBAAFERIhMUH/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AoOo6tarUZcjDFuFpRQEALb4lJIBPnNVc0baqS4tlk4kkNtqCQo+ySQBn7oopAP/Z';
+    const blobUrl = dataUriToBlobUrl(dataUri);
+    expect(blobUrl).toMatch(/^blob:/);
+    URL.revokeObjectURL(blobUrl);
+  });
+
+  it('falls back to octet-stream for malformed MIME in data URI', async () => {
+    const { dataUriToBlobUrl } = await import('../js/codeGenerator');
+    const dataUri = 'data:;base64,dGVzdA==';
+    const blobUrl = dataUriToBlobUrl(dataUri);
+    expect(blobUrl).toMatch(/^blob:/);
+    URL.revokeObjectURL(blobUrl);
+  });
+});

@@ -107,17 +107,35 @@ async function generateStyledQR(data: string, opts: QRStyleOptions): Promise<str
     },
     backgroundOptions: { color: opts.bgColor ?? '#ffffff' },
   };
+
+  // qr-code-styling XHRs the image URL internally. data: URIs are blocked by the CSP
+  // default-src 'self' fallback on connect-src. Convert to blob: URL which is allowed.
+  let logoBlobUrl: string | null = null;
   if (opts.logoSrc) {
-    qrOpts.image = opts.logoSrc;
+    logoBlobUrl = dataUriToBlobUrl(opts.logoSrc);
+    qrOpts.image = logoBlobUrl;
     qrOpts.imageOptions = { margin: 5, imageSize: 0.3 };
   }
-  const qr = new QRCodeStyling(qrOpts);
-  const blob = await qr.getRawData('png');
-  if (!blob || !(blob instanceof Blob)) throw new Error('Styled QR generation failed');
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+
+  try {
+    const qr = new QRCodeStyling(qrOpts);
+    const blob = await qr.getRawData('png');
+    if (!blob || !(blob instanceof Blob)) throw new Error('Styled QR generation failed');
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    if (logoBlobUrl) URL.revokeObjectURL(logoBlobUrl);
+  }
+}
+
+/** Converts a data: URI to a short-lived blob: URL for use in XHR-based image loaders. */
+export function dataUriToBlobUrl(dataUri: string): string {
+  const [header, b64] = dataUri.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] ?? 'application/octet-stream';
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
 }
