@@ -117,7 +117,7 @@ export class ShapeElement extends PDFElement {
     const pts = this.points.map(p => `${(p.x - this.x) * scale},${(p.y - this.y) * scale}`).join(' ');
     const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     pl.setAttribute('points', pts);
-    pl.setAttribute('fill', 'none');
+    pl.setAttribute('fill', this.fillColor ?? 'none');
     pl.setAttribute('stroke', this.strokeColor);
     pl.setAttribute('stroke-width', String(sw));
     pl.setAttribute('stroke-linecap', 'round');

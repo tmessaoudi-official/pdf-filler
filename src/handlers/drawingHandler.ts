@@ -217,8 +217,9 @@ export class DrawingHandler {
       const x = Math.min(...xs), y = Math.min(...ys);
       const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
+      const fillC = this.app.ui.fillColorInput.value;
       shape = new ShapeElement('freehand', x, y, w, h, pageId,
-        { ...opts, points: [...this._drawPoints] });
+        { ...opts, fillColor: fillC, points: [...this._drawPoints] });
 
     } else if (this.app.mode === 'drawRedaction') {
       const x = Math.min(start.x, endX);
@@ -356,7 +357,7 @@ export class DrawingHandler {
       const pts = this._drawPoints.map(p => `${p.x * s + ox},${p.y * s + oy}`).join(' ');
       const pl = document.createElementNS(ns, 'polyline');
       pl.setAttribute('points', pts);
-      pl.setAttribute('fill', 'none');
+      pl.setAttribute('fill', fillPreview);
       pl.setAttribute('stroke', col);
       pl.setAttribute('stroke-width', String(sw));
       pl.setAttribute('stroke-linecap', 'round');

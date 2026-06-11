@@ -405,8 +405,8 @@ export class UIController {
 
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
     r.shapeWidth.disabled = !shapeActive;
-    const isFillableShape = isShape && ((el as ShapeElement).shapeType === 'rect' || (el as ShapeElement).shapeType === 'ellipse');
-    const isDrawingFillable = mode === 'drawRect' || mode === 'drawEllipse';
+    const isFillableShape = isShape && ((el as ShapeElement).shapeType === 'rect' || (el as ShapeElement).shapeType === 'ellipse' || (el as ShapeElement).shapeType === 'freehand');
+    const isDrawingFillable = mode === 'drawRect' || mode === 'drawEllipse' || mode === 'drawFreehand';
     // Show fill color when a fillable shape is selected OR when actively drawing a fillable shape
     r.fillColorLabel.style.display = (isFillableShape || isDrawingFillable) ? 'inline-flex' : 'none';
     if (isShape) {
