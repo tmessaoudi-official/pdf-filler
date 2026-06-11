@@ -943,7 +943,7 @@
     <h1 data-i18n="app.title">PDFturbo</h1>
     <div class="lang-switcher">
       <div class="lang-globe-wrap" id="langGlobeWrap">
-        <button id="langGlobeBtn" class="lang-btn" aria-haspopup="true" aria-expanded="false" title="Change language">🌐 EN</button>
+        <button id="langGlobeBtn" class="lang-btn" aria-haspopup="true" aria-expanded="false" data-i18n-title="toolbar.langTitle" title="Change language">🌐 EN</button>
         <div class="lang-globe-flyout" id="langGlobeFlyout">
           <button class="lang-btn" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="fr">FR</button>
@@ -985,7 +985,7 @@
       <div class="toolbar-sep" style="height:18px"></div>
       <div class="draw-flyout-wrap" id="textSplitWrap">
         <div class="text-split-btn">
-          <button id="textModeBtn" class="btn btn-secondary" disabled aria-pressed="false" data-mode="addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button><button id="textChevronBtn" class="btn btn-secondary text-chevron" disabled aria-haspopup="true" aria-expanded="false" title="Text tools">▾</button>
+          <button id="textModeBtn" class="btn btn-secondary" disabled aria-pressed="false" data-mode="addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button><button id="textChevronBtn" class="btn btn-secondary text-chevron" disabled aria-haspopup="true" aria-expanded="false" data-i18n-title="toolbar.textChevronTitle" title="Text tools">▾</button>
         </div>
         <div class="draw-flyout" id="textFlyout">
           <button id="addTextBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.addText" data-i18n-title="toolbar.addTextTitle" title="Add Text (T)">T Text</button>
@@ -997,7 +997,7 @@
       <button id="commentBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.commentTitle" title="Comment (N)">💬</button>
       <div class="toolbar-sep" style="height:18px"></div>
       <button id="freehandBtn" class="btn btn-icon" aria-pressed="false" data-i18n-title="toolbar.freehandTitle" title="Freehand pen (D)">✏</button>
-      <button id="fillBucketBtn" class="btn btn-icon" disabled aria-pressed="false" title="Fill shape (B)">🪣</button>
+      <button id="fillBucketBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.fillBucketTitle" title="Fill shape (B)">🪣</button>
       <div class="toolbar-sep" style="height:18px"></div>
       <button id="addImageBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n-title="toolbar.addImageTitle" title="Add Image (I)">🖼 <span class="btn-label" data-i18n="toolbar.addImageLabel">Image</span></button>
       <input type="file" id="addImageInput" accept="image/*">
@@ -1007,14 +1007,14 @@
     <div class="toolbar-sep" id="tbsep-2"></div>
     <div class="toolbar-group" id="tbg-shapes">
       <div class="draw-flyout-wrap" id="drawFlyoutWrap">
-        <button id="drawBtn" class="btn btn-icon" disabled title="Shapes (A/R/C)" aria-haspopup="true" aria-expanded="false">◻ ▾</button>
+        <button id="drawBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.drawBtnTitle" title="Shapes (A/R/C)" aria-haspopup="true" aria-expanded="false">◻ ▾</button>
         <div class="draw-flyout" id="drawFlyout">
           <button id="arrowBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.arrowTitle" title="Arrow (A)">→</button>
           <button id="rectBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.rectTitle" title="Rectangle (R)">□</button>
           <button id="circleBtn" class="btn btn-icon" disabled aria-pressed="false" data-i18n-title="toolbar.circleTitle" title="Circle (C)">○</button>
-          <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled title="Line width (px)">
-          <input type="color" id="redactColor" value="#000000" class="toolbar-color" title="Redact color" style="display:none">
-          <button id="redactEyedropperBtn" class="btn btn-icon btn-sm" disabled title="Pick color from screen (eyedropper)" style="display:none">🖊</button>
+          <input type="number" id="shapeWidth" value="2" min="1" max="20" class="toolbar-number" disabled data-i18n-title="toolbar.shapeWidthTitle" title="Line width (px)">
+          <input type="color" id="redactColor" value="#000000" class="toolbar-color" data-i18n-title="toolbar.redactColorTitle" title="Redact color" style="display:none">
+          <button id="redactEyedropperBtn" class="btn btn-icon btn-sm" disabled data-i18n-title="toolbar.eyedropperTitle" title="Pick color from screen (eyedropper)" style="display:none">🖊</button>
         </div>
       </div>
     </div>
@@ -1029,7 +1029,7 @@
       <button id="addSignatureBtn" class="btn btn-secondary" disabled aria-pressed="false" data-i18n="toolbar.sign" data-i18n-title="toolbar.signTitle" title="Sign (S)">✍ Sign</button>
       <div class="draw-flyout-wrap" id="exportSplitWrap">
         <div class="text-split-btn">
-          <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button><button id="exportChevronBtn" class="btn btn-success" disabled aria-haspopup="true" aria-expanded="false" title="Export options">▾</button>
+          <button id="downloadBtn" class="btn btn-success" disabled data-i18n-title="toolbar.downloadTitle" title="Download filled PDF">⬇ <span class="btn-label" data-i18n="toolbar.downloadLabel">Download</span></button><button id="exportChevronBtn" class="btn btn-success" disabled aria-haspopup="true" aria-expanded="false" data-i18n-title="toolbar.exportChevronTitle" title="Export options">▾</button>
         </div>
         <div class="draw-flyout" id="exportFlyout">
           <button id="previewExportBtn" class="btn btn-icon" disabled data-i18n-title="toolbar.previewExportTitle" title="Preview export positions">👁</button>
@@ -1056,10 +1056,11 @@
       <input type="number" id="fontSize" value="14" min="8" max="72" class="toolbar-number" disabled>
       <button id="fontSizeUpBtn" class="btn btn-icon" disabled data-i18n-title="formatting.fontSizeUpTitle" title="Increase font size (A+)">A+</button>
       <input type="color" id="color" value="#000000" class="toolbar-color">
-      <button id="colorEyedropperBtn" class="btn btn-icon btn-sm" title="Pick color from screen (eyedropper)">🖊</button>
-      <label id="fillColorLabel" style="display:none;align-items:center;gap:3px;font-size:12px;cursor:pointer;" title="Shape fill color">
+      <button id="colorEyedropperBtn" class="btn btn-icon btn-sm" data-i18n-title="toolbar.eyedropperTitle" title="Pick color from screen (eyedropper)">🖊</button>
+      <label id="fillColorLabel" style="display:none;align-items:center;gap:3px;font-size:12px;" data-i18n-title="toolbar.fillColorTitle" title="Shape fill color">
         <span data-i18n="formatting.fillLabel">Fill</span>
-        <input type="color" id="fillColor" value="#ffffff" class="toolbar-color" style="width:28px;height:22px;">
+        <button id="fillNoneBtn" class="btn btn-icon btn-sm active" aria-pressed="true" data-i18n-title="toolbar.fillNoneTitle" title="No fill / transparent" style="width:22px;height:22px;padding:0;font-size:13px;line-height:1;">⊘</button>
+        <input type="color" id="fillColor" value="#ffffff" class="toolbar-color" style="width:28px;height:22px;opacity:0.35;cursor:pointer;">
       </label>
     </div>
     <div class="toolbar-sep"></div>
@@ -1106,13 +1107,13 @@
   </div>
   <div id="pageThumbnailContainer" class="page-thumb-container" style="display:none"></div>
   <footer class="app-footer">
-    <nav class="footer-links" aria-label="Legal">
+    <nav class="footer-links" data-i18n-aria="footer.legalAriaLabel" aria-label="Legal">
       <a href="./privacy.html" data-i18n="footer.privacyPolicy">Privacy Policy</a>
       <a href="./mentions-legales.html" data-i18n="footer.legalNotice">Mentions légales</a>
       <a href="./terms.html" data-i18n="footer.termsOfUse">Terms of Use</a>
       <a href="./accessibility.html" data-i18n="footer.accessibility">Accessibility</a>
     </nav>
-    <div id="privacyChip" class="privacy-chip" title="All processing happens locally in your browser — no files are ever uploaded to any server">
+    <div id="privacyChip" class="privacy-chip" data-i18n-title="footer.privacyChipTitle" title="All processing happens locally in your browser — no files are ever uploaded to any server">
       🔒 <span data-i18n="footer.privacyBadge">100% local — your files never leave your browser</span>
     </div>
     <div>© 2026 Takieddine Messaoudi — <a href="https://github.com/tmessaoudi-official/pdfturbo" rel="noopener">GitHub</a></div>
@@ -1141,7 +1142,7 @@
   <div class="help-content">
     <div class="help-header">
       <h2 id="helpModalTitle" data-i18n="modal.help.title">Keyboard Shortcuts</h2>
-      <button id="closeHelp" class="btn btn-icon">×</button>
+      <button id="closeHelp" class="btn btn-icon" data-i18n-aria="modal.help.closeTitle" aria-label="Close">×</button>
     </div>
     <table class="help-table">
       <tr><th data-i18n="modal.help.keyHeader">Key</th><th data-i18n="modal.help.actionHeader">Action</th></tr>
@@ -1151,6 +1152,7 @@
       <tr><td>A</td><td data-i18n="modal.help.actions.A">Arrow</td></tr>
       <tr><td>R</td><td data-i18n="modal.help.actions.R">Rectangle</td></tr>
       <tr><td>C</td><td data-i18n="modal.help.actions.C">Circle</td></tr>
+      <tr><td>B</td><td data-i18n="modal.help.actions.B">Fill bucket</td></tr>
       <tr><td>D / F</td><td data-i18n="modal.help.actions.DF">Freehand draw</td></tr>
       <tr><td>E</td><td data-i18n="modal.help.actions.E">Eraser</td></tr>
       <tr><td>H</td><td data-i18n="modal.help.actions.H">Highlight</td></tr>
@@ -1158,6 +1160,7 @@
       <tr><td>X</td><td data-i18n="modal.help.actions.X">Edit text</td></tr>
       <tr><td>K</td><td data-i18n="modal.help.actions.K">Redact</td></tr>
       <tr><td>W</td><td data-i18n="modal.help.actions.W">Watermark</td></tr>
+      <tr><td>Q</td><td data-i18n="modal.help.actions.Q">QR / barcode</td></tr>
       <tr><td>Esc</td><td data-i18n="modal.help.actions.Esc">Select mode / cancel / close modal</td></tr>
       <tr><td>Del / Backspace</td><td data-i18n="modal.help.actions.Del">Remove selected element</td></tr>
       <tr><td>←↑→↓</td><td data-i18n="modal.help.actions.Arrows">Nudge selected 1px</td></tr>
@@ -1182,7 +1185,7 @@
     </div>
     <div class="wm-field">
       <label data-i18n="modal.watermark.textLabel">Text</label>
-      <input type="text" id="wmText" value="WATERMARK" class="wm-input" placeholder="Watermark text">
+      <input type="text" id="wmText" value="WATERMARK" class="wm-input" data-i18n-placeholder="modal.watermark.textPlaceholder" placeholder="Watermark text">
     </div>
     <div class="wm-field">
       <label><span data-i18n="modal.watermark.colorLabel">Color</span> <input type="color" id="wmColor" value="#888888"></label>
@@ -1219,13 +1222,13 @@
     <div class="code-field">
       <label for="codeFormatSelect" data-i18n="modal.code.formatLabel">Format</label>
       <select id="codeFormatSelect">
-        <optgroup label="2D Codes">
+        <optgroup data-i18n-label="modal.code.group2D" label="2D Codes">
           <option value="qrcode">QR Code</option>
           <option value="datamatrix">Data Matrix</option>
           <option value="pdf417">PDF417</option>
           <option value="azteccode">Aztec Code</option>
         </optgroup>
-        <optgroup label="1D Barcodes">
+        <optgroup data-i18n-label="modal.code.group1D" label="1D Barcodes">
           <option value="code128">Code 128</option>
           <option value="code39">Code 39</option>
           <option value="ean13">EAN-13</option>
@@ -1239,7 +1242,7 @@
     </div>
     <div class="code-field">
       <label for="codeDataInput" data-i18n="modal.code.contentLabel">Content</label>
-      <textarea id="codeDataInput" rows="2" placeholder="https://example.com"></textarea>
+      <textarea id="codeDataInput" rows="2" data-i18n-placeholder="modal.code.contentPlaceholder" placeholder="https://example.com"></textarea>
     </div>
     <div class="code-field" id="qrStyleSection">
       <div class="qr-style-row">
@@ -1248,7 +1251,7 @@
             <option value="L">L – 7%</option>
             <option value="M" selected>M – 15%</option>
             <option value="Q">Q – 25%</option>
-            <option value="H">H – 30% (best with logo)</option>
+            <option value="H" data-i18n="modal.code.ecH">H – 30% (best with logo)</option>
           </select>
         </label>
       </div>
@@ -1257,11 +1260,11 @@
         <div class="qr-style-row">
           <label><span data-i18n="modal.code.dotStyle">Dot style</span>
             <select id="qrDotStyle">
-              <option value="square">Square</option>
-              <option value="dots">Dots</option>
-              <option value="rounded">Rounded</option>
-              <option value="classy">Classy</option>
-              <option value="extra-rounded">Extra Rounded</option>
+              <option value="square" data-i18n="modal.code.dotStyleSquare">Square</option>
+              <option value="dots" data-i18n="modal.code.dotStyleDots">Dots</option>
+              <option value="rounded" data-i18n="modal.code.dotStyleRounded">Rounded</option>
+              <option value="classy" data-i18n="modal.code.dotStyleClassy">Classy</option>
+              <option value="extra-rounded" data-i18n="modal.code.dotStyleExtraRounded">Extra Rounded</option>
             </select>
           </label>
           <label><span data-i18n="modal.code.dotColor">Color</span> <input type="color" id="qrDotColor" value="#000000"></label>
@@ -1280,7 +1283,7 @@
       <label><input type="checkbox" id="barcodeShowTextChk" checked> <span data-i18n="modal.code.showText">Show text</span></label>
     </div>
     <div class="code-preview-area">
-      <img id="codePreviewImg" src="" alt="Code preview">
+      <img id="codePreviewImg" src="" data-i18n-alt="modal.code.previewAlt" alt="Code preview">
       <div id="codePreviewStatus" data-i18n="modal.code.previewHint">Enter content above to preview</div>
     </div>
     <div class="code-modal-actions">
@@ -1327,18 +1330,18 @@
         <option value="letter">Letter (8.5 × 11 in)</option>
         <option value="a3">A3 (297 × 420 mm)</option>
         <option value="a5">A5 (148 × 210 mm)</option>
-        <option value="custom">Custom…</option>
-        <option value="match">Match current page</option>
+        <option value="custom" data-i18n="modal.blankPage.customOption">Custom…</option>
+        <option value="match" data-i18n="modal.blankPage.matchOption">Match current page</option>
       </select>
     </div>
 
     <div id="blankPageCustomSize" style="display:none;margin-bottom:14px;gap:8px;flex-wrap:wrap;">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;" data-i18n="modal.blankPage.customLabel">Custom size (mm)</label>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="number" id="blankPageW" placeholder="Width" min="50" max="2000" value="210"
+        <input type="number" id="blankPageW" data-i18n-placeholder="modal.blankPage.widthPlaceholder" placeholder="Width" min="50" max="2000" value="210"
                style="width:90px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
         <span style="color:#64748b;">×</span>
-        <input type="number" id="blankPageH" placeholder="Height" min="50" max="2000" value="297"
+        <input type="number" id="blankPageH" data-i18n-placeholder="modal.blankPage.heightPlaceholder" placeholder="Height" min="50" max="2000" value="297"
                style="width:90px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">
         <span style="color:#64748b;font-size:12px;">mm</span>
       </div>
@@ -1369,8 +1372,8 @@
     <div style="display:flex;gap:6px;margin-bottom:16px;">
       <input type="password" id="pdfPasswordInput" autocomplete="current-password"
         style="flex:1;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;"
-        placeholder="Enter password…">
-      <button id="pdfPasswordToggle" class="btn btn-icon btn-sm" type="button" title="Show/hide password" style="padding:0 10px;">👁</button>
+        data-i18n-placeholder="modal.pdfPassword.passwordPlaceholder" placeholder="Enter password…">
+      <button id="pdfPasswordToggle" class="btn btn-icon btn-sm" type="button" data-i18n-title="modal.pdfPassword.toggleTitle" title="Show/hide password" style="padding:0 10px;">👁</button>
     </div>
     <p id="pdfPasswordError" style="display:none;color:#f87171;font-size:12px;margin:0 0 12px;" data-i18n="modal.pdfPassword.error">Incorrect password. Please try again.</p>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -1388,11 +1391,11 @@
     <label style="display:block;margin-bottom:4px;font-size:13px;color:#94a3b8;" data-i18n="modal.lockPdf.userPasswordLabel">Open password (required to open the PDF)</label>
     <input type="password" id="lockUserPassword" autocomplete="new-password"
       style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;"
-      placeholder="User password…">
+      data-i18n-placeholder="modal.lockPdf.userPasswordPlaceholder" placeholder="User password…">
     <label style="display:block;margin-bottom:4px;font-size:13px;color:#94a3b8;" data-i18n="modal.lockPdf.ownerPasswordLabel">Owner password (optional, for permissions)</label>
     <input type="password" id="lockOwnerPassword" autocomplete="new-password"
       style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:16px;"
-      placeholder="Owner password (leave empty to use user password)…">
+      data-i18n-placeholder="modal.lockPdf.ownerPasswordPlaceholder" placeholder="Owner password (leave empty to use user password)…">
     <p id="lockPdfStatus" style="display:none;color:#4ade80;font-size:12px;margin:0 0 12px;" data-i18n="modal.lockPdf.locked">PDF will be locked on next export.</p>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button id="lockPdfRemoveBtn" class="btn btn-icon" data-i18n="modal.lockPdf.removeLock">Remove Lock</button>

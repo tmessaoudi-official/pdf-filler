@@ -3,8 +3,8 @@
 **Version**: 1.0.0  
 **Build**: Vite 8 / TypeScript 6 / PWA  
 **Base URL**: `/pdfturbo/`  
-**Total features**: 38  
-**Last updated**: 2026-06-08 (doc accuracy sweep)
+**Total features**: 40  
+**Last updated**: 2026-06-11 (full QA audit — all 40 features exercised)
 
 > **How to use this file**: Work through each numbered feature top to bottom.  
 > For each one: test the steps listed, then report what works, what's broken, and what feels wrong.  
@@ -16,7 +16,7 @@
 
 Full browser audit completed (CDP automation against built app). All tools exercised. Reviewed by advisor model — findings corrected and expanded.
 
-### Fixed before/during this session
+### Fixed before/during 2026-06-07 session
 | Fix | Files | Commit |
 |---|---|---|
 | PDF text not selectable — pdfjs v6 `--total-scale-factor` CSS var | `js/textLayer.ts` | prior |
@@ -25,6 +25,16 @@ Full browser audit completed (CDP automation against built app). All tools exerc
 | `_transformPoint` 90°/270° cases swapped; 180° y-axis inverted | `js/pdfEditorApp.ts` | fb87e8b |
 | Ink strokes not repositioned on page rotation | `js/pdfEditorApp.ts` | fb87e8b |
 | Redaction security — page fully rasterized to PNG before export | `js/pdfEditorApp.ts` | prior |
+
+### Fixed during full QA audit (2026-06-11)
+| Fix | Files | Details |
+|---|---|---|
+| `aria-label` stuck in previous language after language switch | `src/utils/i18n.ts` | `applyTranslations()` was skipping aria-label update if attribute already existed; now always syncs on language change |
+| Fill bucket mode badge key missing | `src/core/uiController.ts` | `badgeKeys` mapping lacked `fillBucket` entry — badge showed nothing in fill bucket mode |
+| Fill bucket mode hint missing | `src/core/pdfEditorApp.ts` | `modeHintKeys` lacked `fillBucket` entry — no guidance toast shown when entering fill bucket mode |
+| Fill bucket i18n keys missing from all locales | `locales/en.json`, `locales/fr.json`, `locales/ar.json` | Added `toolbar.fillBucketTitle`, `badge.fillBucket`, `toast.modeHint.fillBucket`, `modal.help.actions.B` to all three locale files |
+| `B` shortcut row missing from help modal table | `index.html` | Added `<tr><td>B</td><td data-i18n="modal.help.actions.B">Fill bucket</td></tr>` |
+| `fillBucketTitle` tooltip missing from toolbar button | `index.html` | Added `data-i18n-title="toolbar.fillBucketTitle"` to the fill bucket toolbar button |
 
 ### Confirmed bugs (open)
 | ID | Severity | Description |
@@ -37,7 +47,7 @@ Full browser audit completed (CDP automation against built app). All tools exerc
 | BUG-07 | P3 | **`setPointerCapture` console error**: uncaught on synthetic element placement; needs try/catch |
 
 ### All features verified working
-Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, Freehand, Highlight, Eraser, Redact (cryptographically secure — full rasterization), Copy/paste, Delete, Undo/redo, Export/download PDF, Export preview, Help modal, Language switcher (EN/FR/AR), RTL Arabic layout, Storage banner dismiss, Zoom in/out/fit, Page rotation (transform math correct), Thumbnail panel (all buttons), Search bar, Watermark modal (density fix applied)
+Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, Freehand, Highlight, Eraser, **Fill Bucket** (shapes + freehand ink strokes), Redact (cryptographically secure — full rasterization), Edit Text overlay, QR/barcode code tool, Copy/paste, Delete, Undo/redo, Export/download PDF (full + single page + PNG), Export preview, Help modal, Language switcher (EN/FR/AR), RTL Arabic layout, Storage banner dismiss, Zoom in/out/fit, Page rotation (transform math correct), Thumbnail panel (all buttons), Search bar (with permanent highlight add), Watermark modal (density fix applied), Session persistence/restore, Clear all annotations, Form field fill
 
 ### Known limitations (by design)
 - Freehand strokes are canvas-only — not individually selectable, moveable, or undoable stroke-by-stroke
@@ -66,7 +76,7 @@ Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, F
 10. [Page Rotation](#10-page-rotation)
 11. [Page Reorder](#11-page-reorder)
 
-**Annotation Tools (12)**
+**Annotation Tools (15)**
 12. [Element Controls](#12-element-controls-all-annotations)
 13. [Text Tool + Formatting](#13-text-tool--formatting)
 14. [Arrow Shape](#14-arrow-shape)
@@ -80,6 +90,8 @@ Text tool, Signature tool, Image tool, Comment/note, Arrow/Rect/Circle shapes, F
 22. [Comment / Sticky Note](#22-comment--sticky-note)
 23. [Redaction](#23-redaction)
 38. [Edit Text Tool](#38-edit-text-tool)
+39. [Fill Bucket Tool](#39-fill-bucket-tool)
+40. [QR Code / Barcode Tool](#40-qr-code--barcode-tool)
 
 **Search & Forms (2)**
 24. [Text Search / Find](#24-text-search--find)
@@ -375,36 +387,39 @@ Empty text elements are removed automatically on deselect. Text changes debounce
 
 ## 17. Freehand Draw
 
-**How it works**: Activate with **✏ Draw** button, `D` key, or `F` key. Hold and draw freely; points sampled every 3 px. Path glows while drawing. A **Done** pill appears at the bottom center to exit the mode (or press `Escape`). Each stroke is a separate element. Properties: stroke color + line width.
+**How it works**: Activate with **✏ Draw** button, `D` key, or `F` key. Hold and draw freely; points sampled every 3 px. Path glows while drawing. A **Done** pill appears at the bottom center to exit the mode (or press `Escape`). Properties: stroke color + line width.
+
+> **Architecture note**: Freehand strokes are stored in the **ink layer canvas** (`inkLayer._strokes` — a `Map<pageId, InkStroke[]>`), NOT in `app.elements`. They are rendered on a dedicated `<canvas>` overlay per page. This means they are **canvas-only** — they cannot be individually selected, moved, or resized after drawing. To erase them, use the Eraser tool. To change fill color of an existing stroke, use the Fill Bucket tool.
 
 **Test steps**:
 1. Click **✏** or press `D` → verify mode badge shows "✏ DRAW".
 2. Verify a **Done** pill appears at the bottom center of the screen.
-3. Draw a signature-like stroke → verify it appears as a freehand path.
-4. Draw a second stroke → verify it's a separate element.
+3. Draw a signature-like stroke → verify it appears as a freehand path on the canvas.
+4. Draw a second stroke → verify it appears as a separate independent path.
 5. Click **Done** → verify returns to SELECT mode, pill disappears.
-6. Select a freehand stroke → verify it can be moved/resized like any element.
-7. Press `F` → verify it also activates freehand mode.
+6. Press `F` → verify it also activates freehand mode.
 
-**Export check**: Renders as SVG path (M/L commands) in PDF.
+**Export check**: Renders as an SVG-derived polyline path embedded in the PDF.
 
-**Known bugs**: None.
+**Known bugs / by design**: Individual ink strokes are canvas-only — not individually selectable, moveable, or undoable stroke-by-stroke. `Ctrl+Z` undoes the most recent stroke batch, not one stroke at a time.
 
 ---
 
 ## 18. Eraser Tool
 
-**How it works**: Activate with **⌫ Erase** button or `E` key. Draw a stroke over elements to erase them. For **freehand elements**: the eraser splits the path at the intersection points (surviving segments become new elements). For **all other element types**: the entire element is deleted if the eraser stroke's bounding box intersects the element's bounding box. A dashed red preview stroke is shown during drawing. Fully undoable (MacroCmd wraps all changes).
+**How it works**: Activate with **⌫ Erase** button or `E` key. Draw a stroke over the freehand canvas ink to erase it. The eraser adds "erase" type strokes to the ink layer, which are rendered as white overlays masking the underlying freehand ink. A dashed red preview stroke is shown during drawing. Fully undoable.
+
+> **Scope**: The eraser only affects **freehand canvas ink strokes** (`inkLayer`). It does **not** delete annotation element overlays (text boxes, shapes, images, comments, highlights, etc.). To remove those, select and press `Delete`.
 
 **Test steps**:
-1. Draw 2 freehand strokes and place a text element.
+1. Draw 2 freehand strokes on the canvas.
 2. Click **⌫ Erase** or press `E` → verify mode badge shows "⌫ ERASE".
-3. Draw the eraser across one freehand stroke → verify it disappears or is split.
-4. Draw the eraser across the text element → verify the text is deleted.
-5. Press **Ctrl+Z** → verify the erased elements are restored.
-6. Draw a partial erase over a freehand path (only cross the middle) → verify the path splits into 2 surviving segments.
+3. Draw the eraser across one freehand stroke → verify that portion is erased (covered in white).
+4. Press **Ctrl+Z** → verify the erased portion is restored.
+5. Press `E` again → verify eraser mode toggles off (or press `Escape`).
+6. Try drawing the eraser over a text box or shape element → verify they are **not** deleted (eraser has no effect on them).
 
-**Known bugs**: Non-freehand elements use bounding-box intersection only — a small eraser stroke near the corner of a large text/shape element will delete the entire element even if it barely touches it.
+**Known bugs / by design**: Eraser is canvas-only — does not delete annotation element divs. To delete a shape/text/image element, use the `Delete` key while it is selected.
 
 ---
 
@@ -665,10 +680,15 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 | `A` | Toggle Arrow mode |
 | `R` | Toggle Rectangle mode |
 | `C` | Toggle Circle/Ellipse mode |
+| `B` | Toggle Fill Bucket mode |
 | `D` or `F` | Toggle Freehand Draw mode |
 | `H` | Toggle Highlight mode |
 | `N` | Toggle Comment mode |
 | `E` | Toggle Eraser mode |
+| `K` | Toggle Redact mode |
+| `W` | Open Watermark modal |
+| `X` | Toggle Edit Text mode |
+| `Q` | Open QR/barcode modal |
 | `?` | Toggle Help modal |
 | `Escape` | Return to SELECT mode; close modals/find bar |
 | `Delete` / `Backspace` | Delete selected element |
@@ -676,6 +696,8 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 | `Shift+Arrow` | Nudge selected element ±10 px |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
+| `Ctrl+C` | Copy selected annotation element |
+| `Ctrl+V` | Paste annotation element |
 | `Ctrl+F` | Open Find bar |
 | `Ctrl+→` | Next page |
 | `Ctrl+←` | Previous page |
@@ -685,15 +707,17 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 
 **Test steps**:
 1. Load a PDF. Press `T` → verify text mode activates. Press `T` again → verify returns to SELECT.
-2. Press `A`, `R`, `C`, `D`, `H`, `E` → verify each activates its mode.
+2. Press `A`, `R`, `C`, `D`, `H`, `E`, `B`, `K`, `X` → verify each activates its mode.
 3. Press `F` → verify freehand mode activates (alias for `D`).
-4. Press `Escape` → verify returns to SELECT from any mode.
-5. Add an annotation, select it, press `Delete` → verify deleted.
-6. Select an element, press arrow keys → verify nudges 1px. `Shift+Arrow` → verify 10px.
-7. Press `Ctrl+Z` / `Ctrl+Y` → verify undo/redo.
-8. Press `Ctrl+F` → verify find bar opens. Press `Escape` → verify it closes.
-9. Press `Ctrl+→` / `Ctrl+←` → verify page navigation.
-10. Press `?` → verify help modal opens/closes.
+4. Press `W` → verify watermark modal opens.
+5. Press `Q` → verify QR/barcode modal opens.
+6. Press `Escape` → verify returns to SELECT from any mode; modals close.
+7. Add an annotation, select it, press `Delete` → verify deleted.
+8. Select an element, press arrow keys → verify nudges 1px. `Shift+Arrow` → verify 10px.
+9. Press `Ctrl+Z` / `Ctrl+Y` → verify undo/redo.
+10. Press `Ctrl+F` → verify find bar opens. Press `Escape` → verify it closes.
+11. Press `Ctrl+→` / `Ctrl+←` → verify page navigation.
+12. Press `?` → verify help modal opens/closes.
 
 **Known bugs**: None.
 
@@ -709,7 +733,7 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 3. Click the backdrop (outside the white box) → verify modal closes.
 4. Check the shortcuts table matches what actually works.
 
-**Known bugs**: None. All working shortcuts (`E`, `F`, `N`, and others) are listed in the help modal.
+**Known bugs**: None. All 25+ working shortcuts are listed in the help modal (verified in EN, FR, AR). The `B` (fill bucket) row was missing prior to the 2026-06-11 QA audit and has since been added.
 
 ---
 
@@ -746,6 +770,8 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 | drawRedaction | `⬛ REDACT` (blue) |
 | drawErase | `⌫ ERASE` (blue) |
 | editText | `✎ EDIT TEXT` (blue) |
+| addCode | `⊡ CODE` (blue) |
+| fillBucket | `🪣 FILL` (blue) |
 
 **Test steps**:
 1. Verify badge shows "SELECT" in grey on load.
@@ -817,19 +843,19 @@ Zoom range: 0.25× – 3.0×. Display shows integer percentage. On zoom: full pa
 |----------|-------|
 | File I/O | 6 |
 | Page Management | 5 |
-| Annotation Tools | 12 |
+| Annotation Tools | 15 |
 | Search & Forms | 2 |
 | Document Settings | 3 |
 | Session & State | 2 |
 | UX & Misc | 7 |
-| **Total** | **38** |
+| **Total** | **40** |
 
 ### Known bugs (pre-existing)
 | # | Severity | Description |
 |---|----------|-------------|
 | B1 | P1 | Highlight color parse: `|| fallback` zeroes out channels → non-yellow colors render wrong |
-| B2 | P2 | Eraser uses bbox intersection for non-freehand elements → large elements deleted by edge touch |
-| ~~B3~~ | ~~P2~~ | ~~Help modal missing `E` (eraser) and `F` (freehand alt) shortcuts~~ **Fixed** — both appear in all locale files under `modal.help.actions` |
+| B2 | P2 | Eraser is canvas-only — does not delete annotation element overlays (text, shapes, images); must use `Delete` key for those |
+| ~~B3~~ | ~~P2~~ | ~~Help modal missing `E` (eraser), `F` (freehand alt), `B` (fill bucket) shortcuts~~ **Fixed** — all appear in locale files under `modal.help.actions` |
 | ~~B4~~ | ~~P2~~ | ~~PWA manifest URL collision (H-14) → install prompt fails in production~~ **Fixed** — `manifestFilename: 'manifest.json'` in `vite.config.ts` |
 | B5 | P3 | Annotations don't reposition after page rotation |
 | B6 | P3 | Thumbnails don't reflect placed annotations |
@@ -859,3 +885,66 @@ This is a non-destructive overlay: the original PDF text is visually covered by 
 7. Download the PDF → verify the edited word appears correctly in the export.
 
 **Known bugs**: Works only on PDFs with a text layer (pdfjs extraction required). Scanned image PDFs have no text layer and will not respond to clicks.
+
+---
+
+## 39. Fill Bucket Tool
+
+**How it works**: Activate with the **🪣 Fill** toolbar button or `B` key. Click any shape element or freehand ink stroke to fill it with the current **fill color** (the color swatch labeled "Fill" in the formatting toolbar — separate from the stroke color). A single click performs a hit test and applies a `FillColorCmd` (undo-able).
+
+**Two distinct color pickers**:
+- **Stroke color** (`#color` input) — outline/line color for shapes and ink strokes
+- **Fill color** (`#fillColor` input / "Fill" label in toolbar row 2) — used exclusively by the fill bucket
+
+**Hit testing logic**:
+1. **Shape elements** (`app.elements`): bounding-box test — clicks within the element's bounding box trigger a fill
+2. **Freehand ink strokes** (`inkLayer._strokes`): polyline proximity test — clicks within 8 px of any point on the stroke trigger a fill
+3. **No-fill state**: if the "Fill" color picker has `_noFill` active (transparent fill), `effectiveFillColor` returns `undefined` and the fill operation is a no-op
+
+**Test steps**:
+1. Draw a rectangle shape → activate Fill Bucket (`B`) → set fill color to red → click inside the rectangle → verify it fills red.
+2. Press `Ctrl+Z` → verify the fill is undone.
+3. Draw a freehand stroke → with fill bucket active, click near the stroke → verify stroke fill color changes.
+4. Set the "Fill" swatch to transparent (no-fill) → click a shape → verify nothing changes (no-op).
+5. Verify mode badge shows "🪣 FILL" when active.
+6. Verify tooltip on the toolbar button says "Fill shape (B)".
+7. Verify mode hint toast appears explaining fill bucket behavior.
+8. Press `Escape` → verify returns to SELECT mode.
+9. Switch language to FR → verify badge shows "🪣 REMPLIR", hint toast is in French.
+10. Switch to AR → verify badge shows "🪣 تعبئة", hint toast is in Arabic (RTL).
+
+**Export check**: Fill color is written to the exported PDF. Shape elements use `pdf-lib`'s fill color property; ink strokes apply the fill to the rendered polyline.
+
+**Known bugs**: None. Fill bucket on ink strokes uses polyline-proximity hit testing (fixed from bounding-box during 2026-06-10 development).
+
+---
+
+## 40. QR Code / Barcode Tool
+
+**How it works**: Activate with the **⊡ Code** toolbar button or `Q` key (opens the modal directly). A modal allows configuration before placement:
+
+- **Format**: QR code, Code 128, Code 39, EAN-13, EAN-8, UPC, and others
+- **Content**: free-text input (URL, text, number)
+- **Styled QR** toggle: enables custom dot style, dot color, background color, and optional logo overlay
+- **Error correction** (QR only): L / M / Q / H
+- **Show text** (linear barcodes): show human-readable text below barcode
+- **Live preview**: updates as content is typed
+
+After configuring, click **Place on PDF →** → click-drag on the canvas to define the placement area and size. The code is rendered as an image element. Supports **Edit** (reopen modal from a placed code element) and **Undo** (removes the placed element).
+
+**Test steps**:
+1. Press `Q` → verify the QR/barcode modal opens.
+2. Enter a URL → verify a QR code preview appears.
+3. Click **Place on PDF →** → drag on the canvas → verify the QR code is placed.
+4. Press `Ctrl+Z` → verify the placed code is removed.
+5. Select a placed code element → verify a resize handle appears.
+6. Double-click or use the edit control on a placed code → verify the modal reopens for editing.
+7. Switch format to "Code 128" → enter a number → verify a linear barcode preview appears.
+8. Enable "Styled QR" → change dot color → verify the preview updates.
+9. Add a logo image → verify logo appears centered in the QR preview.
+10. Close the modal (Escape / Cancel) → verify no element is placed.
+11. Verify mode badge shows "⊡ CODE" when code placement is active.
+
+**Export check**: QR codes and barcodes are embedded as rasterized PNG images in the exported PDF.
+
+**Known bugs**: None.

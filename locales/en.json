@@ -27,6 +27,7 @@
     "rectTitle": "Rectangle (R)",
     "circleTitle": "Circle (C)",
     "freehandTitle": "Freehand (D)",
+    "fillBucketTitle": "Fill shape (B)",
     "eraserTitle": "Eraser — swipe to erase (E)",
     "redactTitle": "Redact — draw a permanent black box",
     "downloadLabel": "Download",
@@ -40,7 +41,16 @@
     "addCodeLabel": "Code",
     "addCodeTitle": "Add QR code / barcode (Q)",
     "newBlankPage": "📄 New Blank Page…",
-    "lockPdf": "🔒 Lock PDF…"
+    "lockPdf": "🔒 Lock PDF…",
+    "langTitle": "Change language",
+    "textChevronTitle": "Text tools",
+    "drawBtnTitle": "Shapes (A/R/C)",
+    "shapeWidthTitle": "Line width (px)",
+    "redactColorTitle": "Redact color",
+    "eyedropperTitle": "Pick color from screen (eyedropper)",
+    "exportChevronTitle": "Export options",
+    "fillColorTitle": "Shape fill color",
+    "fillNoneTitle": "No fill / transparent"
   },
   "formatting": {
     "textLabel": "Text / Shape",
@@ -96,7 +106,8 @@
     "drawRedaction": "⬛ REDACT",
     "drawErase": "⌫ ERASE",
     "editText": "✎ EDIT TEXT",
-    "addCode": "⊡ CODE"
+    "addCode": "⊡ CODE",
+    "fillBucket": "🪣 FILL"
   },
   "modal": {
     "watermark": {
@@ -110,7 +121,8 @@
       "densityLabel": "Density",
       "densityHint": "1 sparse → 5 dense",
       "cancel": "Cancel",
-      "apply": "Apply"
+      "apply": "Apply",
+      "textPlaceholder": "Watermark text"
     },
     "signature": {
       "title": "Draw Your Signature",
@@ -131,6 +143,7 @@
         "A": "Arrow",
         "R": "Rectangle",
         "C": "Circle",
+        "B": "Fill bucket",
         "DF": "Freehand draw",
         "E": "Eraser",
         "H": "Highlight",
@@ -148,8 +161,10 @@
         "CtrlV": "Paste element",
         "CtrlF": "Find in page",
         "CtrlNav": "Previous / next page",
-        "Question": "Show this panel"
+        "Question": "Show this panel",
+        "Q": "QR / barcode"
       },
+      "closeTitle": "Close",
       "ctrlCNote": "* Ctrl+C copies the selected annotation element. If PDF text is selected, the browser's native copy takes precedence instead."
     },
     "exportPreview": {
@@ -167,7 +182,9 @@
       "passwordLabel": "Password",
       "error": "Incorrect password. Please try again.",
       "cancel": "Cancel",
-      "unlock": "Unlock"
+      "unlock": "Unlock",
+      "passwordPlaceholder": "Enter password…",
+      "toggleTitle": "Show/hide password"
     },
     "lockPdf": {
       "title": "Lock PDF with Password",
@@ -176,7 +193,9 @@
       "locked": "PDF will be locked on next export.",
       "removeLock": "Remove Lock",
       "cancel": "Cancel",
-      "apply": "Apply Lock"
+      "apply": "Apply Lock",
+      "userPasswordPlaceholder": "User password…",
+      "ownerPasswordPlaceholder": "Owner password (leave empty to use user password)…"
     },
     "blankPage": {
       "title": "Insert Blank Page",
@@ -187,7 +206,11 @@
       "posEnd": "End of document",
       "customLabel": "Size (mm): W × H",
       "cancel": "Cancel",
-      "insert": "Insert"
+      "insert": "Insert",
+      "customOption": "Custom…",
+      "matchOption": "Match current page",
+      "widthPlaceholder": "Width",
+      "heightPlaceholder": "Height"
     },
     "code": {
       "title": "Add QR / Barcode",
@@ -208,7 +231,17 @@
       "place": "Place on PDF →",
       "update": "Update",
       "errorCorrection": "Error correction",
-      "showText": "Show text"
+      "showText": "Show text",
+      "contentPlaceholder": "https://example.com",
+      "previewAlt": "Code preview",
+      "group2D": "2D Codes",
+      "group1D": "1D Barcodes",
+      "ecH": "H – 30% (best with logo)",
+      "dotStyleSquare": "Square",
+      "dotStyleDots": "Dots",
+      "dotStyleRounded": "Rounded",
+      "dotStyleClassy": "Classy",
+      "dotStyleExtraRounded": "Extra Rounded"
     }
   },
   "toast": {
@@ -256,7 +289,8 @@
       "addCode": "Code tool — drag to define size and place. Press Esc to cancel.",
       "drawRedaction": "Redact tool — drag to black out. Press Esc to exit.",
       "drawErase": "Eraser — swipe to erase elements. Press Esc to exit.",
-      "editText": "Edit Text — click on any word to overlay and edit it. Press Esc to exit."
+      "editText": "Edit Text — click on any word to overlay and edit it. Press Esc to exit.",
+      "fillBucket": "Fill bucket — click a shape or stroke to fill it with color. Press Esc to exit."
     }
   },
   "thumbnail": {
@@ -293,6 +327,8 @@
     "legalNotice": "Legal Notice",
     "termsOfUse": "Terms of Use",
     "accessibility": "Accessibility",
-    "privacyBadge": "100% local — your files never leave your browser"
+    "privacyBadge": "100% local — your files never leave your browser",
+    "privacyChipTitle": "All processing happens locally in your browser — no files are ever uploaded to any server",
+    "legalAriaLabel": "Legal"
   }
 }

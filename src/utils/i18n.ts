@@ -25,13 +25,20 @@ export function applyTranslations(): void {
   document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach(el => {
     const val = t(el.dataset.i18nTitle ?? '');
     el.title = val;
-    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', val);
+    // Always sync aria-label — it must update on language change, not just on first render
+    if (!el.hasAttribute('data-i18n-aria')) el.setAttribute('aria-label', val);
   });
   document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder ?? '');
   });
   document.querySelectorAll<HTMLElement>('[data-i18n-aria]').forEach(el => {
     el.setAttribute('aria-label', t(el.dataset.i18nAria ?? ''));
+  });
+  document.querySelectorAll<HTMLImageElement>('[data-i18n-alt]').forEach(el => {
+    el.alt = t(el.dataset.i18nAlt ?? '');
+  });
+  document.querySelectorAll<HTMLOptGroupElement>('[data-i18n-label]').forEach(el => {
+    el.label = t(el.dataset.i18nLabel ?? '');
   });
 }
 

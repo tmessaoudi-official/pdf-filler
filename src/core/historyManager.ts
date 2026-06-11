@@ -109,7 +109,7 @@ export class FillColorCmd implements Command {
     private elements: PDFElement[],
     private elementId: number,
     private before: string | undefined,
-    private after: string,
+    private after: string | undefined,
   ) {}
 
   execute(): void {
@@ -368,6 +368,25 @@ export class InkColorCmd implements Command {
   undo(): void {
     const s = this.layer.getStrokes(this.pageId)[this.strokeIndex];
     if (s) { s.color = this.before; this.onUpdate(); }
+  }
+}
+
+export class InkFillColorCmd implements Command {
+  constructor(
+    private layer: InkLayer,
+    private pageId: string,
+    private strokeIndex: number,
+    private before: string | undefined,
+    private after: string | undefined,
+    private onUpdate: () => void,
+  ) {}
+  execute(): void {
+    const s = this.layer.getStrokes(this.pageId)[this.strokeIndex];
+    if (s) { s.fillColor = this.after; this.onUpdate(); }
+  }
+  undo(): void {
+    const s = this.layer.getStrokes(this.pageId)[this.strokeIndex];
+    if (s) { s.fillColor = this.before; this.onUpdate(); }
   }
 }
 

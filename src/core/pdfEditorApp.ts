@@ -20,7 +20,7 @@ import { EraserHandler } from '../handlers/eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
-  MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd, InkColorCmd,
+  MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd, InkFillColorCmd,
 } from './historyManager';
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
@@ -71,6 +71,7 @@ export class PDFEditorApp {
   private _codePreviewDebounce: ReturnType<typeof setTimeout> | null = null;
   private _qrLogoDataUrl: string | null = null;
   private _skipNextClick = false;
+  private _noFill = true;
   private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   private _textSearch = new TextSearchHandler();
   private _findMatches: MatchResult[] = [];
@@ -647,8 +648,25 @@ export class PDFEditorApp {
         this.renderElements(); this._autosave();
       }
     });
+    this.ui.fillNoneBtn.addEventListener('click', () => {
+      this._noFill = true;
+      this._syncFillToggleUI();
+      if (this.selectedElement?.type === 'shape') {
+        const she = this.selectedElement as ShapeElement;
+        const before = { fillColor: she.fillColor };
+        she.fillColor = undefined;
+        this.historyManager.record(new MoveResizeCmd(this.elements, she, before, { fillColor: undefined }));
+        this.renderElements(); this._autosave();
+      }
+    });
+    this.ui.fillColorInput.addEventListener('mousedown', () => {
+      this._noFill = false;
+      this._syncFillToggleUI();
+    });
     this.ui.fillColorInput.addEventListener('input', (e) => {
       const val = (e.target as HTMLInputElement).value;
+      this._noFill = false;
+      this._syncFillToggleUI();
       if (this.selectedElement?.type === 'shape') {
         const she = this.selectedElement as ShapeElement;
         const before = { fillColor: she.fillColor };
@@ -770,6 +788,9 @@ export class PDFEditorApp {
           break;
         case 'c': case 'C':
           if (this.documentModel.pageCount) this.setMode(this.mode === 'drawEllipse' ? 'select' : 'drawEllipse');
+          break;
+        case 'b': case 'B':
+          if (this.documentModel.pageCount) this.setMode(this.mode === 'fillBucket' ? 'select' : 'fillBucket');
           break;
         case 'd': case 'D':
         case 'f': case 'F':
@@ -1952,6 +1973,7 @@ export class PDFEditorApp {
       addComment: 'toast.modeHint.addComment', addCode: 'toast.modeHint.addCode',
       drawRedaction: 'toast.modeHint.drawRedaction',
       drawErase: 'toast.modeHint.drawErase', editText: 'toast.modeHint.editText',
+      fillBucket: 'toast.modeHint.fillBucket',
     };
     const placementModes: ToolMode[] = ['addText', 'addComment', 'addImage', 'addSignature', 'addCode'];
     if (!placementModes.includes(mode) && this._placementGhost) {
@@ -2175,8 +2197,26 @@ export class PDFEditorApp {
     this._updateCopyPasteBtns();
   }
 
+  get effectiveFillColor(): string | undefined {
+    return this._noFill ? undefined : this.ui.fillColorInput.value;
+  }
+
+  private _syncFillToggleUI(): void {
+    const noFill = this._noFill;
+    this.ui.fillNoneBtn.classList.toggle('active', noFill);
+    this.ui.fillNoneBtn.setAttribute('aria-pressed', String(noFill));
+    this.ui.fillColorInput.style.opacity = noFill ? '0.35' : '1';
+  }
+
   _updateFormattingToolbar() {
     this.uiController.updateFormattingToolbar(this.selectedElement, this.mode);
+    // Sync _noFill with selected shape's fill state
+    if (this.selectedElement?.type === 'shape') {
+      const she = this.selectedElement as ShapeElement;
+      const isFillable = she.shapeType === 'rect' || she.shapeType === 'ellipse' || she.shapeType === 'freehand';
+      if (isFillable) this._noFill = she.fillColor === undefined;
+    }
+    this._syncFillToggleUI();
   }
 
   handleCanvasClick(e: MouseEvent) {
@@ -2198,7 +2238,7 @@ export class PDFEditorApp {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const newColor = this.ui.fillColorInput.value;
+    const newColor = this.effectiveFillColor;
 
     // Check SVG shape elements first (rect/ellipse/arrow)
     const shapeTarget = [...this.elements]
@@ -2212,20 +2252,25 @@ export class PDFEditorApp {
       return;
     }
 
-    // Check ink strokes (freehand pen)
+    // Check ink strokes (freehand pen) — fill inner area (fillColor), not stroke line (color)
+    if (newColor === undefined) return;
     const strokes = this.inkLayer.getStrokes(pageId);
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
       if (s.type !== 'ink') continue;
-      const threshold = s.width / 2 + 4;
-      let hit = false;
-      for (let j = 0; j < s.points.length - 1; j++) {
-        if (this._ptSegDist(x, y, s.points[j].x, s.points[j].y, s.points[j + 1].x, s.points[j + 1].y) <= threshold) {
-          hit = true; break;
+      // Match: click inside the enclosed polygon OR near the stroke line
+      const insidePoly = this._ptInPolygon(x, y, s.points);
+      let nearStroke = false;
+      if (!insidePoly) {
+        const threshold = s.width / 2 + 4;
+        for (let j = 0; j < s.points.length - 1; j++) {
+          if (this._ptSegDist(x, y, s.points[j].x, s.points[j].y, s.points[j + 1].x, s.points[j + 1].y) <= threshold) {
+            nearStroke = true; break;
+          }
         }
       }
-      if (hit) {
-        this.historyManager.execute(new InkColorCmd(this.inkLayer, pageId, i, s.color, newColor, () => this.renderInkLayer()));
+      if (insidePoly || nearStroke) {
+        this.historyManager.execute(new InkFillColorCmd(this.inkLayer, pageId, i, s.fillColor, newColor, () => this.renderInkLayer()));
         this._autosave();
         return;
       }
@@ -2252,6 +2297,18 @@ export class PDFEditorApp {
     if (lenSq === 0) return Math.hypot(px - ax, py - ay);
     const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
     return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
+  private _ptInPolygon(px: number, py: number, points: Array<{ x: number; y: number }>): boolean {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i].x, yi = points[i].y;
+      const xj = points[j].x, yj = points[j].y;
+      if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
   }
 
 

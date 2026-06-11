@@ -27,6 +27,7 @@
     "rectTitle": "Rectangle (R)",
     "circleTitle": "Cercle (C)",
     "freehandTitle": "Main levée (D)",
+    "fillBucketTitle": "Remplir la forme (B)",
     "eraserTitle": "Gomme — balayer pour effacer (E)",
     "redactTitle": "Caviarder — dessiner un cadre noir permanent",
     "downloadLabel": "Télécharger",
@@ -40,7 +41,16 @@
     "addCodeLabel": "Code",
     "addCodeTitle": "Ajouter un QR code / code-barres (Q)",
     "newBlankPage": "📄 Nouvelle page vierge…",
-    "lockPdf": "🔒 Verrouiller le PDF…"
+    "lockPdf": "🔒 Verrouiller le PDF…",
+    "langTitle": "Changer de langue",
+    "textChevronTitle": "Outils texte",
+    "drawBtnTitle": "Formes (A/R/C)",
+    "shapeWidthTitle": "Épaisseur du trait (px)",
+    "redactColorTitle": "Couleur de caviardage",
+    "eyedropperTitle": "Choisir une couleur à l'écran (pipette)",
+    "exportChevronTitle": "Options d'export",
+    "fillColorTitle": "Couleur de remplissage de la forme",
+    "fillNoneTitle": "Sans remplissage / transparent"
   },
   "formatting": {
     "textLabel": "Texte / Forme",
@@ -96,7 +106,8 @@
     "drawRedaction": "⬛ CAVIAR.",
     "drawErase": "⌫ GOMME",
     "editText": "✎ ÉDITER",
-    "addCode": "⊡ CODE"
+    "addCode": "⊡ CODE",
+    "fillBucket": "🪣 REMPLIR"
   },
   "modal": {
     "watermark": {
@@ -110,7 +121,8 @@
       "densityLabel": "Densité",
       "densityHint": "1 clairsemé → 5 dense",
       "cancel": "Annuler",
-      "apply": "Appliquer"
+      "apply": "Appliquer",
+      "textPlaceholder": "Texte du filigrane"
     },
     "signature": {
       "title": "Dessiner votre signature",
@@ -131,6 +143,7 @@
         "A": "Flèche",
         "R": "Rectangle",
         "C": "Cercle",
+        "B": "Remplissage (seau)",
         "DF": "Dessin main levée",
         "E": "Gomme",
         "H": "Surligneur",
@@ -148,8 +161,10 @@
         "CtrlV": "Coller l'élément",
         "CtrlF": "Rechercher dans la page",
         "CtrlNav": "Page précédente / suivante",
-        "Question": "Afficher ce panneau"
+        "Question": "Afficher ce panneau",
+        "Q": "QR / code-barres"
       },
+      "closeTitle": "Fermer",
       "ctrlCNote": "* Ctrl+C copie l'élément d'annotation sélectionné. Si du texte PDF est sélectionné, la copie native du navigateur prend la priorité."
     },
     "exportPreview": {
@@ -167,7 +182,9 @@
       "passwordLabel": "Mot de passe",
       "error": "Mot de passe incorrect. Veuillez réessayer.",
       "cancel": "Annuler",
-      "unlock": "Déverrouiller"
+      "unlock": "Déverrouiller",
+      "passwordPlaceholder": "Saisir le mot de passe…",
+      "toggleTitle": "Afficher/masquer le mot de passe"
     },
     "lockPdf": {
       "title": "Protéger le PDF par mot de passe",
@@ -176,7 +193,9 @@
       "locked": "Le PDF sera verrouillé lors du prochain export.",
       "removeLock": "Supprimer le verrou",
       "cancel": "Annuler",
-      "apply": "Appliquer le verrou"
+      "apply": "Appliquer le verrou",
+      "userPasswordPlaceholder": "Mot de passe utilisateur…",
+      "ownerPasswordPlaceholder": "Mot de passe propriétaire (laisser vide pour utiliser le mot de passe utilisateur)…"
     },
     "blankPage": {
       "title": "Insérer une page vierge",
@@ -187,7 +206,11 @@
       "posEnd": "Fin du document",
       "customLabel": "Taille (mm) : L × H",
       "cancel": "Annuler",
-      "insert": "Insérer"
+      "insert": "Insérer",
+      "customOption": "Personnalisé…",
+      "matchOption": "Correspondre à la page actuelle",
+      "widthPlaceholder": "Largeur",
+      "heightPlaceholder": "Hauteur"
     },
     "code": {
       "title": "Ajouter un QR / code-barres",
@@ -208,7 +231,17 @@
       "place": "Placer sur le PDF →",
       "update": "Mettre à jour",
       "errorCorrection": "Correction d'erreur",
-      "showText": "Afficher le texte"
+      "showText": "Afficher le texte",
+      "contentPlaceholder": "https://example.com",
+      "previewAlt": "Aperçu du code",
+      "group2D": "Codes 2D",
+      "group1D": "Codes-barres 1D",
+      "ecH": "H – 30% (optimal avec logo)",
+      "dotStyleSquare": "Carré",
+      "dotStyleDots": "Points",
+      "dotStyleRounded": "Arrondi",
+      "dotStyleClassy": "Élégant",
+      "dotStyleExtraRounded": "Extra arrondi"
     }
   },
   "toast": {
@@ -256,7 +289,8 @@
       "drawRedaction": "Outil caviardage — faites glisser pour caviarder. Appuyez sur Échap pour quitter.",
       "drawErase": "Gomme — balayez pour effacer des éléments. Appuyez sur Échap pour quitter.",
       "editText": "Éditer texte — cliquez sur un mot pour le superposer et l'éditer. Appuyez sur Échap pour quitter.",
-      "addCode": "Outil code — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler."
+      "addCode": "Outil code — faites glisser pour définir la taille et placer. Appuyez sur Échap pour annuler.",
+      "fillBucket": "Seau de remplissage — cliquez sur une forme ou un trait pour le remplir. Appuyez sur Échap pour quitter."
     }
   },
   "thumbnail": {
@@ -293,6 +327,8 @@
     "legalNotice": "Mentions légales",
     "termsOfUse": "Conditions d'utilisation",
     "accessibility": "Accessibilité",
-    "privacyBadge": "100% local — vos fichiers ne quittent jamais votre navigateur"
+    "privacyBadge": "100% local — vos fichiers ne quittent jamais votre navigateur",
+    "privacyChipTitle": "Tout le traitement se fait localement dans votre navigateur — aucun fichier n'est jamais téléchargé vers un serveur",
+    "legalAriaLabel": "Mentions légales"
   }
 }

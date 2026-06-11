@@ -3,6 +3,7 @@ export interface InkStroke {
   points: Array<{ x: number; y: number }>;
   width: number;
   color: string;
+  fillColor?: string;
 }
 
 export class InkLayer {
@@ -65,6 +66,10 @@ export class InkLayer {
       ctx.moveTo(stroke.points[0].x * scale, stroke.points[0].y * scale);
       for (let i = 1; i < stroke.points.length; i++) {
         ctx.lineTo(stroke.points[i].x * scale, stroke.points[i].y * scale);
+      }
+      if (stroke.fillColor) {
+        ctx.fillStyle = stroke.fillColor;
+        ctx.fill();
       }
       ctx.stroke();
       ctx.restore();

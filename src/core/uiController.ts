@@ -132,6 +132,7 @@ export interface UIRefs {
   saveCodeModal:    HTMLButtonElement;
   fillColorInput:   HTMLInputElement;
   fillColorLabel:   HTMLElement;
+  fillNoneBtn:      HTMLButtonElement;
 }
 
 export class UIController {
@@ -266,6 +267,7 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
       saveCodeModal:    document.getElementById('saveCodeModal')    as HTMLButtonElement,
       fillColorInput:   document.getElementById('fillColor')        as HTMLInputElement,
       fillColorLabel:   document.getElementById('fillColorLabel')   as HTMLElement,
+      fillNoneBtn:      document.getElementById('fillNoneBtn')      as HTMLButtonElement,
     };
   }
 
@@ -292,6 +294,7 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
     r.circleBtn.disabled      = false;
     r.freehandBtn.disabled    = false;
     r.fillBucketBtn.disabled  = false;
+    r.fillNoneBtn.disabled    = false;
     r.addImageBtn.disabled    = false;
     r.highlightBtn.disabled   = false;
     r.findBtn.disabled        = false;
@@ -361,7 +364,7 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
       drawEllipse: 'badge.drawEllipse', drawFreehand: 'badge.drawFreehand',
       drawHighlight: 'badge.drawHighlight', addComment: 'badge.addComment',
       drawRedaction: 'badge.drawRedaction', drawErase: 'badge.drawErase',
-      editText: 'badge.editText',
+      editText: 'badge.editText', fillBucket: 'badge.fillBucket',
     };
     r.modeBadge.textContent = t(badgeKeys[mode] ?? 'badge.select');
     r.modeBadge.classList.toggle('active', mode !== 'select');
@@ -418,7 +421,11 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
       r.colorInput.value = (el as ShapeElement).strokeColor;
       r.shapeWidth.value = String((el as ShapeElement).strokeWidth);
       if (isFillableShape) {
-        r.fillColorInput.value = (el as ShapeElement).fillColor ?? '#ffffff';
+        const shapeFill = (el as ShapeElement).fillColor;
+        if (shapeFill !== undefined) {
+          r.fillColorInput.value = shapeFill;
+        }
+        // _noFill sync is handled in pdfEditorApp._updateFormattingToolbar after this call
       }
     }
 

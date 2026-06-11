@@ -34,6 +34,7 @@
     "rectTitle": "مستطيل (R)",
     "circleTitle": "دائرة (C)",
     "freehandTitle": "رسم حر (D)",
+    "fillBucketTitle": "تعبئة الشكل (B)",
     "eraserTitle": "ممحاة — امسح بالسحب (E)",
     "redactTitle": "تعتيم — رسم مربع أسود دائم",
     "downloadLabel": "تحميل",
@@ -41,7 +42,16 @@
     "selectTitle": "وضع التحديد / المؤشر (Esc)",
     "previewExportTitle": "معاينة مواضع التصدير",
     "watermarkTitle": "إعدادات العلامة المائية",
-    "helpTitle": "اختصارات لوحة المفاتيح (?)"
+    "helpTitle": "اختصارات لوحة المفاتيح (?)",
+    "langTitle": "تغيير اللغة",
+    "textChevronTitle": "أدوات النص",
+    "drawBtnTitle": "الأشكال (A/R/C)",
+    "shapeWidthTitle": "سماكة الخط (px)",
+    "redactColorTitle": "لون التعتيم",
+    "eyedropperTitle": "اختيار لون من الشاشة (قطارة)",
+    "exportChevronTitle": "خيارات التصدير",
+    "fillColorTitle": "لون تعبئة الشكل",
+    "fillNoneTitle": "بدون تعبئة / شفاف"
   },
   "formatting": {
     "textLabel": "نص / شكل",
@@ -97,7 +107,8 @@
     "drawRedaction": "⬛ تعتيم",
     "drawErase": "⌫ محو",
     "editText": "✎ تحرير",
-    "addCode": "⊡ رمز"
+    "addCode": "⊡ رمز",
+    "fillBucket": "🪣 تعبئة"
   },
   "modal": {
     "watermark": {
@@ -111,7 +122,8 @@
       "densityLabel": "الكثافة",
       "densityHint": "1 متناثر → 5 كثيف",
       "cancel": "إلغاء",
-      "apply": "تطبيق"
+      "apply": "تطبيق",
+      "textPlaceholder": "نص العلامة المائية"
     },
     "signature": {
       "title": "ارسم توقيعك",
@@ -132,6 +144,7 @@
         "A": "سهم",
         "R": "مستطيل",
         "C": "دائرة",
+        "B": "دلو التعبئة",
         "DF": "رسم حر",
         "E": "ممحاة",
         "H": "تظليل",
@@ -149,8 +162,10 @@
         "CtrlV": "لصق العنصر",
         "CtrlF": "البحث في الصفحة",
         "CtrlNav": "الصفحة السابقة / التالية",
-        "Question": "عرض هذه اللوحة"
+        "Question": "عرض هذه اللوحة",
+        "Q": "رمز QR / باركود"
       },
+      "closeTitle": "إغلاق",
       "ctrlCNote": "* Ctrl+C ينسخ عنصر التعليق التوضيحي المحدد. إذا كان نص PDF محدداً، تأخذ النسخ الأصلية للمتصفح الأولوية بدلاً من ذلك."
     },
     "exportPreview": {
@@ -168,7 +183,9 @@
       "passwordLabel": "كلمة المرور",
       "error": "كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.",
       "cancel": "إلغاء",
-      "unlock": "فتح القفل"
+      "unlock": "فتح القفل",
+      "passwordPlaceholder": "أدخل كلمة المرور…",
+      "toggleTitle": "إظهار/إخفاء كلمة المرور"
     },
     "lockPdf": {
       "title": "قفل PDF بكلمة مرور",
@@ -177,7 +194,9 @@
       "locked": "سيتم قفل PDF عند التصدير التالي.",
       "removeLock": "إزالة القفل",
       "cancel": "إلغاء",
-      "apply": "تطبيق القفل"
+      "apply": "تطبيق القفل",
+      "userPasswordPlaceholder": "كلمة مرور المستخدم…",
+      "ownerPasswordPlaceholder": "كلمة مرور المالك (اتركها فارغة لاستخدام كلمة مرور المستخدم)…"
     },
     "blankPage": {
       "title": "إدراج صفحة فارغة",
@@ -188,7 +207,11 @@
       "posEnd": "نهاية المستند",
       "customLabel": "الحجم (مم): العرض × الارتفاع",
       "cancel": "إلغاء",
-      "insert": "إدراج"
+      "insert": "إدراج",
+      "customOption": "مخصص…",
+      "matchOption": "مطابقة الصفحة الحالية",
+      "widthPlaceholder": "العرض",
+      "heightPlaceholder": "الارتفاع"
     },
     "code": {
       "title": "إضافة رمز QR / باركود",
@@ -209,7 +232,17 @@
       "place": "وضع على PDF ←",
       "update": "تحديث",
       "errorCorrection": "مستوى تصحيح الخطأ",
-      "showText": "إظهار النص"
+      "showText": "إظهار النص",
+      "contentPlaceholder": "https://example.com",
+      "previewAlt": "معاينة الرمز",
+      "group2D": "رموز ثنائية الأبعاد",
+      "group1D": "الباركود أحادي الأبعاد",
+      "ecH": "H – 30% (الأفضل مع الشعار)",
+      "dotStyleSquare": "مربع",
+      "dotStyleDots": "نقاط",
+      "dotStyleRounded": "مدور",
+      "dotStyleClassy": "أنيق",
+      "dotStyleExtraRounded": "مدور جداً"
     }
   },
   "toast": {
@@ -257,7 +290,8 @@
       "drawRedaction": "أداة التعتيم — اسحب للتعتيم. اضغط Esc للخروج.",
       "drawErase": "الممحاة — امسح للحذف. اضغط Esc للخروج.",
       "editText": "تحرير النص — انقر على أي كلمة لتراكبها وتعديلها. اضغط Esc للخروج.",
-      "addCode": "أداة الرمز — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء."
+      "addCode": "أداة الرمز — اسحب لتحديد الحجم والوضع. اضغط Esc للإلغاء.",
+      "fillBucket": "دلو التعبئة — انقر على شكل أو خط لتعبئته باللون. اضغط Esc للخروج."
     }
   },
   "thumbnail": {
@@ -294,6 +328,8 @@
     "legalNotice": "الإشعار القانوني",
     "termsOfUse": "شروط الاستخدام",
     "accessibility": "إمكانية الوصول",
-    "privacyBadge": "100% محلي — ملفاتك لا تغادر متصفحك أبدًا"
+    "privacyBadge": "100% محلي — ملفاتك لا تغادر متصفحك أبدًا",
+    "privacyChipTitle": "جميع المعالجة تتم محلياً في متصفحك — لا يتم رفع أي ملفات إلى أي خادم",
+    "legalAriaLabel": "الإشعار القانوني"
   }
 }

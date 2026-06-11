@@ -191,7 +191,7 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      const fillC = this.app.ui.fillColorInput.value;
+      const fillC = this.app.effectiveFillColor;
       shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, pageId, { ...opts, fillColor: fillC });
 
     } else if (this.app.mode === 'drawHighlight') {
@@ -217,7 +217,7 @@ export class DrawingHandler {
       const x = Math.min(...xs), y = Math.min(...ys);
       const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      const fillC = this.app.ui.fillColorInput.value;
+      const fillC = this.app.effectiveFillColor;
       shape = new ShapeElement('freehand', x, y, w, h, pageId,
         { ...opts, fillColor: fillC, points: [...this._drawPoints] });
 
@@ -296,7 +296,7 @@ export class DrawingHandler {
 
     const ns = 'http://www.w3.org/2000/svg';
 
-    const fillPreview = this.app.ui.fillColorInput.value;
+    const fillPreview = this.app.effectiveFillColor ?? 'none';
     if (this.app.mode === 'drawRect') {
       const el = document.createElementNS(ns, 'rect');
       el.setAttribute('x', String(Math.min(sx0, sxC)));
