@@ -2186,14 +2186,35 @@ export class PDFEditorApp {
     const target = [...this.elements]
       .reverse()
       .find(el => el.pageId === pageId && el.type === 'shape' &&
-        x >= el.x && x <= el.x + el.width &&
-        y >= el.y && y <= el.y + el.height);
+        this._hitTestShape(el as ShapeElement, x, y));
     if (!target) return;
     const newFill = this.ui.fillColorInput.value;
     const cmd = new FillColorCmd(this.elements, target.id, (target as ShapeElement).fillColor, newFill);
     this.historyManager.execute(cmd);
     this._autosave();
     this.renderElements();
+  }
+
+  private _hitTestShape(shape: ShapeElement, x: number, y: number): boolean {
+    if (shape.shapeType === 'freehand') {
+      const threshold = shape.strokeWidth / 2 + 4;
+      const pts = shape.points;
+      for (let i = 0; i < pts.length - 1; i++) {
+        if (this._ptSegDist(x, y, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) <= threshold)
+          return true;
+      }
+      return false;
+    }
+    return x >= shape.x && x <= shape.x + shape.width &&
+           y >= shape.y && y <= shape.y + shape.height;
+  }
+
+  private _ptSegDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+    const dx = bx - ax, dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
   }
 
 
