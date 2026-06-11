@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  HistoryManager, AddElementCmd, ClearAllCmd, TextEditCmd,
+  HistoryManager, AddElementCmd, ClearAllCmd, TextEditCmd, ReplaceSourcePdfBytesCmd,
 } from '../../src/core/historyManager';
+import type { SourcePdf } from '../../src/core/documentModel';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { TextElement } from '../../src/elements/textElement';
 import { PDFElement } from '../../src/elements/pdfElement';
 
@@ -67,6 +69,51 @@ describe('HistoryManager', () => {
     mgr.clear();
     expect(mgr.canUndo()).toBe(false);
     expect(mgr.canRedo()).toBe(false);
+  });
+});
+
+describe('ReplaceSourcePdfBytesCmd', () => {
+  function makeSrc(): { src: SourcePdf; oldDoc: PDFDocumentProxy; newDoc: PDFDocumentProxy } {
+    const oldDoc = { numPages: 1 } as PDFDocumentProxy;
+    const newDoc = { numPages: 1 } as PDFDocumentProxy;
+    const src: SourcePdf = {
+      id: 's1', doc: oldDoc, bytes: new Uint8Array([1, 2]), name: 'a.pdf', pageCount: 1,
+    };
+    return { src, oldDoc, newDoc };
+  }
+
+  it('execute swaps bytes+doc and fires onUpdate; undo restores both', () => {
+    const { src, oldDoc, newDoc } = makeSrc();
+    const oldBytes = src.bytes;
+    const newBytes = new Uint8Array([9, 9, 9]);
+    const onUpdate = vi.fn();
+    const cmd = new ReplaceSourcePdfBytesCmd(
+      src, { bytes: oldBytes, doc: oldDoc }, { bytes: newBytes, doc: newDoc }, onUpdate
+    );
+
+    cmd.execute();
+    expect(src.bytes).toBe(newBytes);
+    expect(src.doc).toBe(newDoc);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+
+    cmd.undo();
+    expect(src.bytes).toBe(oldBytes);
+    expect(src.doc).toBe(oldDoc);
+    expect(onUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('round-trips through HistoryManager undo/redo', () => {
+    const { src, oldDoc, newDoc } = makeSrc();
+    const newBytes = new Uint8Array([7]);
+    const { mgr } = makeMgr();
+    mgr.execute(new ReplaceSourcePdfBytesCmd(
+      src, { bytes: src.bytes, doc: oldDoc }, { bytes: newBytes, doc: newDoc }, () => {}
+    ));
+    expect(src.doc).toBe(newDoc);
+    mgr.undo();
+    expect(src.doc).toBe(oldDoc);
+    mgr.redo();
+    expect(src.doc).toBe(newDoc);
   });
 });
 

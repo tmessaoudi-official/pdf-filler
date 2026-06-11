@@ -96,6 +96,8 @@ export interface UIRefs {
   donePill: HTMLButtonElement;
   eraserBtn: HTMLButtonElement;
   previewExportBtn:     HTMLButtonElement;
+  exportDocxBtn:        HTMLButtonElement;
+  exportMdBtn:          HTMLButtonElement;
   exportPreviewOverlay: HTMLElement;
   exportPreviewGhost:   HTMLElement;
   exportPreviewConfirm: HTMLButtonElement;
@@ -231,6 +233,8 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
       donePill:         document.getElementById('donePill')         as HTMLButtonElement,
       eraserBtn:        document.getElementById('eraserBtn')        as HTMLButtonElement,
       previewExportBtn:     document.getElementById('previewExportBtn')     as HTMLButtonElement,
+      exportDocxBtn:        document.getElementById('exportDocxBtn')        as HTMLButtonElement,
+      exportMdBtn:          document.getElementById('exportMdBtn')          as HTMLButtonElement,
       exportPreviewOverlay: document.getElementById('exportPreviewOverlay') as HTMLElement,
       exportPreviewGhost:   document.getElementById('exportPreviewGhost')   as HTMLElement,
       exportPreviewConfirm: document.getElementById('exportPreviewConfirm') as HTMLButtonElement,
@@ -303,6 +307,8 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
     r.redactBtn.disabled      = false;
     r.eraserBtn.disabled      = false;
     r.previewExportBtn.disabled = false;
+    r.exportDocxBtn.disabled  = false;
+    r.exportMdBtn.disabled    = false;
     r.editTextBtn.disabled    = false;
     const eyedropper = document.getElementById('redactEyedropperBtn') as HTMLButtonElement | null;
     if (eyedropper) eyedropper.disabled = false;

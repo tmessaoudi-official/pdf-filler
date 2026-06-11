@@ -35,6 +35,8 @@
     "selectTitle": "Select / pointer mode (Esc)",
     "previewExportTitle": "Preview export positions",
     "watermarkTitle": "Watermark settings",
+    "exportDocxTitle": "Export as Word document (beta)",
+    "exportMdTitle": "Export as Markdown (beta)",
     "helpTitle": "Keyboard shortcuts (?)",
     "editTextLabel": "Edit Text",
     "editTextTitle": "Edit PDF text — click a word to overlay and edit it",
@@ -248,6 +250,12 @@
     "watermarkEnabled": "Watermark enabled",
     "watermarkDisabled": "Watermark disabled",
     "highlightAdded": "Highlight added — Ctrl+Z to undo",
+    "trueTextEdited": "Text edited in the PDF — Ctrl+Z to undo",
+    "trueTextDeleted": "Text deleted from the PDF — Ctrl+Z to undo",
+    "docxExported": "Word document exported — text content only (beta)",
+    "mdExported": "Markdown exported — text content only (beta)",
+    "exportNoText": "No extractable text found — scanned PDFs need OCR, which is not supported yet",
+    "exportFailed": "Export failed",
     "selectImageFile": "Please select an image file (PNG, JPEG, GIF, or WebP)",
     "clickToPlaceImage": "Drag on the PDF to place the image",
     "fileLoadFailed": "Failed to load \"{{name}}\" — skipping",
@@ -305,7 +313,8 @@
   },
   "canvas": {
     "emptyState": "Upload a PDF to get started",
-    "ariaLabel": "PDF document viewer"
+    "ariaLabel": "PDF document viewer",
+    "trueEditInput": "Edit PDF text in place"
   },
   "comment": {
     "placeholder": "Add a note…"

@@ -42,6 +42,8 @@
     "selectTitle": "وضع التحديد / المؤشر (Esc)",
     "previewExportTitle": "معاينة مواضع التصدير",
     "watermarkTitle": "إعدادات العلامة المائية",
+    "exportDocxTitle": "تصدير كمستند Word (تجريبي)",
+    "exportMdTitle": "تصدير كـ Markdown (تجريبي)",
     "helpTitle": "اختصارات لوحة المفاتيح (?)",
     "langTitle": "تغيير اللغة",
     "textChevronTitle": "أدوات النص",
@@ -249,6 +251,12 @@
     "watermarkEnabled": "تم تفعيل العلامة المائية",
     "watermarkDisabled": "تم إلغاء العلامة المائية",
     "highlightAdded": "تم إضافة التظليل — Ctrl+Z للتراجع",
+    "trueTextEdited": "تم تعديل النص في ملف PDF — Ctrl+Z للتراجع",
+    "trueTextDeleted": "تم حذف النص من ملف PDF — Ctrl+Z للتراجع",
+    "docxExported": "تم تصدير مستند Word — المحتوى النصي فقط (تجريبي)",
+    "mdExported": "تم تصدير Markdown — المحتوى النصي فقط (تجريبي)",
+    "exportNoText": "لا يوجد نص قابل للاستخراج — ملفات PDF الممسوحة ضوئيًا تتطلب OCR وهو غير مدعوم بعد",
+    "exportFailed": "فشل التصدير",
     "selectImageFile": "يرجى اختيار ملف صورة (PNG أو JPEG أو GIF أو WebP)",
     "clickToPlaceImage": "اسحب على PDF لوضع الصورة",
     "fileLoadFailed": "فشل تحميل «{{name}}» — تخطي",
@@ -306,7 +314,8 @@
   },
   "canvas": {
     "emptyState": "ارفع ملف PDF للبدء",
-    "ariaLabel": "عارض مستندات PDF"
+    "ariaLabel": "عارض مستندات PDF",
+    "trueEditInput": "تعديل نص PDF مباشرة"
   },
   "comment": {
     "placeholder": "أضف ملاحظة…"

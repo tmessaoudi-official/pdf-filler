@@ -1,0 +1,264 @@
+/**
+ * FlowDoc — intermediate flow-document model reconstructed from positioned
+ * PDF text runs (pdf.js getTextContent items).
+ *
+ * PDF is fixed-layout: glyphs painted at coordinates, no paragraph/heading/
+ * reading-order semantics (unless the PDF is tagged — ~15% of real PDFs).
+ * This module infers flow structure heuristically, using the tolerance
+ * recipes established by pdfminer.six and pdf2docx (MIT since v0.5.13):
+ * all thresholds are relative to font size, never absolute points.
+ *
+ * The FlowDoc model is the single source for every flow-format writer
+ * (DOCX / Markdown / TXT — see flowDocWriters.ts).
+ */
+
+/** Shape of a pdf.js TextItem (subset we consume). */
+export interface RawTextItem {
+  str: string;
+  dir: string; // 'ltr' | 'rtl' | 'ttb'
+  transform: number[]; // [a, b, c, d, e, f] — e,f = baseline origin, y-up
+  width: number;
+  height: number;
+  fontName: string; // pdf.js internal font id (e.g. 'g_d0_f1')
+  hasEOL: boolean;
+}
+
+/** Resolved font info per pdf.js internal font id. */
+export interface FontInfo {
+  /** Real (PostScript) font name, e.g. 'Arial-BoldMT' — used for bold/italic sniffing. */
+  name: string;
+  /** CSS fallback family from pdf.js styles ('serif' | 'sans-serif' | 'monospace'). */
+  family?: string;
+}
+export type FontInfoMap = Record<string, FontInfo>;
+
+export interface FlowRun {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  fontSize: number;
+  fontFamily: 'serif' | 'sans-serif' | 'monospace';
+  rtl: boolean;
+}
+
+export interface FlowParagraph {
+  runs: FlowRun[];
+  /** 0 = body, 1–3 = heading level (assigned document-wide by assignHeadings). */
+  heading: 0 | 1 | 2 | 3;
+  alignment: 'left' | 'center' | 'right';
+  rtl: boolean;
+}
+
+export interface FlowPage {
+  width: number;
+  height: number;
+  paragraphs: FlowParagraph[];
+}
+
+export interface FlowDoc {
+  pages: FlowPage[];
+}
+
+// ── Internal working shapes ─────────────────────────────────────────────
+
+interface Word {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  size: number;
+  fontName: string;
+  rtl: boolean;
+}
+
+interface Line {
+  words: Word[];
+  y: number;
+  size: number; // dominant font size on the line
+  x0: number;
+  x1: number;
+}
+
+// Same line when baselines are within half the font size (pdfminer.six recipe).
+const LINE_Y_TOL = 0.5;
+// Insert a space when the horizontal gap exceeds this fraction of the font size.
+const SPACE_GAP = 0.15;
+// New paragraph when the baseline gap exceeds this multiple of the font size
+// (normal leading is ~1.15–1.35× the size).
+const PARA_GAP = 1.6;
+// A heading size must exceed the body size by this ratio.
+const HEADING_RATIO = 1.15;
+
+function isBoldName(name: string): boolean {
+  return /(bold|black|heavy|semibold|demibold)/i.test(name);
+}
+function isItalicName(name: string): boolean {
+  return /(italic|oblique)/i.test(name);
+}
+function familyOf(info: FontInfo | undefined): FlowRun['fontFamily'] {
+  const f = info?.family ?? '';
+  if (f.includes('serif') && !f.includes('sans')) return 'serif';
+  if (f.includes('mono')) return 'monospace';
+  return 'sans-serif';
+}
+
+/**
+ * Reconstruct the flow structure of one page from its positioned text items.
+ * Pure function — fully unit-testable without pdf.js.
+ */
+export function reconstructPage(
+  items: RawTextItem[],
+  fonts: FontInfoMap,
+  pageWidth: number,
+  pageHeight: number
+): FlowPage {
+  const words: Word[] = [];
+  for (const it of items) {
+    if (!it.str || !it.str.trim()) continue;
+    const size = Math.hypot(it.transform[0], it.transform[1]) || Math.abs(it.height) || 12;
+    words.push({
+      text: it.str,
+      x: it.transform[4],
+      y: it.transform[5],
+      width: Math.abs(it.width),
+      size,
+      fontName: it.fontName,
+      rtl: it.dir === 'rtl',
+    });
+  }
+
+  // 1. Group words into lines by baseline clustering (top of page first: y descending).
+  words.sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines: Line[] = [];
+  for (const w of words) {
+    const line = lines[lines.length - 1];
+    if (line && Math.abs(line.y - w.y) <= LINE_Y_TOL * Math.min(line.size, w.size)) {
+      line.words.push(w);
+    } else {
+      lines.push({ words: [w], y: w.y, size: w.size, x0: w.x, x1: w.x + w.width });
+    }
+  }
+  for (const line of lines) {
+    line.words.sort((a, b) => a.x - b.x);
+    line.x0 = Math.min(...line.words.map(w => w.x));
+    line.x1 = Math.max(...line.words.map(w => w.x + w.width));
+    // Dominant size = size of the longest word run on the line.
+    line.size = line.words.reduce((m, w) => (w.text.length > m.text.length ? w : m), line.words[0]).size;
+  }
+
+  // 2. Group lines into paragraphs on baseline-gap or font-size jumps.
+  const paraLines: Line[][] = [];
+  for (const line of lines) {
+    const current = paraLines[paraLines.length - 1];
+    const prev = current?.[current.length - 1];
+    const sameSizeBand = prev ? Math.abs(prev.size - line.size) < 1 : false;
+    const closeEnough = prev ? prev.y - line.y <= PARA_GAP * Math.max(prev.size, line.size) : false;
+    if (prev && sameSizeBand && closeEnough) {
+      current.push(line);
+    } else {
+      paraLines.push([line]);
+    }
+  }
+
+  // 3. Build paragraphs: merge same-style words into runs, infer alignment and bidi.
+  const paragraphs: FlowParagraph[] = paraLines.map(group => {
+    const runs: FlowRun[] = [];
+    for (let li = 0; li < group.length; li++) {
+      const line = group[li];
+      let prevWord: Word | null = null;
+      for (const w of line.words) {
+        const info = fonts[w.fontName];
+        const style: Omit<FlowRun, 'text'> = {
+          bold: isBoldName(info?.name ?? w.fontName),
+          italic: isItalicName(info?.name ?? w.fontName),
+          fontSize: Math.round(w.size * 2) / 2,
+          fontFamily: familyOf(info),
+          rtl: w.rtl,
+        };
+        let text = w.text;
+        if (prevWord) {
+          const gap = w.x - (prevWord.x + prevWord.width);
+          const needsSpace =
+            gap > SPACE_GAP * Math.min(prevWord.size, w.size) &&
+            !/\s$/.test(prevWord.text) &&
+            !/^\s/.test(w.text);
+          if (needsSpace) text = ' ' + text;
+        }
+        const last = runs[runs.length - 1];
+        if (
+          last &&
+          last.bold === style.bold &&
+          last.italic === style.italic &&
+          last.fontFamily === style.fontFamily &&
+          last.rtl === style.rtl &&
+          Math.abs(last.fontSize - style.fontSize) < 0.6
+        ) {
+          last.text += text;
+        } else {
+          runs.push({ text, ...style });
+        }
+        prevWord = w;
+      }
+      // Soft line break inside a paragraph → single space in flow output.
+      if (li < group.length - 1) {
+        const last = runs[runs.length - 1];
+        if (last && !/\s$/.test(last.text)) last.text += ' ';
+      }
+    }
+
+    // Alignment: centered when every line's center sits on the page center
+    // and the paragraph doesn't start at the left margin.
+    const pageCenter = pageWidth / 2;
+    const centerTol = pageWidth * 0.05;
+    const isCentered =
+      group.every(l => Math.abs((l.x0 + l.x1) / 2 - pageCenter) < centerTol) &&
+      group.every(l => l.x0 > pageWidth * 0.15);
+    const isRight =
+      !isCentered &&
+      group.every(l => l.x0 > pageWidth * 0.5) &&
+      group.every(l => Math.abs(l.x1 - group[0].x1) < pageWidth * 0.02);
+
+    const rtlChars = runs.reduce((n, r) => n + (r.rtl ? r.text.length : 0), 0);
+    const totalChars = runs.reduce((n, r) => n + r.text.length, 0);
+
+    return {
+      runs,
+      heading: 0 as const,
+      alignment: isCentered ? ('center' as const) : isRight ? ('right' as const) : ('left' as const),
+      rtl: totalChars > 0 && rtlChars / totalChars > 0.5,
+    };
+  });
+
+  return { width: pageWidth, height: pageHeight, paragraphs };
+}
+
+/**
+ * Document-wide heading inference (pymupdf4llm recipe): the modal font size
+ * weighted by text length is the body; distinct larger sizes rank to H1–H3.
+ * Mutates the FlowDoc in place.
+ */
+export function assignHeadings(doc: FlowDoc): void {
+  const weight = new Map<number, number>();
+  for (const page of doc.pages) {
+    for (const p of page.paragraphs) {
+      for (const r of p.runs) {
+        weight.set(r.fontSize, (weight.get(r.fontSize) ?? 0) + r.text.length);
+      }
+    }
+  }
+  if (weight.size === 0) return;
+  const bodySize = [...weight.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const headingSizes = [...weight.keys()]
+    .filter(s => s >= bodySize * HEADING_RATIO)
+    .sort((a, b) => b - a)
+    .slice(0, 3);
+
+  for (const page of doc.pages) {
+    for (const p of page.paragraphs) {
+      const sizes = p.runs.map(r => r.fontSize);
+      const domSize = sizes.length ? Math.max(...sizes) : bodySize;
+      const rank = headingSizes.indexOf(domSize);
+      p.heading = rank === -1 ? 0 : ((rank + 1) as 1 | 2 | 3);
+    }
+  }
+}

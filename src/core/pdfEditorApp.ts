@@ -21,18 +21,22 @@ import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
   MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd, InkFillColorCmd,
+  ReplaceSourcePdfBytesCmd,
 } from './historyManager';
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
 import { InkLayerHandler } from '../handlers/inkLayerHandler';
 import { DocumentModel, PAGE_SIZES } from './documentModel';
-import type { WatermarkSettings } from './documentModel';
+import type { SourcePdf, WatermarkSettings } from './documentModel';
 import { PageThumbnailPanel } from './pageThumbnailPanel';
 import { saveState, loadState, clearState } from './storage';
 import { FormFieldOverlay } from '../utils/formFieldOverlay';
 import { TextLayerManager } from '../utils/textLayer';
 import { CommentElement } from '../elements/commentElement';
 import { t } from '../utils/i18n';
+import { reconstructPage, assignHeadings } from '../utils/flowDoc';
+import type { FlowDoc, FontInfoMap, RawTextItem } from '../utils/flowDoc';
+import { flowDocToDocxBlob, flowDocToMarkdown } from '../utils/flowDocWriters';
 import { trapFocus } from '../utils/focusTrap';
 import { TextEditHandler } from '../handlers/textEditHandler';
 import { CodeElement } from '../elements/codeElement';
@@ -195,6 +199,8 @@ export class PDFEditorApp {
       if (this._exportPreviewOpen) this._hideExportPreview();
       else if (this.documentModel.currentPage) this._showExportPreview();
     });
+    this.ui.exportDocxBtn.addEventListener('click', () => void this.exportAsDocx());
+    this.ui.exportMdBtn.addEventListener('click', () => void this.exportAsMarkdown());
     this.ui.exportPreviewClose.addEventListener('click', () => this._hideExportPreview());
     this.ui.exportPreviewConfirm.addEventListener('click', () => {
       this._hideExportPreview();
@@ -1474,6 +1480,25 @@ export class PDFEditorApp {
       this._updateFormattingToolbar();
       this._autosave();
     }
+  }
+
+  // ── True text edit: swap a source PDF's bytes after content-stream surgery ──
+  // Called by TextEditHandler. Loads the edited bytes into a fresh pdfjs doc,
+  // commits an undoable command, then re-renders page + thumbnail.
+  async _applySourcePdfEdit(src: SourcePdf, newBytes: Uint8Array, pageId: string): Promise<void> {
+    // pdf.js transfers the ArrayBuffer — give it a copy, keep newBytes intact
+    const newDoc = await pdfjsLib.getDocument({ data: newBytes.slice(0) }).promise;
+    const before = { bytes: src.bytes, doc: src.doc };
+    const after = { bytes: newBytes, doc: newDoc };
+    const onUpdate = () => {
+      this._thumbnailPanel?.invalidateThumb(pageId);
+      void this._thumbnailPanel?.render();
+      this._autosave();
+    };
+    this.historyManager.execute(new ReplaceSourcePdfBytesCmd(src, before, after, onUpdate));
+    // Initial render (undo/redo paths re-render the page via their own wrappers)
+    await this._renderCurrentPage();
+    this.renderElements();
   }
 
   // ── Autosave (IndexedDB) ──────────────────────────────────────
@@ -3060,6 +3085,84 @@ export class PDFEditorApp {
       console.error('[downloadPageAsImage]', err);
     } finally {
       this.ui.container.style.opacity = '1';
+    }
+  }
+
+  /**
+   * Reconstruct a flow-document model (paragraphs/headings/styles/RTL) from the
+   * source PDFs' text layers. Blank pages and pages whose source is missing are
+   * skipped — only real PDF text is exported (overlay annotations are not).
+   */
+  async _extractFlowDoc(): Promise<FlowDoc> {
+    const flowDoc: FlowDoc = { pages: [] };
+    for (const docPage of this.documentModel.pages) {
+      const src = this.documentModel.sourcePdfs.get(docPage.sourcePdfId);
+      if (!src || !docPage.sourcePageNum) continue;
+      const page = await src.doc.getPage(docPage.sourcePageNum);
+      const content = await page.getTextContent();
+      const items = content.items as RawTextItem[];
+      const styles = content.styles as Record<string, { fontFamily?: string }>;
+      const fonts: FontInfoMap = {};
+      for (const it of items) {
+        if (fonts[it.fontName]) continue;
+        let realName = it.fontName;
+        try {
+          const f = page.commonObjs.get(it.fontName) as { name?: string } | null;
+          if (f?.name) realName = f.name;
+        } catch {
+          // Font object not resolved yet — fall back to the internal id.
+        }
+        fonts[it.fontName] = { name: realName, family: styles[it.fontName]?.fontFamily };
+      }
+      const vp = page.getViewport({ scale: 1 });
+      flowDoc.pages.push(reconstructPage(items, fonts, vp.width, vp.height));
+    }
+    assignHeadings(flowDoc);
+    return flowDoc;
+  }
+
+  private _downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private _exportBaseName(): string {
+    return (this.currentFilename || 'document').replace(/\.pdf$/i, '');
+  }
+
+  async exportAsDocx(): Promise<void> {
+    try {
+      const flowDoc = await this._extractFlowDoc();
+      if (!flowDoc.pages.some(p => p.paragraphs.length > 0)) {
+        this.showToast(t('toast.exportNoText'));
+        return;
+      }
+      const blob = await flowDocToDocxBlob(flowDoc);
+      this._downloadBlob(blob, this._exportBaseName() + '.docx');
+      this.showToast(t('toast.docxExported'));
+    } catch (err) {
+      this.showToast(t('toast.exportFailed') + ' — ' + (err instanceof Error ? err.message.slice(0, 80) : String(err)));
+      console.error('[exportAsDocx]', err);
+    }
+  }
+
+  async exportAsMarkdown(): Promise<void> {
+    try {
+      const flowDoc = await this._extractFlowDoc();
+      const md = flowDocToMarkdown(flowDoc);
+      if (!md.trim()) {
+        this.showToast(t('toast.exportNoText'));
+        return;
+      }
+      this._downloadBlob(new Blob([md], { type: 'text/markdown' }), this._exportBaseName() + '.md');
+      this.showToast(t('toast.mdExported'));
+    } catch (err) {
+      this.showToast(t('toast.exportFailed') + ' — ' + (err instanceof Error ? err.message.slice(0, 80) : String(err)));
+      console.error('[exportAsMarkdown]', err);
     }
   }
 

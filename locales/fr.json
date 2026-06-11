@@ -35,6 +35,8 @@
     "selectTitle": "Mode sélection / pointeur (Échap)",
     "previewExportTitle": "Aperçu des positions d'export",
     "watermarkTitle": "Paramètres du filigrane",
+    "exportDocxTitle": "Exporter en document Word (bêta)",
+    "exportMdTitle": "Exporter en Markdown (bêta)",
     "helpTitle": "Raccourcis clavier (?)",
     "editTextLabel": "Éditer texte",
     "editTextTitle": "Éditer le texte PDF — cliquez sur un mot pour le superposer et l'éditer",
@@ -248,6 +250,12 @@
     "watermarkEnabled": "Filigrane activé",
     "watermarkDisabled": "Filigrane désactivé",
     "highlightAdded": "Surlignage ajouté — Ctrl+Z pour annuler",
+    "trueTextEdited": "Texte modifié dans le PDF — Ctrl+Z pour annuler",
+    "trueTextDeleted": "Texte supprimé du PDF — Ctrl+Z pour annuler",
+    "docxExported": "Document Word exporté — contenu texte uniquement (bêta)",
+    "mdExported": "Markdown exporté — contenu texte uniquement (bêta)",
+    "exportNoText": "Aucun texte extractible — les PDF scannés nécessitent une OCR, non prise en charge pour l'instant",
+    "exportFailed": "Échec de l'export",
     "selectImageFile": "Veuillez sélectionner un fichier image (PNG, JPEG, GIF ou WebP)",
     "clickToPlaceImage": "Faites glisser sur le PDF pour placer l'image",
     "fileLoadFailed": "Échec du chargement de « {{name}} » — ignoré",
@@ -305,7 +313,8 @@
   },
   "canvas": {
     "emptyState": "Téléchargez un PDF pour commencer",
-    "ariaLabel": "Visionneuse de document PDF"
+    "ariaLabel": "Visionneuse de document PDF",
+    "trueEditInput": "Modifier le texte du PDF directement"
   },
   "comment": {
     "placeholder": "Ajouter une note…"

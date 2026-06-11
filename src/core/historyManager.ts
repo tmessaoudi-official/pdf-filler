@@ -2,6 +2,7 @@ import { ElementFactory } from '../utils/elementFactory';
 import type { PDFElement } from '../elements/pdfElement';
 import type { DocumentModel, DocumentPage, SourcePdf } from './documentModel';
 import type { InkLayer, InkStroke } from './inkLayer';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 export interface Command {
   execute(): void;
@@ -193,6 +194,34 @@ export class AddPagesCmd implements Command {
 
   undo() {
     this.addedPages.forEach(p => this.model.deletePage(p.id));
+    this.onUpdate();
+  }
+}
+
+export interface SourcePdfSnapshot {
+  bytes: Uint8Array;
+  doc: PDFDocumentProxy;
+}
+
+// Swap a source PDF's bytes + pdfjs doc (true text edit); undo restores the originals.
+// Both pdfjs documents stay alive while the command sits on the history stack.
+export class ReplaceSourcePdfBytesCmd implements Command {
+  constructor(
+    private src: SourcePdf,
+    private before: SourcePdfSnapshot,
+    private after: SourcePdfSnapshot,
+    private onUpdate: () => void,
+  ) {}
+
+  execute() {
+    this.src.bytes = this.after.bytes;
+    this.src.doc = this.after.doc;
+    this.onUpdate();
+  }
+
+  undo() {
+    this.src.bytes = this.before.bytes;
+    this.src.doc = this.before.doc;
     this.onUpdate();
   }
 }

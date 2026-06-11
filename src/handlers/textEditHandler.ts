@@ -1,9 +1,18 @@
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { RedactionElement } from '../elements/redactionElement';
 import { TextElement } from '../elements/textElement';
 import { AddElementCmd, MacroCmd } from '../core/historyManager';
+import { findTextOpAt, deleteTextAt, replaceTextAt } from '../utils/contentStreamEditor';
+import { t } from '../utils/i18n';
 import type { PDFEditorApp } from '../core/pdfEditorApp';
+import type { SourcePdf } from '../core/documentModel';
+
+/** Max distance (PDF pts) between a pdf.js item origin and a content-stream show op. */
+const TRUE_EDIT_TOLERANCE = 3;
 
 export class TextEditHandler {
+  private _activeEditor: HTMLInputElement | null = null;
+
   async handleCanvasClick(e: MouseEvent, app: PDFEditorApp): Promise<void> {
     const docPage = app.documentModel.currentPage;
     if (!docPage) return;
@@ -48,6 +57,35 @@ export class TextEditHandler {
     }
 
     if (!best) return;
+
+    // ── True edit first: content-stream surgery on the source PDF ──
+    // The pdf.js item origin (transform[4,5]) is matched against the show ops
+    // located in the content stream; on a match the text is genuinely edited
+    // in the PDF. Otherwise we fall through to the overlay approach below.
+    try {
+      const libDoc = await PDFDocument.load(src.bytes.slice(0));
+      const origin = { x: best.transform[4], y: best.transform[5] };
+      const target = await findTextOpAt(
+        libDoc, docPage.sourcePageNum - 1, origin, TRUE_EDIT_TOLERANCE
+      );
+      if (target) {
+        this._openTrueEditInput(e, app, {
+          libDoc,
+          src,
+          pageId: docPage.id,
+          pageIndex: docPage.sourcePageNum - 1,
+          origin,
+          originalText: best.str,
+          fontSize: Math.hypot(best.transform[0], best.transform[1]) || target.fontSize || 12,
+          itemHeight: Math.max(Math.abs(best.height), 10),
+          pageH,
+          rotated: (page.rotate + userRot) % 360 !== 0,
+        });
+        return;
+      }
+    } catch {
+      // Encrypted or unparseable source PDF — overlay fallback below.
+    }
 
     const tx = best.transform[4];
     const ty = best.transform[5];
@@ -163,5 +201,90 @@ export class TextEditHandler {
       `[data-id='${textEl.id}'] input, [data-id='${textEl.id}'] textarea`
     ) as HTMLElement | null;
     freshInput?.focus();
+  }
+
+  /**
+   * Floating inline editor for a true content-stream edit.
+   * Enter / blur applies; emptying the text deletes it; Escape cancels.
+   */
+  private _openTrueEditInput(
+    e: MouseEvent,
+    app: PDFEditorApp,
+    opts: {
+      libDoc: PDFDocument;
+      src: SourcePdf;
+      pageId: string;
+      pageIndex: number;
+      origin: { x: number; y: number };
+      originalText: string;
+      fontSize: number;
+      itemHeight: number;
+      pageH: number;
+      rotated: boolean;
+    }
+  ): void {
+    this._activeEditor?.remove();
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'true-edit-input';
+    input.value = opts.originalText;
+    input.setAttribute('aria-label', t('canvas.trueEditInput'));
+    input.spellcheck = false;
+
+    const zoom = app.zoomScale;
+    const fontPx = Math.max(10, Math.round(opts.fontSize * zoom));
+    input.style.font = `${fontPx}px Helvetica, Arial, sans-serif`;
+    input.style.minWidth = `${Math.max(160, Math.round(opts.originalText.length * fontPx * 0.6))}px`;
+
+    // Position over the clicked text (unrotated pages) or at the pointer (rotated)
+    const rect = app.ui.canvas.getBoundingClientRect();
+    if (!opts.rotated) {
+      input.style.left = `${rect.left + opts.origin.x * zoom}px`;
+      input.style.top = `${rect.top + (opts.pageH - opts.origin.y - opts.itemHeight) * zoom - 4}px`;
+    } else {
+      input.style.left = `${e.clientX}px`;
+      input.style.top = `${e.clientY - fontPx}px`;
+    }
+
+    let done = false;
+    const close = () => {
+      done = true;
+      input.remove();
+      if (this._activeEditor === input) this._activeEditor = null;
+    };
+
+    const commit = async () => {
+      if (done) return;
+      const newText = input.value;
+      close();
+      if (newText === opts.originalText) return;
+
+      const isDelete = newText.trim() === '';
+      const ok = isDelete
+        ? await deleteTextAt(opts.libDoc, opts.pageIndex, opts.origin, TRUE_EDIT_TOLERANCE)
+        : await replaceTextAt(opts.libDoc, opts.pageIndex, opts.origin, newText, TRUE_EDIT_TOLERANCE);
+      if (!ok) return;
+
+      const newBytes = await opts.libDoc.save();
+      await app._applySourcePdfEdit(opts.src, newBytes, opts.pageId);
+      app.showToast(t(isDelete ? 'toast.trueTextDeleted' : 'toast.trueTextEdited'));
+    };
+
+    input.addEventListener('keydown', ev => {
+      ev.stopPropagation(); // keep app-level shortcuts (Delete, Ctrl+Z…) out while typing
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        void commit();
+      } else if (ev.key === 'Escape') {
+        close();
+      }
+    });
+    input.addEventListener('blur', () => void commit());
+
+    document.body.appendChild(input);
+    this._activeEditor = input;
+    input.focus();
+    input.select();
   }
 }
