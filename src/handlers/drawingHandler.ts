@@ -191,7 +191,8 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, pageId, opts);
+      const fillC = this.app.ui.fillColorInput.value;
+      shape = new ShapeElement(st as 'rect' | 'ellipse', x, y, w, h, pageId, { ...opts, fillColor: fillC });
 
     } else if (this.app.mode === 'drawHighlight') {
       const x = Math.min(start.x, endX);
@@ -294,13 +295,14 @@ export class DrawingHandler {
 
     const ns = 'http://www.w3.org/2000/svg';
 
+    const fillPreview = this.app.ui.fillColorInput.value;
     if (this.app.mode === 'drawRect') {
       const el = document.createElementNS(ns, 'rect');
       el.setAttribute('x', String(Math.min(sx0, sxC)));
       el.setAttribute('y', String(Math.min(sy0, syC)));
       el.setAttribute('width', String(Math.abs(sxC - sx0)));
       el.setAttribute('height', String(Math.abs(syC - sy0)));
-      el.setAttribute('fill', 'none');
+      el.setAttribute('fill', fillPreview);
       el.setAttribute('stroke', col);
       el.setAttribute('stroke-width', String(sw));
       this._previewSvg.appendChild(el);
@@ -311,7 +313,7 @@ export class DrawingHandler {
       el.setAttribute('cy', String((sy0 + syC) / 2));
       el.setAttribute('rx', String(Math.abs(sxC - sx0) / 2));
       el.setAttribute('ry', String(Math.abs(syC - sy0) / 2));
-      el.setAttribute('fill', 'none');
+      el.setAttribute('fill', fillPreview);
       el.setAttribute('stroke', col);
       el.setAttribute('stroke-width', String(sw));
       this._previewSvg.appendChild(el);
