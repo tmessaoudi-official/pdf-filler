@@ -51,6 +51,7 @@ export interface UIRefs {
   rectBtn: HTMLButtonElement;
   circleBtn: HTMLButtonElement;
   freehandBtn: HTMLButtonElement;
+  fillBucketBtn: HTMLButtonElement;
   redactColorInput: HTMLInputElement;
   shapeWidth: HTMLInputElement;
   fontSizeDownBtn: HTMLButtonElement;
@@ -184,6 +185,7 @@ export class UIController {
       rectBtn:          document.getElementById('rectBtn')          as HTMLButtonElement,
       circleBtn:        document.getElementById('circleBtn')        as HTMLButtonElement,
       freehandBtn:      document.getElementById('freehandBtn')      as HTMLButtonElement,
+fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonElement,
       redactColorInput: document.getElementById('redactColor')      as HTMLInputElement,
       shapeWidth:       document.getElementById('shapeWidth')       as HTMLInputElement,
       fontSizeDownBtn:  document.getElementById('fontSizeDownBtn')  as HTMLButtonElement,
@@ -289,6 +291,7 @@ export class UIController {
     r.rectBtn.disabled        = false;
     r.circleBtn.disabled      = false;
     r.freehandBtn.disabled    = false;
+    r.fillBucketBtn.disabled  = false;
     r.addImageBtn.disabled    = false;
     r.highlightBtn.disabled   = false;
     r.findBtn.disabled        = false;
@@ -346,6 +349,7 @@ export class UIController {
       [r.highlightBtn, 'drawHighlight'], [r.arrowBtn, 'drawArrow'], [r.rectBtn, 'drawRect'],
       [r.circleBtn, 'drawEllipse'], [r.freehandBtn, 'drawFreehand'], [r.commentBtn, 'addComment'],
       [r.redactBtn, 'drawRedaction'], [r.eraserBtn, 'drawErase'], [r.editTextBtn, 'editText'],
+      [r.fillBucketBtn, 'fillBucket'],
     ];
     toggles.forEach(([btn, m]) => btn.setAttribute('aria-pressed', String(mode === m)));
     r.textModeBtn.setAttribute('aria-pressed', String(mode === 'addText' || mode === 'editText'));
@@ -360,7 +364,7 @@ export class UIController {
     };
     r.modeBadge.textContent = t(badgeKeys[mode] ?? 'badge.select');
     r.modeBadge.classList.toggle('active', mode !== 'select');
-    r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
+    r.canvas.className = mode === 'select' ? 'cursor-default' : mode === 'fillBucket' ? 'cursor-bucket' : 'cursor-crosshair';
     r.donePill.style.display = (mode === 'drawFreehand' || mode === 'drawErase') ? '' : 'none';
 
     const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase' && mode !== 'drawHighlight';
@@ -406,8 +410,8 @@ export class UIController {
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
     r.shapeWidth.disabled = !shapeActive;
     const isFillableShape = isShape && ((el as ShapeElement).shapeType === 'rect' || (el as ShapeElement).shapeType === 'ellipse' || (el as ShapeElement).shapeType === 'freehand');
-    const isDrawingFillable = mode === 'drawRect' || mode === 'drawEllipse' || mode === 'drawFreehand';
-    // Show fill color when a fillable shape is selected OR when actively drawing a fillable shape
+    const isDrawingFillable = mode === 'drawRect' || mode === 'drawEllipse' || mode === 'drawFreehand' || mode === 'fillBucket';
+    // Show fill color when a fillable shape is selected OR when actively drawing a fillable shape OR in fill-bucket mode
     r.fillColorLabel.style.display = (isFillableShape || isDrawingFillable) ? 'inline-flex' : 'none';
     if (isShape) {
       r.colorInput.value = (el as ShapeElement).strokeColor;

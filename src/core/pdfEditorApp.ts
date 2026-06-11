@@ -20,7 +20,7 @@ import { EraserHandler } from '../handlers/eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
-  MacroCmd, TransformAnnotationsCmd, ClearInkCmd,
+  MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd,
 } from './historyManager';
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
@@ -39,7 +39,7 @@ import { CodeElement } from '../elements/codeElement';
 import { generateCodeDataUrl, getCodeFormat } from '../utils/codeGenerator';
 import type { QRStyleOptions, BwipOptions } from '../utils/codeGenerator';
 
-export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'addCode' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText';
+export type ToolMode = 'select' | 'addText' | 'addSignature' | 'addImage' | 'addCode' | 'drawArrow' | 'drawRect' | 'drawEllipse' | 'drawFreehand' | 'drawHighlight' | 'addComment' | 'drawRedaction' | 'drawErase' | 'editText' | 'fillBucket';
 
 export class PDFEditorApp {
   renderer: PDFRenderer;
@@ -343,6 +343,10 @@ export class PDFEditorApp {
         return;
       }
       this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
+    });
+    this.ui.fillBucketBtn.addEventListener('click', () => {
+      if (!this.documentModel.pageCount) return;
+      this.setMode(this.mode === 'fillBucket' ? 'select' : 'fillBucket');
     });
     this.ui.donePill.addEventListener('click', () => this.setMode('select'));
     this.ui.eraserBtn.addEventListener('click', () => {
@@ -1920,6 +1924,7 @@ export class PDFEditorApp {
     const pe = mode === 'select' ? 'auto' : 'none';
     this.ui.container.querySelectorAll<HTMLElement>('.pdf-element').forEach(el => { el.style.pointerEvents = pe; });
     this.uiController.updateModeButtons(mode);
+    this._updateFormattingToolbar();
     this._formFieldOverlay.setPointerEvents(mode === 'select');
     this._textLayerManager.setPointerEvents(mode === 'select');
     if (mode === 'addSignature') this.openSignatureModal();
@@ -2163,11 +2168,32 @@ export class PDFEditorApp {
     if (this._skipNextClick) { this._skipNextClick = false; return; }
     if (this._isShapeMode()) return;
     if (this.mode === 'addText' || (this.mode === 'addImage' && this._pendingImageSrc) || this.mode === 'addComment' || (this.mode === 'addSignature' && this.currentSignature) || this.mode === 'addCode') return;
-    if (this.mode === 'editText') {
+    if (this.mode === 'fillBucket') {
+      this._handleFillBucketClick(e);
+    } else if (this.mode === 'editText') {
       void this._textEditHandler.handleCanvasClick(e, this);
     } else {
       this.selectElement(null);
     }
+  }
+
+  private _handleFillBucketClick(e: MouseEvent): void {
+    const pageId = this.documentModel.currentPage?.id;
+    if (!pageId) return;
+    const rect = this.ui.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / this.zoomScale;
+    const y = (e.clientY - rect.top) / this.zoomScale;
+    const target = [...this.elements]
+      .reverse()
+      .find(el => el.pageId === pageId && el.type === 'shape' &&
+        x >= el.x && x <= el.x + el.width &&
+        y >= el.y && y <= el.y + el.height);
+    if (!target) return;
+    const newFill = this.ui.fillColorInput.value;
+    const cmd = new FillColorCmd(this.elements, target.id, (target as ShapeElement).fillColor, newFill);
+    this.historyManager.execute(cmd);
+    this._autosave();
+    this.renderElements();
   }
 
 
