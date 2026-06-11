@@ -60,31 +60,50 @@ export class TextEditHandler {
 
     const pageId = docPage.id;
 
-    // Sample background color at the 4 corners of the text bounding box and pick
-    // the lightest pixel (highest R+G+B sum). Sampling corners avoids hitting glyph
-    // pixels (dark) that occur when sampling at the click point inside a character.
+    // Sample background + foreground colors from the canvas in one pass.
+    // Background: lightest corner pixel. Foreground: darkest center pixel.
     let bgColor = '#ffffff';
+    let textColor = '#000000';
     const offscreen = document.createElement('canvas');
     offscreen.width = 1; offscreen.height = 1;
     const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
     if (offCtx) {
       const s = app.zoomScale;
       const INSET = 2;
+      // --- Background: sample 4 corners (lightest = background) ---
       const corners = [
         { x: Math.round(annX * s) + INSET,       y: Math.round(annY * s) + INSET },
         { x: Math.round((annX + w) * s) - INSET,  y: Math.round(annY * s) + INSET },
         { x: Math.round(annX * s) + INSET,       y: Math.round((annY + h) * s) - INSET },
         { x: Math.round((annX + w) * s) - INSET,  y: Math.round((annY + h) * s) - INSET },
       ];
-      let bestBrightness = -1;
+      let bgBrightness = -1;
       let bestRgb = { r: 255, g: 255, b: 255 };
       for (const pt of corners) {
         offCtx.drawImage(app.ui.canvas, pt.x, pt.y, 1, 1, 0, 0, 1, 1);
         const d = offCtx.getImageData(0, 0, 1, 1).data;
         const brightness = d[0] + d[1] + d[2];
-        if (brightness > bestBrightness) { bestBrightness = brightness; bestRgb = { r: d[0], g: d[1], b: d[2] }; }
+        if (brightness > bgBrightness) { bgBrightness = brightness; bestRgb = { r: d[0], g: d[1], b: d[2] }; }
       }
       bgColor = `#${bestRgb.r.toString(16).padStart(2, '0')}${bestRgb.g.toString(16).padStart(2, '0')}${bestRgb.b.toString(16).padStart(2, '0')}`;
+      // --- Foreground: sample center area (darkest = ink) ---
+      const cx = Math.round((annX + w / 2) * s);
+      const cy = Math.round((annY + h / 2) * s);
+      const SAMPLE_R = 2;
+      let darkestBrightness = 255 * 3 + 1;
+      let darkestRgb = { r: 0, g: 0, b: 0 };
+      for (let dx = -SAMPLE_R; dx <= SAMPLE_R; dx++) {
+        for (let dy = -SAMPLE_R; dy <= SAMPLE_R; dy++) {
+          offCtx.drawImage(app.ui.canvas, cx + dx, cy + dy, 1, 1, 0, 0, 1, 1);
+          const d = offCtx.getImageData(0, 0, 1, 1).data;
+          const brightness = d[0] + d[1] + d[2];
+          if (brightness < darkestBrightness) { darkestBrightness = brightness; darkestRgb = { r: d[0], g: d[1], b: d[2] }; }
+        }
+      }
+      // Only use sampled color if it differs meaningfully from the background
+      if (bgBrightness - darkestBrightness > 80) {
+        textColor = `#${darkestRgb.r.toString(16).padStart(2, '0')}${darkestRgb.g.toString(16).padStart(2, '0')}${darkestRgb.b.toString(16).padStart(2, '0')}`;
+      }
     }
 
     // Detect font family from pdfjs styles and embedded font name heuristics
@@ -124,7 +143,7 @@ export class TextEditHandler {
       width: w + 4,
       height: h + 4,
       fontSize,
-      color: '#000000',
+      color: textColor,
       fontFamily,
       bold,
       italic,

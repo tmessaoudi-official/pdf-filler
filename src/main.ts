@@ -32,6 +32,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.stopPropagation();
     const isOpen = langGlobeWrap?.classList.toggle('open');
     langGlobeBtn.setAttribute('aria-expanded', String(!!isOpen));
+    if (isOpen && langGlobeFlyout && langGlobeBtn) {
+      const rect = langGlobeBtn.getBoundingClientRect();
+      langGlobeFlyout.style.top  = (rect.bottom + 4) + 'px';
+      // Align flyout right edge to button right edge; clamp to viewport left
+      const flyoutW = langGlobeFlyout.offsetWidth || 140;
+      langGlobeFlyout.style.left = Math.max(4, rect.right - flyoutW) + 'px';
+    }
   });
   langGlobeFlyout?.addEventListener('click', () => {
     langGlobeWrap?.classList.remove('open');

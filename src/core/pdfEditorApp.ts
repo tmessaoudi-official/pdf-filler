@@ -95,6 +95,7 @@ export class PDFEditorApp {
   private _clipboard: ElementJSON | null = null;
   private _exportPreviewOpen = false;
   private _trapCleanup: (() => void) | null = null;
+  private _pendingModeAfterBlankPage: string | null = null;
   private _textEditHandler = new TextEditHandler();
   private _placementGhost: HTMLDivElement | null = null;
 
@@ -335,7 +336,12 @@ export class PDFEditorApp {
       this.setMode(this.mode === 'drawEllipse' ? 'select' : 'drawEllipse');
     });
     this.ui.freehandBtn.addEventListener('click', () => {
-      if (!this.documentModel.pageCount) return;
+      if (!this.documentModel.pageCount) {
+        // Auto-create blank A4 page then activate freehand
+        this._pendingModeAfterBlankPage = 'drawFreehand';
+        this._openBlankPageModal();
+        return;
+      }
       this.setMode(this.mode === 'drawFreehand' ? 'select' : 'drawFreehand');
     });
     this.ui.donePill.addEventListener('click', () => this.setMode('select'));
@@ -1613,6 +1619,8 @@ export class PDFEditorApp {
       if (s) { w = s.width; h = s.height; }
     }
 
+    const wasEmpty = this.documentModel.pageCount === 0;
+
     let atIndex: number;
     const total = this.documentModel.pageCount;
     switch (position) {
@@ -1623,12 +1631,35 @@ export class PDFEditorApp {
 
     const newPage = this.documentModel.addBlankPage(w, h, atIndex);
     this.documentModel.currentPageIndex = this.documentModel.pages.indexOf(newPage);
-    this._autosave();
-    void this._thumbnailPanel?.render();
-    this._thumbnailPanel?.updateActive();
-    this.updatePageInfo();
-    void this._renderCurrentPage().then(() => this.renderElements());
-    this.showToast(t('toast.blankPageInserted'));
+
+    if (wasEmpty) {
+      // First page ever — run the full first-document initialization
+      void (async () => {
+        (document.getElementById('emptyState') as HTMLElement).style.display = 'none';
+        this._isFitMode = true;
+        const fitScale = await this.renderer.computeFitScale(this.ui.container.clientWidth);
+        const isMobile = window.innerWidth <= 640;
+        await this.applyZoom(isMobile ? Math.max(fitScale, 0.65) : fitScale);
+        this.enableUI();
+        this._enableFileMenuDocItems();
+        this.ui.pageThumbnailContainer.style.display = '';
+        await this._thumbnailPanel!.render();
+        this.updatePageInfo();
+        this.renderElements();
+        this._autosave();
+        this.showToast(t('toast.blankPageInserted'));
+        const pendingMode = this._pendingModeAfterBlankPage;
+        this._pendingModeAfterBlankPage = null;
+        if (pendingMode) this.setMode(pendingMode as ToolMode);
+      })();
+    } else {
+      this._autosave();
+      void this._thumbnailPanel?.render();
+      this._thumbnailPanel?.updateActive();
+      this.updatePageInfo();
+      void this._renderCurrentPage().then(() => this.renderElements());
+      this.showToast(t('toast.blankPageInserted'));
+    }
   }
 
   clearAll() {

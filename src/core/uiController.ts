@@ -321,20 +321,13 @@ export class UIController {
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
     r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
     r.editTextBtn.classList.toggle('active',   mode === 'editText');
+    // drawBtn now covers only shape tools (freehand/erase are top-level standalone buttons)
     const drawIcons: Partial<Record<string, string>> = {
       drawArrow: '→', drawRect: '□', drawEllipse: '○',
-      drawFreehand: '✏', drawErase: '⌫', drawRedaction: '⬛',
     };
     const drawIcon = drawIcons[mode];
-    r.drawBtn.textContent = (drawIcon ?? '✏') + ' ▾';
+    r.drawBtn.textContent = (drawIcon ?? '◻') + ' ▾';
     r.drawBtn.classList.toggle('active', !!drawIcon);
-
-    const annotateIcons: Partial<Record<string, string>> = {
-      drawHighlight: '🖊', addComment: '💬',
-    };
-    const annotateIcon = annotateIcons[mode];
-    r.annotateBtn.textContent = (annotateIcon ?? '🖊') + ' ▾';
-    r.annotateBtn.classList.toggle('active', !!annotateIcon);
 
     const textFaces: Partial<Record<string, string>> = {
       addText: t('toolbar.addText'), editText: '✎ ' + t('toolbar.editTextLabel'),
@@ -368,7 +361,7 @@ export class UIController {
     r.modeBadge.textContent = t(badgeKeys[mode] ?? 'badge.select');
     r.modeBadge.classList.toggle('active', mode !== 'select');
     r.canvas.className = mode === 'select' ? 'cursor-default' : 'cursor-crosshair';
-    r.donePill.style.display = mode === 'drawFreehand' ? '' : 'none';
+    r.donePill.style.display = (mode === 'drawFreehand' || mode === 'drawErase') ? '' : 'none';
 
     const isShapeMode = mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawErase' && mode !== 'drawHighlight';
     r.shapeWidth.disabled = !isShapeMode;
@@ -413,15 +406,15 @@ export class UIController {
     const shapeActive = isShape || (mode.startsWith('draw') && mode !== 'drawRedaction' && mode !== 'drawHighlight' && mode !== 'drawErase');
     r.shapeWidth.disabled = !shapeActive;
     const isFillableShape = isShape && ((el as ShapeElement).shapeType === 'rect' || (el as ShapeElement).shapeType === 'ellipse');
-    r.fillColorLabel.style.display = isFillableShape ? 'inline-flex' : 'none';
+    const isDrawingFillable = mode === 'drawRect' || mode === 'drawEllipse';
+    // Show fill color when a fillable shape is selected OR when actively drawing a fillable shape
+    r.fillColorLabel.style.display = (isFillableShape || isDrawingFillable) ? 'inline-flex' : 'none';
     if (isShape) {
       r.colorInput.value = (el as ShapeElement).strokeColor;
       r.shapeWidth.value = String((el as ShapeElement).strokeWidth);
       if (isFillableShape) {
         r.fillColorInput.value = (el as ShapeElement).fillColor ?? '#ffffff';
       }
-    } else {
-      r.fillColorLabel.style.display = 'none';
     }
 
     // Sync unified color picker with redaction element color

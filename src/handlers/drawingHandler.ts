@@ -225,7 +225,7 @@ export class DrawingHandler {
       const w = Math.abs(endX - start.x);
       const h = Math.abs(endY - start.y);
       if (w < 5 && h < 5) { this._drawStart = null; this._drawPoints = []; return; }
-      const redEl = new RedactionElement(x, y, w, h, pageId, this.app.ui.redactColorInput.value);
+      const redEl = new RedactionElement(x, y, w, h, pageId, this.app.ui.colorInput.value);
       this._drawStart = null;
       this._drawPoints = [];
       this.app.historyManager.execute(new AddElementCmd(this.app.elements, redEl));
@@ -367,7 +367,7 @@ export class DrawingHandler {
       el.setAttribute('y', String(Math.min(sy0, syC)));
       el.setAttribute('width', String(Math.abs(sxC - sx0)));
       el.setAttribute('height', String(Math.abs(syC - sy0)));
-      el.setAttribute('fill', this.app.ui.redactColorInput.value);
+      el.setAttribute('fill', this.app.ui.colorInput.value);
       el.setAttribute('fill-opacity', '0.8');
       el.setAttribute('stroke', '#c00');
       el.setAttribute('stroke-width', '2');
