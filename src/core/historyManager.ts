@@ -352,6 +352,25 @@ export class InkStrokeCmd implements Command {
   undo():    void { this.layer.removeLastStroke(this.pageId); this.onUpdate(); }
 }
 
+export class InkColorCmd implements Command {
+  constructor(
+    private layer: InkLayer,
+    private pageId: string,
+    private strokeIndex: number,
+    private before: string,
+    private after: string,
+    private onUpdate: () => void,
+  ) {}
+  execute(): void {
+    const s = this.layer.getStrokes(this.pageId)[this.strokeIndex];
+    if (s) { s.color = this.after; this.onUpdate(); }
+  }
+  undo(): void {
+    const s = this.layer.getStrokes(this.pageId)[this.strokeIndex];
+    if (s) { s.color = this.before; this.onUpdate(); }
+  }
+}
+
 export class ClearInkCmd implements Command {
   private _saved: Record<string, InkStroke[]>;
   constructor(private layer: InkLayer, private onUpdate: () => void) {

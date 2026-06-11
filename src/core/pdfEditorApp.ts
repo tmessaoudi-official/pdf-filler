@@ -20,7 +20,7 @@ import { EraserHandler } from '../handlers/eraserHandler';
 import {
   HistoryManager, AddElementCmd, RemoveElementCmd, ClearAllCmd, TextEditCmd,
   MoveResizeCmd, DeletePageCmd, ReorderPagesCmd, AddPagesCmd, RotatePageCmd,
-  MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd,
+  MacroCmd, TransformAnnotationsCmd, ClearInkCmd, FillColorCmd, InkColorCmd,
 } from './historyManager';
 import type { Command, ElementTransformSnapshot } from './historyManager';
 import { InkLayer } from './inkLayer';
@@ -1503,7 +1503,7 @@ export class PDFEditorApp {
 
   private async _restoreSession(): Promise<void> {
     const state = await loadState();
-    if (!state?.sourcePdfs?.length) return;
+    if (!state?.pages?.length) return;
     if (this._isLoading) return;
     const shouldRestore = await this._askRestoreSession();
     if (!shouldRestore) { await clearState(); return; }
@@ -1538,7 +1538,7 @@ export class PDFEditorApp {
       ElementFactory.syncIdCounter(this.elements);
       this._formValues = state.formValues ?? {};
       if (state.inkData) this.inkLayer.fromJSON(state.inkData);
-      this.currentFilename = state.sourcePdfs[0]?.name ?? null;
+      this.currentFilename = state.sourcePdfs[0]?.name ?? this.currentFilename;
 
       // Compute initial scale
       this._isFitMode = true;
@@ -1647,7 +1647,22 @@ export class PDFEditorApp {
         this.enableUI();
         this._enableFileMenuDocItems();
         this.ui.pageThumbnailContainer.style.display = '';
-        await this._thumbnailPanel!.render();
+        if (!this._thumbnailPanel) {
+          this.ui.pageThumbnailContainer.innerHTML = '';
+          this._thumbnailPanel = new PageThumbnailPanel({
+            container: this.ui.pageThumbnailContainer,
+            renderer: this.renderer,
+            model: this.documentModel,
+            onNavigate: (index) => this._goToPageIndex(index),
+            onDelete: (pageId) => this._deletePage(pageId),
+            onReorder: (newOrder) => this._reorderPages(newOrder),
+            onRotate: (pageId, delta) => this._rotatePage(pageId, delta),
+            onAddPdf: () => this.ui.addPdfInput.click(),
+            onDownload: (index) => this.downloadPage(index),
+            onDownloadImage: (index) => this.downloadPageAsImage(index),
+          });
+        }
+        await this._thumbnailPanel.render();
         this.updatePageInfo();
         this.renderElements();
         this._autosave();
@@ -2183,16 +2198,38 @@ export class PDFEditorApp {
     const rect = this.ui.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) / this.zoomScale;
     const y = (e.clientY - rect.top) / this.zoomScale;
-    const target = [...this.elements]
+    const newColor = this.ui.fillColorInput.value;
+
+    // Check SVG shape elements first (rect/ellipse/arrow)
+    const shapeTarget = [...this.elements]
       .reverse()
       .find(el => el.pageId === pageId && el.type === 'shape' &&
         this._hitTestShape(el as ShapeElement, x, y));
-    if (!target) return;
-    const newFill = this.ui.fillColorInput.value;
-    const cmd = new FillColorCmd(this.elements, target.id, (target as ShapeElement).fillColor, newFill);
-    this.historyManager.execute(cmd);
-    this._autosave();
-    this.renderElements();
+    if (shapeTarget) {
+      this.historyManager.execute(new FillColorCmd(this.elements, shapeTarget.id, (shapeTarget as ShapeElement).fillColor, newColor));
+      this._autosave();
+      this.renderElements();
+      return;
+    }
+
+    // Check ink strokes (freehand pen)
+    const strokes = this.inkLayer.getStrokes(pageId);
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const s = strokes[i];
+      if (s.type !== 'ink') continue;
+      const threshold = s.width / 2 + 4;
+      let hit = false;
+      for (let j = 0; j < s.points.length - 1; j++) {
+        if (this._ptSegDist(x, y, s.points[j].x, s.points[j].y, s.points[j + 1].x, s.points[j + 1].y) <= threshold) {
+          hit = true; break;
+        }
+      }
+      if (hit) {
+        this.historyManager.execute(new InkColorCmd(this.inkLayer, pageId, i, s.color, newColor, () => this.renderInkLayer()));
+        this._autosave();
+        return;
+      }
+    }
   }
 
   private _hitTestShape(shape: ShapeElement, x: number, y: number): boolean {

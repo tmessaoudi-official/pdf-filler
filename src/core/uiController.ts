@@ -322,8 +322,9 @@ fillBucketBtn:    document.getElementById('fillBucketBtn')    as HTMLButtonEleme
     r.freehandBtn.classList.toggle('active',     mode === 'drawFreehand');
     r.commentBtn.classList.toggle('active',      mode === 'addComment');
     r.redactBtn.classList.toggle('active',       mode === 'drawRedaction');
-    r.eraserBtn.classList.toggle('active',     mode === 'drawErase');
-    r.editTextBtn.classList.toggle('active',   mode === 'editText');
+    r.eraserBtn.classList.toggle('active',       mode === 'drawErase');
+    r.editTextBtn.classList.toggle('active',     mode === 'editText');
+    r.fillBucketBtn.classList.toggle('active',   mode === 'fillBucket');
     // drawBtn now covers only shape tools (freehand/erase are top-level standalone buttons)
     const drawIcons: Partial<Record<string, string>> = {
       drawArrow: '→', drawRect: '□', drawEllipse: '○',
