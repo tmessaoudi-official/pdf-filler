@@ -202,12 +202,13 @@ describe('_getPageCropBox fallback logic', () => {
   });
 
   it('falls back to MediaBox when getCropBox throws', () => {
-    const mockPage = {
+    type CropBox = { x: number; y: number; width: number; height: number };
+    const mockPage: { getCropBox: () => CropBox; getSize: () => { width: number; height: number } } = {
       getCropBox: () => { throw new Error('no CropBox support'); },
       getSize: () => ({ width: 703, height: 950 }),
     };
 
-    let result: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
+    let result: CropBox = { x: 0, y: 0, width: 0, height: 0 };
     try {
       const cb = mockPage.getCropBox?.();
       if (cb && typeof cb.width === 'number') {
@@ -227,12 +228,13 @@ describe('_getPageCropBox fallback logic', () => {
   });
 
   it('falls back when getCropBox returns null-ish', () => {
-    const mockPage = {
+    type CropBox = { x: number; y: number; width: number; height: number };
+    const mockPage: { getCropBox: () => CropBox | null; getSize: () => { width: number; height: number } } = {
       getCropBox: () => null,
       getSize: () => ({ width: 595, height: 842 }),
     };
 
-    let result: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: 0, height: 0 };
+    let result: CropBox = { x: 0, y: 0, width: 0, height: 0 };
     try {
       const cb = mockPage.getCropBox?.();
       if (cb && typeof cb.width === 'number') {
@@ -257,7 +259,7 @@ describe('effective dims from CropBox (w_eff / h_eff)', () => {
   const cropW = 646.307, cropH = 893.307;
 
   it('rotation=0: w_eff=cropW, h_eff=cropH', () => {
-    const rot = 0;
+    const rot: number = 0;
     const w_eff = (rot === 90 || rot === 270) ? cropH : cropW;
     const h_eff = (rot === 90 || rot === 270) ? cropW : cropH;
     expect(w_eff).toBeCloseTo(cropW);
@@ -265,7 +267,7 @@ describe('effective dims from CropBox (w_eff / h_eff)', () => {
   });
 
   it('rotation=90: w_eff=cropH, h_eff=cropW (swapped)', () => {
-    const rot = 90;
+    const rot: number = 90;
     const w_eff = (rot === 90 || rot === 270) ? cropH : cropW;
     const h_eff = (rot === 90 || rot === 270) ? cropW : cropH;
     expect(w_eff).toBeCloseTo(cropH);
@@ -273,7 +275,7 @@ describe('effective dims from CropBox (w_eff / h_eff)', () => {
   });
 
   it('rotation=180: w_eff=cropW, h_eff=cropH (same as 0)', () => {
-    const rot = 180;
+    const rot: number = 180;
     const w_eff = (rot === 90 || rot === 270) ? cropH : cropW;
     const h_eff = (rot === 90 || rot === 270) ? cropW : cropH;
     expect(w_eff).toBeCloseTo(cropW);
@@ -281,7 +283,7 @@ describe('effective dims from CropBox (w_eff / h_eff)', () => {
   });
 
   it('rotation=270: swapped like 90', () => {
-    const rot = 270;
+    const rot: number = 270;
     const w_eff = (rot === 90 || rot === 270) ? cropH : cropW;
     const h_eff = (rot === 90 || rot === 270) ? cropW : cropH;
     expect(w_eff).toBeCloseTo(cropH);

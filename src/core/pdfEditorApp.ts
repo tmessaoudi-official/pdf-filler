@@ -1602,9 +1602,9 @@ export class PDFEditorApp {
     this.showToast(t('toast.sessionCleared'));
   }
 
-  private async _applyExportPassword(pdfDoc: { encrypt(opts: { userPassword: string; ownerPassword: string }): Promise<void> }): Promise<void> {
+  private _applyExportPassword(pdfDoc: { encrypt(opts: { userPassword: string; ownerPassword: string }): void }): void {
     if (!this._exportPassword) return;
-    await pdfDoc.encrypt({ userPassword: this._exportPassword.user, ownerPassword: this._exportPassword.owner });
+    pdfDoc.encrypt({ userPassword: this._exportPassword.user, ownerPassword: this._exportPassword.owner });
   }
 
   private _promptPassword(isRetry = false): Promise<string | null> {
@@ -2888,7 +2888,7 @@ export class PDFEditorApp {
         }
       }
 
-      await this._applyExportPassword(pdfDoc);
+      this._applyExportPassword(pdfDoc);
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -2962,7 +2962,7 @@ export class PDFEditorApp {
         }
       }
 
-      await this._applyExportPassword(pdfDoc);
+      this._applyExportPassword(pdfDoc);
       const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);

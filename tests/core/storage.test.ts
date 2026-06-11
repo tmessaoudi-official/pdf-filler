@@ -10,7 +10,7 @@ import type { SavedState } from '../../src/core/storage';
 
 const makeState = (override: Partial<SavedState> = {}): SavedState => ({
   elements: [],
-  pages: [{ id: 'p1', sourcePdfId: 'src1', originalPageNum: 1, rotation: 0 }],
+  pages: [{ id: 'p1', sourcePdfId: 'src1', sourcePageNum: 1, rotation: 0 }],
   watermark: { enabled: false, text: '', color: '#000000', fontSize: 48, opacity: 0.15, angle: -30, density: 3 },
   currentPageIndex: 0,
   sourcePdfs: [],
@@ -102,9 +102,9 @@ describe('saveState / loadState round-trip', () => {
   it('preserves multiple pages', async () => {
     const state = makeState({
       pages: [
-        { id: 'p1', sourcePdfId: 's1', originalPageNum: 1, rotation: 0 },
-        { id: 'p2', sourcePdfId: 's1', originalPageNum: 2, rotation: 90 },
-        { id: 'p3', sourcePdfId: 's2', originalPageNum: 1, rotation: 0 },
+        { id: 'p1', sourcePdfId: 's1', sourcePageNum: 1, rotation: 0 },
+        { id: 'p2', sourcePdfId: 's1', sourcePageNum: 2, rotation: 90 },
+        { id: 'p3', sourcePdfId: 's2', sourcePageNum: 1, rotation: 0 },
       ],
       currentPageIndex: 2,
     });

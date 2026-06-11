@@ -29,14 +29,14 @@ describe('generateCodeDataUrl — bcid lookup', () => {
     await generateCodeDataUrl('codabar', 'A12345A');
     const calls = vi.mocked(bwipjs.toCanvas).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
-    const opts = calls[0][1] as Record<string, unknown>;
+    const opts = calls[0][1] as unknown as Record<string, unknown>;
     expect(opts['bcid']).toBe('rationalizedCodabar');
   });
 
   it('passes bcid unchanged when format id equals the bwip encoder name', async () => {
     const { generateCodeDataUrl } = await import('../../src/utils/codeGenerator');
     await generateCodeDataUrl('code128', 'ABC-123');
-    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as Record<string, unknown>;
+    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as unknown as Record<string, unknown>;
     expect(opts['bcid']).toBe('code128');
   });
 
@@ -48,21 +48,21 @@ describe('generateCodeDataUrl — includetext default', () => {
   it('defaults to true for 1D formats', async () => {
     const { generateCodeDataUrl } = await import('../../src/utils/codeGenerator');
     await generateCodeDataUrl('code39', 'CODE39');
-    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as Record<string, unknown>;
+    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as unknown as Record<string, unknown>;
     expect(opts['includetext']).toBe(true);
   });
 
   it('defaults to false for 2D formats', async () => {
     const { generateCodeDataUrl } = await import('../../src/utils/codeGenerator');
     await generateCodeDataUrl('qrcode', 'https://example.com');
-    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as Record<string, unknown>;
+    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as unknown as Record<string, unknown>;
     expect(opts['includetext']).toBe(false);
   });
 
   it('BwipOptions.includetext=false overrides default for 1D', async () => {
     const { generateCodeDataUrl } = await import('../../src/utils/codeGenerator');
     await generateCodeDataUrl('code128', 'ABC', null, { includetext: false });
-    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as Record<string, unknown>;
+    const opts = vi.mocked(bwipjs.toCanvas).mock.calls[0][1] as unknown as Record<string, unknown>;
     expect(opts['includetext']).toBe(false);
   });
 });

@@ -280,7 +280,7 @@ describe('delete button fires element:delete event', () => {
     });
     btn.click();
     expect(detail).not.toBeNull();
-    expect((detail as { id: number }).id).toBe(el.id);
+    expect(detail!.id).toBe(el.id);
   });
 });
 

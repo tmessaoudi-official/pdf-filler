@@ -148,7 +148,7 @@ describe('PDFRenderer renderPageAtIndex', () => {
     const canvas = makeCanvas();
     const { ctx } = (() => {
       const fills: unknown[] = [];
-      return { ctx: { fillStyle: '' as string, fillRect: vi.fn(() => fills.push(1)) }, fills };
+      return { ctx: { fillStyle: '' as string, fillRect: vi.fn(() => fills.push(1)) } };
     })();
     canvas.getContext = vi.fn().mockReturnValue(ctx) as typeof canvas.getContext;
     const renderer = new PDFRenderer(canvas);
